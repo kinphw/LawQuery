@@ -40,19 +40,24 @@ law-query/
 │       ├── bootstrap.min.js
 │       ├── sql-wasm.js
 │       └── sql-wasm-b64.js
-├── src/
-│   ├── models/
-│   │   ├── Database.js       # SQLite 데이터베이스 관리
-│   │   └── SearchModel.js    # 검색 관련 데이터 모델
-│   ├── views/
-│   │   ├── components/
-│   │   │   ├── Header.js     # 헤더 컴포넌트
-│   │   │   ├── SearchForm.js # 검색폼 컴포넌트
-│   │   │   └── ResultList.js # 결과목록 컴포넌트
-│   │   └── MainView.js       # 메인 뷰 관리
-│   ├── controllers/
-│   │   └── SearchController.js # 검색 관련 컨트롤러
-│   └── app.js                  # 앱 초기화 및 설정
 ├── data/
 │   └── dataset.js             # 데이터베이스
 └── tools/                     # DB 변환 도구들
+
+src/
+├── ts/
+│   ├── models/
+│   │   ├── Database.ts
+│   │   └── SearchModel.ts
+│   ├── views/
+│   │   ├── components/
+│   │   │   ├── Header.ts
+│   │   │   ├── SearchForm.ts
+│   │   │   └── ResultTable.ts
+│   │   └── MainView.ts
+│   ├── controllers/
+│   │   └── SearchController.ts
+│   ├── types/
+│   │   └── types.ts
+│   └── app.ts
+└── js/ (컴파일된 JavaScript)

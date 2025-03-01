@@ -1,0 +1,27 @@
+{
+    "compilerOptions": {
+      "target": "ES6",
+      "module": "none",
+      "moduleResolution": "classic",
+      "outDir": "./src/js",
+      "rootDir": "./src/ts",
+      "strict": true,
+      "esModuleInterop": true,
+      "skipLibCheck": true,
+      "forceConsistentCasingInFileNames": true,
+      "typeRoots": [
+        "./src/ts/types"
+      ],
+      "lib": [
+        "ES6",
+        "DOM"
+      ]
+    },
+    "include": [
+      "src/ts/**/*"
+    ],
+    "exclude": [
+      "node_modules",
+      "dist"
+    ]
+  }

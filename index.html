@@ -2,15 +2,14 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
-  <title>유권해석, 비조치의견서 검색</title>
+  <title>LawQuery</title>
   <!-- 부트스트랩(로컬)을 사용한다면 -->
   <link rel="stylesheet" href="assets/vendor/bootstrap.min.css" />
   <link rel="stylesheet" href="assets/css/style.css" />
-  <script src="src/header.js"></script> <!-- 헤더 변수 포함 -->    
 </head>
 <body class="p-3">
     <div id="header"></div>  <!-- 헤더가 삽입될 자리 -->
-    <div class="container">   
+    <div class="container">
 
       <!-- 검색 영역 -->
       <form id="searchForm" class="row g-3 mb-4">
@@ -68,13 +67,17 @@
     <script src="data/dataset.js"></script>
 
     <!-- 검색/렌더링 로직 -->
-    <script src="src/lawQuery.js"></script>
+    <!-- <script src="src/lawQuery.js"></script> -->
 
-    <script>
-      // 헤더 내용을 페이지에 삽입
-      document.getElementById("header").innerHTML = header;
-    </script>
-
+    <!-- 애플리케이션 코드 -->
+    <script src="src/js/models/Database.js"></script>
+    <script src="src/js/models/SearchModel.js"></script>
+    <script src="src/js/views/components/Header.js"></script>
+    <script src="src/js/views/components/SearchForm.js"></script>
+    <script src="src/js/views/components/ResultTable.js"></script>
+    <script src="src/js/views/MainView.js"></script>
+    <script src="src/js/controllers/SearchController.js"></script>
+    <script src="src/js/app.js"></script>
 
 </body>
 </html>
