@@ -4,9 +4,9 @@
   <meta charset="UTF-8" />
   <title>유권해석, 비조치의견서 검색</title>
   <!-- 부트스트랩(로컬)을 사용한다면 -->
-  <link rel="stylesheet" href="vendor/bootstrap.min.css" />
-  <link rel="stylesheet" href="css/style.css" />
-  <script src="js/header.js"></script> <!-- 헤더 변수 포함 -->    
+  <link rel="stylesheet" href="assets/vendor/bootstrap.min.css" />
+  <link rel="stylesheet" href="assets/css/style.css" />
+  <script src="src/header.js"></script> <!-- 헤더 변수 포함 -->    
 </head>
 <body class="p-3">
     <div id="header"></div>  <!-- 헤더가 삽입될 자리 -->
@@ -58,17 +58,17 @@
     </div>
 
     <!-- Bootstrap JS (필요하다면) -->
-    <script src="vendor/bootstrap.min.js"></script>
+    <script src="assets/vendor/bootstrap.min.js"></script>
 
     <!-- SQL.js 관련 스크립트 -->
-    <script src="vendor/sql-wasm-b64.js"></script>  <!-- 이 파일을 먼저 로드 -->
-    <script src="vendor/sql-wasm.js"></script>
+    <script src="assets/vendor/sql-wasm-b64.js"></script>  <!-- 이 파일을 먼저 로드 -->
+    <script src="assets/vendor/sql-wasm.js"></script>
     
     <!-- 데이터베이스 로드 -->
     <script src="data/dataset.js"></script>
 
     <!-- 검색/렌더링 로직 -->
-    <script src="js/lawQuery.js"></script>
+    <script src="src/lawQuery.js"></script>
 
     <script>
       // 헤더 내용을 페이지에 삽입
