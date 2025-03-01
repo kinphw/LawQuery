@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>유권해석, 비조치의견서 검색</title>
+  <!-- 부트스트랩(로컬)을 사용한다면 -->
+  <link rel="stylesheet" href="vendor/bootstrap.min.css" />
+  <link rel="stylesheet" href="css/style.css" />
+  <script src="js/header.js"></script> <!-- 헤더 변수 포함 -->  
+</head>
+<body class="p-3">
+    <div id="header"></div>  <!-- 헤더가 삽입될 자리 -->
+    <div class="container">
+    <!-- 검색 영역 -->
+     아직 미구현
+     </div>
+
+     <script>
+        // 헤더 내용을 페이지에 삽입
+        document.getElementById("header").innerHTML = header;
+        // 버튼 클래스 교체 로직
+        const lawBtn = document.querySelector('button[onclick*="law.html"]');
+        const interpretationBtn = document.querySelector('button[onclick*="index.html"]');
+
+        if (lawBtn) {
+            lawBtn.classList.remove('btn-secondary');
+            lawBtn.classList.add('btn-primary');
+        }
+        if (interpretationBtn) {
+            interpretationBtn.classList.remove('btn-primary');
+            interpretationBtn.classList.add('btn-secondary');
+        }        
+    </script>
+
+</body>
+</html>

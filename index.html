@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>유권해석, 비조치의견서 검색</title>
+  <!-- 부트스트랩(로컬)을 사용한다면 -->
+  <link rel="stylesheet" href="vendor/bootstrap.min.css" />
+  <link rel="stylesheet" href="css/style.css" />
+  <script src="js/header.js"></script> <!-- 헤더 변수 포함 -->    
+</head>
+<body class="p-3">
+    <div id="header"></div>  <!-- 헤더가 삽입될 자리 -->
+    <div class="container">   
+
+      <!-- 검색 영역 -->
+      <form id="searchForm" class="row g-3 mb-4">
+        <!-- (1) 구분 -->
+        <div class="col-auto">
+          <label for="typeSelect" class="form-label">구분</label>
+          <select id="typeSelect" class="form-select">
+            <option value="전체">전체</option>
+            <option value="비조치의견서">비조치의견서</option>
+            <option value="유권해석">유권해석</option>
+          </select>
+        </div>
+
+        <!-- (2) 일련번호 -->
+        <div class="col-auto">
+          <label for="serialInput" class="form-label">일련번호</label>
+          <input type="text" class="form-control" id="serialInput" placeholder="ex) 250007">
+        </div>
+
+        <!-- (3) 검색항목(질의요지/회답/이유/전체) 선택 -->
+        <div class="col-auto">
+          <label for="fieldSelect" class="form-label">검색항목</label>
+          <select id="fieldSelect" class="form-select">
+            <option value="전체">전체</option>
+            <option value="제목">제목</option>
+            <option value="질의요지">질의요지</option>
+            <option value="회답">회답</option>
+            <option value="이유">이유</option>
+          </select>
+        </div>
+
+        <!-- (4) 검색어 입력 -->
+        <div class="col-auto">
+          <label for="keywordInput" class="form-label">내용</label>
+          <input type="text" class="form-control" id="keywordInput" placeholder="내용을 입력하세요">
+        </div>
+
+        <div class="col-auto d-flex align-items-end">
+          <button type="button" id="searchBtn" class="btn btn-primary">검색</button>
+        </div>
+      </form>
+
+      <!-- 검색 결과 표시 영역 -->
+      <div id="results"></div>
+    </div>
+
+    <!-- Bootstrap JS (필요하다면) -->
+    <script src="vendor/bootstrap.min.js"></script>
+
+    <!-- data.js에서 dataset 변수를 주입 (CORS 문제 해결용) -->
+    <script src="data/dataset.js"></script>
+    <!-- 검색/렌더링 로직 -->
+    <script src="js/script.js"></script>
+
+    <script>
+      // 헤더 내용을 페이지에 삽입
+      document.getElementById("header").innerHTML = header;
+    </script>
+
+
+</body>
+</html>
