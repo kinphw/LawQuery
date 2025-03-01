@@ -60,8 +60,10 @@
     <!-- Bootstrap JS (필요하다면) -->
     <script src="vendor/bootstrap.min.js"></script>
 
-    <!-- data.js에서 dataset 변수를 주입 (CORS 문제 해결용) -->
-    <script src="data/dataset.js"></script>
+    <!-- SQL.js 관련 스크립트 -->
+    <script src="vendor/sql-wasm-b64.js"></script>  <!-- 이 파일을 먼저 로드 -->
+    <script src="vendor/sql-wasm.js"></script>
+    
     <!-- 검색/렌더링 로직 -->
     <script src="js/script.js"></script>
 

@@ -1,0 +1,67 @@
+<!-- 예제 : SQLite db파일 Load -->
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SQLite DB 불러오기</title>
+    <script src="sql-wasm.js"></script> <!-- SQL.js 라이브러리 -->
+</head>
+<body>
+    <h1>SQLite 데이터 출력</h1>
+    <input type="file" id="upload-db" />
+    <button onclick="loadDatabase()">데이터베이스 불러오기</button>
+    
+    <table border="1">
+        <thead id="table-head"></thead>
+        <tbody id="table-body"></tbody>
+    </table>
+
+    <script>
+        let db;
+        async function loadDatabase() {
+            const fileInput = document.getElementById("upload-db");
+            if (!fileInput.files.length) {
+                alert("SQLite 파일을 선택하세요!");
+                return;
+            }
+            
+            const file = fileInput.files[0];
+            const reader = new FileReader();
+
+            reader.onload = async function () {
+                const SQL = await initSqlJs({ locateFile: file => "sql-wasm.wasm" });
+                db = new SQL.Database(new Uint8Array(reader.result));
+                console.log("✅ SQLite DB 로드 완료!");
+
+                // 데이터 조회 및 HTML 출력
+                displayData();
+            };
+            
+            reader.readAsArrayBuffer(file);
+        }
+
+        function displayData() {
+            const tableName = "my_data"; // SQLite에서 변환한 테이블명
+            const result = db.exec(`SELECT * FROM ${tableName}`);
+            if (result.length === 0) {
+                alert("데이터 없음!");
+                return;
+            }
+
+            const columns = result[0].columns;
+            const values = result[0].values;
+
+            // 헤더 추가
+            const thead = document.getElementById("table-head");
+            thead.innerHTML = "<tr>" + columns.map(col => `<th>${col}</th>`).join("") + "</tr>";
+
+            // 데이터 추가
+            const tbody = document.getElementById("table-body");
+            tbody.innerHTML = values.map(row => 
+                `<tr>${row.map(value => `<td>${value}</td>`).join("")}</tr>`
+            ).join("");
+        }
+    </script>
+</body>
+</html>
