@@ -1,8 +1,3 @@
-declare global {
-    interface Window {
-        Dataset: any;
-    }
-}
 
 class Dataset {
     getDatabaseBinary(): Uint8Array {

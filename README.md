@@ -61,3 +61,12 @@ src/
 │   │   └── types.ts
 │   └── app.ts
 └── js/ (컴파일된 JavaScript)
+
+## DB설계
+
+1. 유권해석  
+
+db_i (테이블 1개면 됨)
+
+2. 법률  
+

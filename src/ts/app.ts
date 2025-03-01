@@ -5,24 +5,12 @@
 
 class App {
     async init() {
-
-        // 이하는 모두 팩토리메서드와 컨트롤러에게 기능 이관
-        // 데이터셋 호출
-        // const dataset = new window.Dataset().getDatabaseBinary();                
-        // // 데이터셋을 주입하며 데이터베이스 객체생성 및 초기화
-        // const db = new Database(dataset);
-        // await db.init();
-        
-        // db를 주입하며 모델 객체 생성
-        // const model = new SearchModel(db); // 컨트롤러에 이관
-        // 뷰 객체 생성
-        // const view = new MainView(); // 컨트롤러에 이관
-
-        // 모델과 뷰를 주입하며 컨트롤러 객체 생성
-        // const controller = new SearchController(model, view); // 팩토리메서드로 변경
-        
+                
+        // 라우팅 판단 및 팩토리메서드 호출
         const currentPage = this.getCurrentPage();
         const controller = this.createController(currentPage);
+        
+        // 컨트롤러 초기화
         await controller.initialize();
     }
 

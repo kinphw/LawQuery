@@ -5,7 +5,10 @@
 
 class MainView {
     
-    // 클래스변수부 : 렌더링 대상
+    // HTML 웹앱에서, 개념상 HTML은 렌더링대상 껍데기만 설계하고 세부내용은 뷰에서 동적으로 렌더링해서 붙이는 구조
+    // 그리고 이벤트도 여기서 붙임
+
+    // 클래스변수부 : 렌더링 대상 (하위 뷰 클래스)
     private header: Header; // 뷰의 일부. 헤더를 공용으로 쓰기 위해 클래스변수로 선언
     private searchForm: SearchForm; // 검색폼
     private resultTable: ResultTable; // 결과테이블
