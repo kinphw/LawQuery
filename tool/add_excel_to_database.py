@@ -1,3 +1,13 @@
+"""
+add_excel_to_database.py
+------------------------
+Excel 파일을 이미 존재하는 SQLite 데이터베이스로 변환하는 스크립트
+
+작성자: kinphw
+작성일: 2025-03-01
+버전: 0.0.1
+"""
+
 import pandas as pd
 import sqlite3
 

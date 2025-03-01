@@ -19,7 +19,7 @@ class LawQuery {
             locateFile: file => "data:application/wasm;base64," + window.WASM_BASE64.trim()
         });
 
-        this.db = new SQL.Database(getDatabaseBinary());
+        this.db = new SQL.Database(new Dataset().getDatabaseBinary());
         console.log("✅ SQLite DB 로드 완료!");
     }
 

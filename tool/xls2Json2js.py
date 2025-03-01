@@ -1,3 +1,14 @@
+"""
+xls2Json2js.py
+------------------------
+Excel 파일을 JSON으로 변환하여 JavaScript 파일로 저장하는 스크립트 (현재 미사용)
+
+작성자: kinphw
+작성일: 2025-03-01
+버전: 0.0.1
+"""
+
+
 import pandas as pd
 import json
 

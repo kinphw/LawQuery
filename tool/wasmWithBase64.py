@@ -1,4 +1,14 @@
-# wasmWithBase64.py
+"""
+wasmWithBase64.py
+------------------------
+WASM 파일을 Base64로 변환하여 JavaScript 파일로 저장하는 스크립트
+
+작성자: kinphw
+작성일: 2025-03-01
+버전: 0.0.1
+"""
+
+
 import base64
 import os
 
