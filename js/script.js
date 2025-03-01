@@ -16,9 +16,11 @@ async function initDatabase() {
     }
   });
 
-  const response = await fetch('data/dataset.db');
-  const arrayBuffer = await response.arrayBuffer();
-  db = new SQL.Database(new Uint8Array(arrayBuffer));
+  // const response = await fetch('data/dataset.db');
+  // const arrayBuffer = await response.arrayBuffer();
+  // db = new SQL.Database(new Uint8Array(arrayBuffer));
+
+  db = new SQL.Database(getDatabaseBinary()); // use Local Binary
 }
 
 window.addEventListener('DOMContentLoaded', async () => {
