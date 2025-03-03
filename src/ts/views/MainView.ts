@@ -9,9 +9,9 @@ class MainView {
     // 그리고 이벤트도 여기서 붙임
 
     // 클래스변수부 : 렌더링 대상 (하위 뷰 클래스)
-    private header: Header; // 뷰의 일부. 헤더를 공용으로 쓰기 위해 클래스변수로 선언
-    private searchForm: SearchForm; // 검색폼
-    private resultTable: ResultTable; // 결과테이블
+    public header: Header; // 뷰의 일부. 헤더를 공용으로 쓰기 위해 클래스변수로 선언
+    public searchForm: SearchForm; // 검색폼
+    public resultTable: ResultTable; // 결과테이블
 
     constructor() {
         // 즉, Header는 단순 렌더링만 하는 반면, 
@@ -23,19 +23,27 @@ class MainView {
     }
 
     // 컨트롤러가 호출
-    render(results: SearchResult[]): void {
+    renderAll(results: SearchResult[]): void {
         document.getElementById('header')!.innerHTML = this.header.render('interpretation');
         document.getElementById('results')!.innerHTML = this.resultTable.render(results);
 
         // 여기에서 이벤트를 다시 바인딩해줘야 함
-        this.header.bindEvents();        
-        this.resultTable.bindEvents();  // 추가
+        // this.header.bindEvents();        
+        // this.resultTable.bindEvents();  // 추가
+    }
+
+    renderHeader(): void {
+        document.getElementById('header')!.innerHTML = this.header.render('interpretation');
+    }
+
+    renderResults(results: SearchResult[]): void {
+        document.getElementById('results')!.innerHTML = this.resultTable.render(results);
     }
 
     // 컨트롤러가 호출
-    bindEvents(searchHandler: () => void): void {
-        this.searchForm.bindEvents(searchHandler);
-        // this.resultTable.bindEvents();
-    }
+    // bindEvents(searchHandler: () => void): void {
+    //     // this.searchForm.bindEvents(searchHandler);
+    //     // this.resultTable.bindEvents();
+    // }
 }
 window.MainView = MainView;

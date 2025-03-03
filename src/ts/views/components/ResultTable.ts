@@ -45,7 +45,7 @@ class ResultTable {
         return text ? text.replace(/\n/g, '<br>') : '';
     }
 
-    bindEvents(): void {
+    setRowClickHandler(): void {
         document.querySelectorAll('.search-result-row')  // 모든 결과 행 선택
         .forEach(row => {                               // 각 행마다
           row.addEventListener('click', () => {         // 클릭 이벤트 리스너 추가

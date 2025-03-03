@@ -34,15 +34,15 @@ class Header {
         return html;
     }
 
-    bindEvents(): void {
+    setInfoButtonHandler(): void {
       document.getElementById('infoButton')?.addEventListener('click', 
           () => this.showInfo());
     }    
 
     private showInfo(): void {
-        alert(`제작자: kinphw
-웹페이지: https://github.com/kinphw
-법령최근업데이트: 2024-03-02`);
+        alert(`제작 kinphw
+github.com/kinphw/LawQuery
+법령최근업데이트 2024-03-02`);
     }
 }
 

@@ -1,19 +1,11 @@
 class SearchForm {
     // 메서드를 매개변수로 전달받아서 그 메서드를 이벤트바인딩
-    bindEvents(searchHandler: () => void): void {
-        // 폼 submit 이벤트 처리 (미사용)
-        // const form = document.getElementById('searchForm');
-        // if (form) {
-        //     form.addEventListener('submit', (e) => {
-        //         e.preventDefault();
-        //         searchHandler();
-        //     });
-        // }
+    setSearchHandler(handler: () => void): void {
 
         // 검색 버튼 클릭 이벤트
         const searchBtn = document.getElementById('searchBtn');
         if (searchBtn) {
-            searchBtn.addEventListener('click', searchHandler);
+            searchBtn.addEventListener('click', handler);
         }
 
         // 엔터키 이벤트
@@ -32,7 +24,7 @@ class SearchForm {
                             // 100ms 후에 active 클래스 제거
                             setTimeout(() => {
                                 searchBtn.classList.remove('active');
-                                searchHandler();
+                                handler();
                             }, 100);
                         }
                     }
