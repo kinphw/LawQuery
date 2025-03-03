@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>DB Test</title>
+    <link rel="stylesheet" href="/assets/vendor/bootstrap.min.css" />
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+        }
+        .law-table {
+            width: 100%;
+            table-layout: fixed; /* 균등한 테이블 크기 */
+        }
+
+        .law-table th, 
+        .law-table td {
+            width: 25%;
+            vertical-align: top;
+            padding: 12px;
+            text-align: left;
+        }
+
+        .box-container {
+            display: flex; /* 수평 정렬 */
+            gap: 8px; /* 박스 사이 여백 */
+            flex-wrap: wrap; /* 너무 길어지면 줄바꿈 */
+        }
+
+        .box-item {
+            padding: 8px 12px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            background-color: #f9f9f9;
+            white-space: normal; /* 내부 개행 반영 */
+            text-align: left;
+            font-size: 14px;
+        }
+
+    </style>
+</head>
+<body>
+    <div>
+        <h2 class="mb-4">Test: SELECT * FROM db_a</h2>
+        <div id="results"></div>
+    </div>
+
+    <!-- SQL.js dependencies -->
+    <script src="/assets/vendor/sql-wasm-b64.js"></script>
+    <script src="/assets/vendor/sql-wasm.js"></script>
+    
+    <!-- Database -->
+    <script src="/data/db_aesr.js"></script>
+
+    <script>
+        async function initialize() {
+            // DB 초기화
+            const dataset = new window.Dataset().getDatabaseBinary();
+            const SQL = await initSqlJs({
+                locateFile: file => "data:application/wasm;base64," + window.WASM_BASE64.trim()
+            });
+            const db = new SQL.Database(dataset);
+
+            // 쿼리 실행
+            const results = db.exec(`
+SELECT 
+    a.content_a AS law_content,
+    
+    (SELECT GROUP_CONCAT(sub_e.content_e, '|*|') 
+     FROM (SELECT DISTINCT e.content_e 
+           FROM db_e e 
+           JOIN rdb_ae ae ON ae.id_e = e.id_e 
+           WHERE ae.id_a = a.id_a) AS sub_e) AS decree_content,
+
+    (SELECT GROUP_CONCAT(sub_s.content_s, '|*|') 
+     FROM (SELECT DISTINCT s.content_s 
+           FROM db_s s 
+           JOIN rdb_es es ON es.id_s = s.id_s 
+           JOIN rdb_ae ae ON ae.id_e = es.id_e 
+           WHERE ae.id_a = a.id_a) AS sub_s) AS regulation_content,
+
+    (SELECT GROUP_CONCAT(sub_r.content_r, '|*|') 
+     FROM (SELECT DISTINCT r.content_r 
+           FROM db_r r 
+           JOIN rdb_sr sr ON sr.id_r = r.id_r 
+           JOIN rdb_es es ON es.id_s = sr.id_s 
+           JOIN rdb_ae ae ON ae.id_e = es.id_e 
+           WHERE ae.id_a = a.id_a) AS sub_r) AS rule_content
+
+FROM db_a a
+ORDER BY a.id_a;
+
+
+
+            `);
+            
+            // 결과 테이블 생성
+            let html = '<div><table class="table table-bordered law-table">';
+            
+            // 헤더
+            html += '<thead class="table-light"><tr>';
+            results[0].columns.forEach(col => {
+                html += `<th class="small">${col}</th>`;
+            });
+            html += '</tr></thead>';
+            
+            // 데이터
+            html += '<tbody>';
+            results[0].values.forEach(row => {
+                html += '<tr>';
+                row.forEach(cell => {
+                    html += `<td class="small">${formatContent(cell)}</td>`;
+                });
+                html += '</tr>';
+            });
+            html += '</tbody></table></div>';
+
+            // 결과 표시
+            document.getElementById('results').innerHTML = html;
+        }
+
+        function formatContent(text) {
+            if (!text) return '';
+            return '<div class="box-container">' +
+                text.split("|*|").map(item => 
+                    `<div class="box-item">${item.replace(/\n/g, '<br>')}</div>`).join("") +
+                '</div>';
+        }     
+
+        // 페이지 로드 시 실행
+        document.addEventListener('DOMContentLoaded', initialize);
+    </script>
+</body>
+</html>

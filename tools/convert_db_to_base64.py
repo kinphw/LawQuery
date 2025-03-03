@@ -11,8 +11,8 @@ SQLite 데이터베이스 파일을 Base64로 변환하여 JavaScript 파일로 
 import base64
 
 # SQLite .db 파일 경로
-db_file = "data/dataset.db"
-output_js = "data/dataset.js"
+db_file = "data/db_aesr.db"
+output_js = db_file.replace('.db', '.js')
 
 # SQLite DB 파일을 Base64로 변환
 with open(db_file, "rb") as f:
@@ -31,7 +31,10 @@ with open(db_file, "rb") as f:
         }}
         return bytes;
     }}
-    }};"""
+    }};
+    
+    window.Dataset = Dataset;
+    """
 
 # JavaScript 파일로 저장
 with open(output_js, "w") as f:

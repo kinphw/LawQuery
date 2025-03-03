@@ -23,7 +23,7 @@ class App {
     private createController(page: string): any {
         switch(page) {
             case 'law':
-                // return new window.LawController(); // 추후 구현
+                return new window.LawController(); // 추후 구현
             case 'interpretation':
             default:
                 return new window.SearchController();

@@ -62,6 +62,18 @@ src/
 │   └── app.ts
 └── js/ (컴파일된 JavaScript)
 
+src/
+├── ts/
+│   ├── models/
+│   │   ├── LawDatabase.ts       # 법령 DB 클래스
+│   │   └── LawModel.ts          # 법령 데이터 처리 모델
+│   ├── views/
+│   │   ├── components/
+│   │   │   └── LawTable.ts      # 4단 법령 테이블 컴포넌트
+│   │   └── LawView.ts           # 법령 조회 메인 뷰
+│   └── controllers/
+│       └── LawController.ts      # 법령 조회 컨트롤러
+
 ## DB설계
 
 1. 유권해석  

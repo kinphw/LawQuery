@@ -5,6 +5,7 @@
 /// <reference path="./IController.ts" />
 /// <reference path="../models/SearchModel.ts" />
 /// <reference path="../types/types.ts" />
+/// ㄴㄴ
 
 class SearchController implements IController {
   constructor(
