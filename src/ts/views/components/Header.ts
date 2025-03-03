@@ -11,7 +11,7 @@ class Header {
 
   render(currentPage: 'law' | 'interpretation'): string {
       const html = `
-      <header class="text-center p-3 border mb-4 bg-light">
+      <header class="text-center p-3 border bg-light">
           <div class="d-flex justify-content-between align-items-center mb-2">
               <img src="assets/img/penguin.PNG" alt="Penguin" style="height: 40px;">
               <h2 class="mb-0">Law Query</h2>
