@@ -40,3 +40,8 @@ body {
     white-space: normal;
     text-align: left;
 }
+
+.text-xs {
+  font-size: 0.7rem !important;  /* 12px */
+  font-weight: 400;
+}
