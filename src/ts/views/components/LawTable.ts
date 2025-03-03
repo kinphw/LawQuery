@@ -1,6 +1,5 @@
 class LawTable {
 
-
   // 법령명 thead 설정을 위한 클래스변수수  
     public names : string[] = [
         '전자금융거래법\n[시행 2024. 9. 15.]\n[법률 제19734호, 2023. 9. 14., 일부개정]',
@@ -8,6 +7,12 @@ class LawTable {
         '전자금융감독규정\n[시행 2025. 2. 5.]\n[금융위원회고시 제2025-4호, 2025. 2. 5., 일부개정]',
         '전자금융감독규정시행세칙\n[시행 2025. 2. 5.]\n[금융감독원세칙 , 2025. 2. 3., 일부개정]'
     ]
+
+    private currentTextSize: string = ''; // Add text size state
+
+    setTextSize(size: string): void {
+        this.currentTextSize = size;
+    }
 
     render(results: LawResult[]): string {
         if (!results.length) {
@@ -35,12 +40,12 @@ class LawTable {
             // ).join('')}
 
 
-        // 데이터
+        // Data with dynamic text size
         html += '<tbody>';
         results.forEach(row => {
             html += '<tr>';
             ['law_content', 'decree_content', 'regulation_content', 'rule_content'].forEach(col => {
-                html += `<td class="p-2 m-0">${this.formatContent(row[col])}</td>`;
+                html += `<td class="${this.currentTextSize} p-2 m-0">${this.formatContent(row[col])}</td>`;
             });
             html += '</tr>';
         });

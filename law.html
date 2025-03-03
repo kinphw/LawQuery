@@ -10,6 +10,21 @@
 </head>
 <body>
     <div id="header"></div>
+
+    <!-- Text size control - button style -->
+    <div class="d-flex justify-content-center my-2">
+        <div class="btn-group" role="group" aria-label="Text size options">
+            <input type="radio" class="visually-hidden" name="textSize" id="sizeDefault" value="" checked>
+            <label class="btn btn-outline-secondary btn-sm" for="sizeDefault">기본</label>
+    
+            <input type="radio" class="visually-hidden" name="textSize" id="sizeSmall" value="small">
+            <label class="btn btn-outline-secondary btn-sm" for="sizeSmall">작게</label>
+    
+            <input type="radio" class="visually-hidden" name="textSize" id="sizeXS" value="text-xs">
+            <label class="btn btn-outline-secondary btn-sm" for="sizeXS">매우 작게</label>
+        </div>
+    </div>
+
     <div id="results"></div>
 
     <!-- 기본 라이브러리 -->
