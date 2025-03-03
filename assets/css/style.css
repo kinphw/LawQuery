@@ -103,8 +103,14 @@ input[type="radio"]:checked + label {
 
 /* 조문 검색 영역 스타일링 */
 .form-check {
-  margin-right: 1rem;
-  margin-bottom: 0.5rem;
+  position: relative;
+  margin: 0;
+  padding: 2px 0.1rem 2px 1.5rem;  /* Reduced vertical padding */
+}
+
+.form-check-label {
+  font-size: 0.875rem;  /* Match Bootstrap's small */
+  line-height: 1.2;     /* Tighter line height */
 }
 
 #lawSearchHeader .btn-link {
@@ -117,6 +123,17 @@ input[type="radio"]:checked + label {
 }
 
 #lawCheckboxes {
-  max-height: 300px;
+  display: flex;
+  flex-direction: column;
+  /* max-height: 300px; */
   overflow-y: auto;
+  padding: 0 2rem;
+  /* padding : 0; */
+  gap: 0px;  /* Minimal gap between items */
+}
+
+.form-check-input {
+  position: absolute;     /* Absolute positioning */
+  left: 0;               /* Align to left */
+  margin-top: 0.25rem;   /* Vertical alignment */
 }

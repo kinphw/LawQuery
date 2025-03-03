@@ -17,18 +17,13 @@ class LawTable {
         this.lawIds = laws.map(law => law.id_a);
         
         return laws.map(law => `
-            <div class="form-check">
+            <div class="form-check w-100">
                 <input class="form-check-input" type="checkbox" value="${law.id_a}" id="law${law.id_a}">
-                <label class="form-check-label" for="law${law.id_a}">
+                <label class="form-check-label small" for="law${law.id_a}">
                     ${law.title_a}
                 </label>
             </div>
         `).join('');
-    }
-
-
-    setTextSize(size: string): void {
-        this.currentTextSize = size;
     }
 
     render(results: LawResult[]): string {
@@ -70,6 +65,14 @@ class LawTable {
 
         return html;
     }
+
+    // Setters
+
+    setTextSize(size: string): void {
+        this.currentTextSize = size;
+    }
+
+    // Private 유틸함수
 
     // 개행문자를 <br>로 변환
     // |*|로 구분된 텍스트를 div로 감싸서 반환

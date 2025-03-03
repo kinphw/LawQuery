@@ -18,8 +18,7 @@ class Header {
               <button class="btn btn-link" id="infoButton">
                   <i class="fas fa-question-circle fs-4"></i>
               </button>
-          </div>
-          <h5>전자금융거래법 법률, 유권해석/비조치의견서 검색/조회</h5>
+          </div>          
           <div>
               <button class="btn ${currentPage === 'law' ? 'btn-primary' : 'btn-secondary'} me-2" 
                   onclick="location.href='law.html'">법률조회</button>
@@ -41,10 +40,11 @@ class Header {
   }    
 
   private showInfo(): void {
-      alert(`제작 kinphw
-github.com/kinphw/LawQuery
-법령최근업데이트 2024-03-02
-Apache license 2.0
+      alert(`
+LawQuery : 금융법령, 유권해석, 비조치의견서 검색 및 조회를 위한 로컬 웹 어플리케이션입니다.        
+제작 : kinphw (github.com/kinphw/LawQuery)
+버전 : v0.1.0 (250304)
+라이센스 : Apache license 2.0
 `);
   }
 }

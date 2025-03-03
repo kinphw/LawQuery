@@ -74,7 +74,8 @@ class LawController implements IController {
             const results = this.model.getLawsByIds(selectedLaws);
             this.currentResults = results;
             this.view.render(results);
-            this.bindEvents();
+            // this.bindEvents();
+            // this.bindHeaderEvents();
         }
     }    
 
@@ -84,7 +85,7 @@ class LawController implements IController {
         this.view.lawTable.setTextSize(target.value);
         this.view.render(this.currentResults);
         // Rebind all events after re-render
-        this.bindHeaderEvents();
+        // this.bindHeaderEvents();
     }
 }
 

@@ -18,10 +18,10 @@
     <div class="container">
 
       <!-- 검색 영역 -->
-      <form id="searchForm" class="row g-3 mb-4">
+      <form id="searchForm" class="row g-3 mb-2">
         <!-- (1) 구분 -->
-        <div class="col-auto">
-          <label for="typeSelect" class="form-label">구분</label>
+        <div class="col-auto text-center">
+          <label for="typeSelect" class="form-label mb-0">구분</label>
           <select id="typeSelect" class="form-select">
             <option value="전체">전체</option>
             <option value="비조치의견서">비조치의견서</option>
@@ -30,14 +30,14 @@
         </div>
 
         <!-- (2) 일련번호 -->
-        <div class="col-auto">
-          <label for="serialInput" class="form-label">일련번호</label>
+        <div class="col-auto text-center">
+          <label for="serialInput" class="form-label mb-0">일련번호</label>
           <input type="text" class="form-control" id="serialInput" placeholder="ex) 250007">
         </div>
 
         <!-- (3) 검색항목(질의요지/회답/이유/전체) 선택 -->
-        <div class="col-auto">
-          <label for="fieldSelect" class="form-label">검색항목</label>
+        <div class="col-auto text-center">
+          <label for="fieldSelect" class="form-label mb-0">검색항목</label>
           <select id="fieldSelect" class="form-select">
             <option value="전체">전체</option>
             <option value="제목">제목</option>
@@ -48,8 +48,8 @@
         </div>
 
         <!-- (4) 검색어 입력 -->
-        <div class="col-auto">
-          <label for="keywordInput" class="form-label">내용</label>
+        <div class="col-auto text-center">
+          <label for="keywordInput" class="form-label mb-0">내용</label>
           <input type="text" class="form-control" id="keywordInput" placeholder="내용을 입력하세요">
         </div>
 
@@ -63,7 +63,7 @@
     </div>
 
     <!-- Bootstrap JS (필요하다면) -->
-    <script src="assets/vendor/bootstrap.min.js"></script>
+    <script src="assets/vendor/bootstrap.bundle.min.js"></script>
 
     <!-- SQL.js 관련 스크립트 -->
     <script src="assets/vendor/sql-wasm-b64.js"></script>  <!-- 이 파일을 먼저 로드 -->
