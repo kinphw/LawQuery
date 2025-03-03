@@ -23,7 +23,18 @@ class SearchForm {
                 input.addEventListener('keydown', (e: KeyboardEvent) => {
                     if (e.key === 'Enter') {
                         e.preventDefault();
-                        searchHandler();
+                        // 검색 버튼을 찾아서 클릭 이벤트 발생
+                        const searchBtn = document.getElementById('searchBtn');
+                        if (searchBtn) {
+                            // 버튼에 active 클래스 추가
+                            searchBtn.classList.add('active');
+                            
+                            // 100ms 후에 active 클래스 제거
+                            setTimeout(() => {
+                                searchBtn.classList.remove('active');
+                                searchHandler();
+                            }, 100);
+                        }
                     }
                 });
             } else {

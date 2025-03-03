@@ -26,7 +26,9 @@ class MainView {
     render(results: SearchResult[]): void {
         document.getElementById('header')!.innerHTML = this.header.render('interpretation');
         document.getElementById('results')!.innerHTML = this.resultTable.render(results);
+
         // 여기에서 이벤트를 다시 바인딩해줘야 함
+        this.header.bindEvents();        
         this.resultTable.bindEvents();  // 추가
     }
 
