@@ -9,14 +9,17 @@ declare global {
 
 interface Window {
     Dataset: any;
-    Database: any;
+    //
+    
+    SearchDatabase: any;
     SearchModel: any;
     SearchForm: any;
-
-    ResultTable: any;
-    Header: any;
-    MainView: any;
+    SearchResultTable: any;    
+    SearchView: any;
     SearchController: any;
+    //
+
+    Header: any;
     App: any;
     WASM_BASE64: string;
 

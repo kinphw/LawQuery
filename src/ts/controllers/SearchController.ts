@@ -14,19 +14,19 @@ class SearchController implements IController {
 
   constructor(
     private model: SearchModel,
-    private view: MainView
+    private view: SearchView
   ) {}
 
   // 컨트롤러의 run() 역할 래퍼함수
   async initialize(): Promise<void> {
     // 데이터베이스 초기화
     const dataset = new window.Dataset().getDatabaseBinary(); // 데이터셋 설정
-    const db = new Database(dataset);
+    const db = new SearchDatabase(dataset);
     await db.init();
     
     // 모델과 뷰 초기화
     this.model = new SearchModel(db);
-    this.view = new MainView(); // 헤더는 뷰 생성자에서 렌더링됨
+    this.view = new SearchView(); // 헤더는 뷰 생성자에서 렌더링됨
 
     // 초기 데이터 로드
     const results = this.model.getInitialData();

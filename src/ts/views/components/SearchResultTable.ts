@@ -1,4 +1,4 @@
-class ResultTable {
+class SearchResultTable {
 
     private currentTextSize: string = '';
 
@@ -65,4 +65,4 @@ class ResultTable {
     }
 }
 
-window.ResultTable = ResultTable;
+window.SearchResultTable = SearchResultTable;

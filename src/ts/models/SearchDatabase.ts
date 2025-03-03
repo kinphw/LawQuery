@@ -1,4 +1,4 @@
-class Database {
+class SearchDatabase {
   private db: SqlJsDatabase | null = null;
 
   constructor(private dataset: Uint8Array) {}
@@ -29,4 +29,4 @@ class Database {
   }
 }
 
-window.Database = Database;
+window.SearchDatabase = SearchDatabase;

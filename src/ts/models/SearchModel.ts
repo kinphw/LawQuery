@@ -1,10 +1,10 @@
 // import { Database } from './Database';
 // import { SearchCriteria, SearchResult } from '../types/types';
 
-/// <reference path="./Database.ts" />
+/// <reference path="./SearchDatabase.ts" />
 
 class SearchModel {
-  constructor(private db: Database) {}
+  constructor(private db: SearchDatabase) {}
 
   // 실제 검색을 수행하는 메서드
   // 사용자정의 검색조건을 받아서 다시 사용자정의 검색결과를 반환
