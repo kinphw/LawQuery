@@ -10,6 +10,23 @@ class LawTable {
 
     private currentTextSize: string = ''; // Add text size state
 
+    private lawIds: string[] = []; // 조문 ID 목록 저장
+
+    // 체크박스 렌더링을 위한 메서드 추가
+    renderLawCheckboxes(laws: Array<{id_a: string, title_a: string}>): string {
+        this.lawIds = laws.map(law => law.id_a);
+        
+        return laws.map(law => `
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" value="${law.id_a}" id="law${law.id_a}">
+                <label class="form-check-label" for="law${law.id_a}">
+                    ${law.title_a}
+                </label>
+            </div>
+        `).join('');
+    }
+
+
     setTextSize(size: string): void {
         this.currentTextSize = size;
     }

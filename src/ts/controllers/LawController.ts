@@ -28,15 +28,25 @@ class LawController implements IController {
 
         this.view.render(results);
 
+        // 체크박스 렌더링
+        const lawTitles = this.model.getLawTitles();
+        document.getElementById('lawCheckboxes')!.innerHTML = 
+            this.view.lawTable.renderLawCheckboxes(lawTitles);
+
         // 이벤트 바인딩을 컨트롤러에서 일괄 처리
         this.bindEvents();
     }
 
+    // 이하는 이벤트바인딩 함수
+
+    // 이벤트바인딩 래퍼 (초기화할때만 사용)
     private bindEvents(): void {
         this.bindHeaderEvents();
         this.bindTextSizeEvents();
+        this.bindSearchEvents();        
     }
 
+    // 개별 이벤트바인딩 함수
     private bindHeaderEvents(): void {
         this.view.header.setInfoButtonHandler();
     }
@@ -46,7 +56,29 @@ class LawController implements IController {
             radio.addEventListener('change', (e: Event) => this.handleTextSizeChange(e));
         });
     }  
+    private bindSearchEvents(): void {
+        const searchBtn = document.getElementById('lawSearchBtn');
+        if (searchBtn) {
+            searchBtn.addEventListener('click', () => this.handleSearch());
+        }
+    } 
+
+
+    // 이하는 이벤트핸들러
     
+    private handleSearch(): void {
+        const selectedLaws = Array.from(document.querySelectorAll('input[type="checkbox"]:checked'))
+            .map(cb => (cb as HTMLInputElement).value);
+
+        if (selectedLaws.length) {
+            const results = this.model.getLawsByIds(selectedLaws);
+            this.currentResults = results;
+            this.view.render(results);
+            this.bindEvents();
+        }
+    }    
+
+
     private handleTextSizeChange(e: Event): void {
         const target = e.target as HTMLInputElement;
         this.view.lawTable.setTextSize(target.value);

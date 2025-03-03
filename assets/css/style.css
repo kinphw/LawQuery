@@ -100,3 +100,23 @@ input[type="radio"]:checked + label {
   height: 100%;        /* Fill parent height */  
   margin : 0;
 }
+
+/* 조문 검색 영역 스타일링 */
+.form-check {
+  margin-right: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+#lawSearchHeader .btn-link {
+  text-decoration: none;
+  color: #212529;
+}
+
+#lawSearchHeader .btn-link:hover {
+  color: #0d6efd;
+}
+
+#lawCheckboxes {
+  max-height: 300px;
+  overflow-y: auto;
+}
