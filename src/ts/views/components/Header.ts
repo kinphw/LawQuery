@@ -43,7 +43,9 @@ class Header {
   private showInfo(): void {
       alert(`제작 kinphw
 github.com/kinphw/LawQuery
-법령최근업데이트 2024-03-02`);
+법령최근업데이트 2024-03-02
+Apache license 2.0
+`);
   }
 }
 
