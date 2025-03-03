@@ -15,6 +15,21 @@
 <!-- <body class="p-3"> -->
 <body>
     <div id="header"></div>  <!-- 헤더가 삽입될 자리 -->
+
+    <!-- 검색 영역 위에 추가 -->
+    <div class="floating-controls p-0">
+      <div class="btn-group" role="group" aria-label="Text size options">
+          <input type="radio" class="visually-hidden" name="textSize" id="sizeDefault" value="" checked>
+          <label class="btn btn-outline-secondary btn-sm" for="sizeDefault">기본</label>
+
+          <input type="radio" class="visually-hidden" name="textSize" id="sizeSmall" value="small">
+          <label class="btn btn-outline-secondary btn-sm" for="sizeSmall">작게</label>
+
+          <input type="radio" class="visually-hidden" name="textSize" id="sizeXS" value="text-xs">
+          <label class="btn btn-outline-secondary btn-sm" for="sizeXS">매우 작게</label>
+      </div>
+    </div>
+
     <div class="container">
 
       <!-- 검색 영역 -->

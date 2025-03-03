@@ -48,5 +48,15 @@ class SearchModel {
     // console.log("Search results:", results); // 디버깅용
     return results;
   }
+
+  getInitialData(): SearchResult[] {
+    return this.search({
+        type: "전체",
+        serial: "",
+        field: "전체",
+        keyword: ""
+    });
+}
+
 }
 window.SearchModel = SearchModel;

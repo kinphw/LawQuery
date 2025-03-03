@@ -1,4 +1,12 @@
 class ResultTable {
+
+    private currentTextSize: string = '';
+
+    setTextSize(size: string): void {
+        this.currentTextSize = size;
+    }    
+
+
     render(results: SearchResult[]): string { // 모델의 검색결과를 받아서 렌더링한 HTML 문자열 반환
         if (!results.length) {
             return '<div class="alert alert-warning">검색 결과가 없습니다.</div>';
@@ -19,14 +27,14 @@ class ResultTable {
 
         results.forEach((item, index) => { // 모델 검색결과(results) 순회하며 렌더링
             html += `
-                <tr class="search-result-row" data-row-index="${index}">
+                <tr class="search-result-row ${this.currentTextSize}" data-row-index="${index}">
                     <td class="text-center align-middle text-nowrap w-10">${item.구분 || ''}</td>
                     <td class="text-center align-middle text-nowrap w-10">${item.분야 || ''}</td>
                     <td class="align-middle w-50">${item.제목 || ''}</td>
                     <td class="align-middle text-center w-10">${item.일련번호 || ''}</td>
                     <td class="align-middle text-center w-10">${(item.회신일자 || '').split(' ')[0]}</td>
                 </tr>
-                <tr class="detail-row d-none" id="detail-${index}">
+                <tr class="detail-row d-none ${this.currentTextSize}" id="detail-${index}">
                     <td colspan="5" class="bg-light">
                         <div><strong>질의요지:</strong><br>${this.formatMultiline(item.질의요지)}</div>
                         <br>

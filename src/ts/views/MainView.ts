@@ -20,24 +20,17 @@ class MainView {
         this.header = new window.Header(); // 이미 Header.js파일 <script src>시점에 export되어 있음
         this.searchForm = new SearchForm(); 
         this.resultTable = new ResultTable();
+
+        this.renderHeader(); // 헤더는 최초에 한번만 렌더링
     }
 
-    // 컨트롤러가 호출
-    renderAll(results: SearchResult[]): void {
-        document.getElementById('header')!.innerHTML = this.header.render('interpretation');
+    render(results: SearchResult[]): void {
         document.getElementById('results')!.innerHTML = this.resultTable.render(results);
-
-        // 여기에서 이벤트를 다시 바인딩해줘야 함
-        // this.header.bindEvents();        
-        // this.resultTable.bindEvents();  // 추가
+        // No need to rebind events here - controller handles that
     }
 
     renderHeader(): void {
         document.getElementById('header')!.innerHTML = this.header.render('interpretation');
-    }
-
-    renderResults(results: SearchResult[]): void {
-        document.getElementById('results')!.innerHTML = this.resultTable.render(results);
     }
 
     // 컨트롤러가 호출
