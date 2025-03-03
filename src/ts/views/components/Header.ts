@@ -18,7 +18,7 @@ class Header {
                     <i class="fas fa-question-circle fs-4"></i>
                 </button>
             </div>
-            <h5>전자금융거래법 관련 법률, 유권해석/비조치의견서 검색/조회</h5>
+            <h5>전자금융거래법 법률, 유권해석/비조치의견서 검색/조회</h5>
             <div>
                 <button class="btn ${currentPage === 'law' ? 'btn-primary' : 'btn-secondary'} me-2" 
                     onclick="location.href='law.html'">법률조회</button>

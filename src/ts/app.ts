@@ -11,7 +11,7 @@ class App {
         const controller = this.createController(currentPage);
         
         // 컨트롤러 초기화
-        await controller.initialize();
+        await controller.initialize(); // 모든 컨트롤러는 ICommand 인터페이스를 구현하므로, initialize() 메서드를 가짐
     }
 
     // 라우팅 판단
@@ -23,7 +23,7 @@ class App {
     private createController(page: string): any {
         switch(page) {
             case 'law':
-                return new window.LawController(); // 추후 구현
+                return new window.LawController();
             case 'interpretation':
             default:
                 return new window.SearchController();

@@ -1,47 +1,40 @@
 interface LawResult {
-    법령ID: string;
-    법령명: string;
-    조문번호: string;
-    조문제목: string;
-    조문내용: string;
+    [key: string]: string;  // Allow string indexing
+    law_content: string;
+    decree_content: string;
+    regulation_content: string;
+    rule_content: string;
 }
 
 class LawModel {
     constructor(private db: LawDatabase) {}
 
-    getRelatedLaws(lawId: string): LawResult[] {
+    getAllLaws(): LawResult[] {
         const query = `
-            WITH RECURSIVE related_laws AS (
-                -- 시작 법령
-                SELECT a.* FROM A WHERE 법령ID = ?
-                UNION
-                -- 시행령
-                SELECT e.* FROM E e
-                INNER JOIN AE ae ON e.법령ID = ae.시행령ID
-                WHERE ae.법령ID = ?
-                UNION
-                -- 감독규정
-                SELECT s.* FROM S s
-                INNER JOIN ES es ON s.법령ID = es.감독규정ID
-                WHERE es.시행령ID IN (
-                    SELECT 시행령ID FROM AE WHERE 법령ID = ?
-                )
-                UNION
-                -- 시행세칙
-                SELECT r.* FROM R r
-                INNER JOIN SR sr ON r.법령ID = sr.시행세칙ID
-                WHERE sr.감독규정ID IN (
-                    SELECT 감독규정ID FROM ES
-                    WHERE 시행령ID IN (
-                        SELECT 시행령ID FROM AE WHERE 법령ID = ?
-                    )
-                )
-            )
-            SELECT * FROM related_laws
-            ORDER BY 법령구분, 조문번호
-        `;
-        
-        return this.db.executeQuery(query, [lawId, lawId, lawId, lawId]);
+            SELECT 
+                a.content_a AS law_content,
+                (SELECT GROUP_CONCAT(sub_e.content_e, '|*|') 
+                FROM (SELECT DISTINCT e.content_e 
+                    FROM db_e e 
+                    JOIN rdb_ae ae ON ae.id_e = e.id_e 
+                    WHERE ae.id_a = a.id_a) AS sub_e) AS decree_content,
+                (SELECT GROUP_CONCAT(sub_s.content_s, '|*|') 
+                FROM (SELECT DISTINCT s.content_s 
+                    FROM db_s s 
+                    JOIN rdb_es es ON es.id_s = s.id_s 
+                    JOIN rdb_ae ae ON ae.id_e = es.id_e 
+                    WHERE ae.id_a = a.id_a) AS sub_s) AS regulation_content,
+                (SELECT GROUP_CONCAT(sub_r.content_r, '|*|') 
+                FROM (SELECT DISTINCT r.content_r 
+                    FROM db_r r 
+                    JOIN rdb_sr sr ON sr.id_r = r.id_r 
+                    JOIN rdb_es es ON es.id_s = sr.id_s 
+                    JOIN rdb_ae ae ON ae.id_e = es.id_e 
+                    WHERE ae.id_a = a.id_a) AS sub_r) AS rule_content
+            FROM db_a a
+            ORDER BY a.id_a`;
+
+        return this.db.executeQuery(query);
     }
 }
 

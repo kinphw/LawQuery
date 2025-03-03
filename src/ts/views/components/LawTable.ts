@@ -4,56 +4,42 @@ class LawTable {
             return '<div class="alert alert-warning">표시할 법령이 없습니다.</div>';
         }
 
-        let html = `
-            <table class="table table-bordered table-hover">
-                <thead class="table-light">
-                    <tr>
-                        <th width="10%">법령구분</th>
-                        <th width="10%">조문번호</th>
-                        <th width="20%">조문제목</th>
-                        <th width="60%">조문내용</th>
-                    </tr>
-                </thead>
-                <tbody>`;
+        let html = '<div><table class="table table-bordered law-table">';
+        
+        // 헤더
+        html += `
+            <thead class="table-dark sticky-top">
+                <tr>
+                    <th class="text-center fw-bold py-1">법률</th>
+                    <th class="text-center fw-bold py-1">시행령</th>
+                    <th class="text-center fw-bold py-1">감독규정</th>
+                    <th class="text-center fw-bold py-1">시행세칙</th>
+                </tr>
+            </thead>`;
 
-        results.forEach(law => {
-            html += `
-                <tr data-law-id="${law.법령ID}">
-                    <td class="text-center">${law.법령명 || ''}</td>
-                    <td class="text-center">${law.조문번호 || ''}</td>
-                    <td>${law.조문제목 || ''}</td>
-                    <td>${this.formatContent(law.조문내용)}</td>
-                </tr>`;
+        // 데이터
+        html += '<tbody>';
+        results.forEach(row => {
+            html += '<tr>';
+            ['law_content', 'decree_content', 'regulation_content', 'rule_content'].forEach(col => {
+                html += `<td class="p-2 m-0">${this.formatContent(row[col])}</td>`;
+            });
+            html += '</tr>';
         });
+        html += '</tbody></table></div>';
 
-        html += '</tbody></table>';
         return html;
     }
 
+    // 개행문자를 <br>로 변환
+    // |*|로 구분된 텍스트를 div로 감싸서 반환
     private formatContent(text: string): string {
-        return text ? text.replace(/\n/g, '<br>') : '';
-    }
-
-    setRowClickHandler(): void {
-        document.querySelectorAll('tr[data-law-id]').forEach(row => {
-            row.addEventListener('click', () => {
-                const lawId = row.getAttribute('data-law-id');
-                if (lawId) this.onLawSelect(lawId);
-            });
-        });
-    }
-
-    private onLawSelect(lawId: string): void {
-        // 현재 선택된 행에 대한 스타일 처리
-        document.querySelectorAll('tr[data-law-id]').forEach(row => {
-            row.classList.remove('table-primary');
-        });
-        const selectedRow = document.querySelector(`tr[data-law-id="${lawId}"]`);
-        selectedRow?.classList.add('table-primary');
-
-        // 이벤트 발생 - LawController에서 처리
-        const event = new CustomEvent('lawSelected', { detail: lawId });
-        document.dispatchEvent(event);
+        if (!text) return '';
+        return '<div class="box-container p-0 m-0">' +
+            text.split("|*|").map(item => 
+                `<div class="box-item small p-2 m-0">${item.replace(/\n/g, '<br>')}</div>`
+            ).join("") +
+            '</div>';
     }
 }
 
