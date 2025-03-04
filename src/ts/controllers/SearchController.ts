@@ -102,6 +102,8 @@ class SearchController implements IController {
     this.currentResults = results; // 검색 결과 저장 (그래야 텍스트 크기 조절 가능)
     this.view.render(results);
 
+    this.view.showToast('검색결과를 재조회하였습니다.'); // 추가된 부분    
+
     // 모든 이벤트를 다시 바인딩
     // this.bindEvents();    
     this.bindRowClickEvents(); // 검색결과가 바뀌었으므로 RowClick도 다시 바인딩

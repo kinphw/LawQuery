@@ -12,6 +12,7 @@ class SearchView {
     public header: Header; // 뷰의 일부. 헤더를 공용으로 쓰기 위해 클래스변수로 선언
     public searchForm: SearchForm; // 검색폼
     public resultTable: SearchResultTable; // 결과테이블
+    private toastManager: ToastManager;    
 
     constructor() {
         // 즉, Header는 단순 렌더링만 하는 반면, 
@@ -20,6 +21,7 @@ class SearchView {
         this.header = new window.Header(); // 이미 Header.js파일 <script src>시점에 export되어 있음
         this.searchForm = new SearchForm(); 
         this.resultTable = new SearchResultTable();
+        this.toastManager = new ToastManager();        
 
         this.renderHeader(); // 헤더는 최초에 한번만 렌더링
     }
@@ -38,5 +40,10 @@ class SearchView {
     //     // this.searchForm.bindEvents(searchHandler);
     //     // this.resultTable.bindEvents();
     // }
+
+    showToast(message: string): void {
+        this.toastManager.showToast(message);
+    }
+
 }
 window.SearchView = SearchView;

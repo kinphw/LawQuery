@@ -30,4 +30,7 @@ interface Window {
     LawView: any;
     LawController: any;
 
+
+    //
+    ToastManager: any;
 }
