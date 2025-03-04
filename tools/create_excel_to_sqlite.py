@@ -12,7 +12,7 @@ import pandas as pd
 import sqlite3
 
 # 1️⃣ 엑셀 파일 읽기 (파일명 수정 가능)
-excel_file = "data/db_aesr.xlsx"  # 변환할 Excel 파일 경로
+excel_file = "data/db_i.xlsx"  # 변환할 Excel 파일 경로
 
 # 2️⃣ SQLite 데이터베이스 생성
 db_file = excel_file.rsplit('.', 1)[0] + '.db' # Excel 파일명과 동일한 SQLite 파일명

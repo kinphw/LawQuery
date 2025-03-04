@@ -43,6 +43,10 @@ class SearchModel {
       query += " AND " + conditions.join(" AND ");
     }
 
+
+    // Always append ORDER BY at the end
+    query += ` ORDER BY 일련번호 DESC`;
+
     // 쿼리 실행부
     const results = this.db.executeQuery(query);
     // console.log("Search results:", results); // 디버깅용

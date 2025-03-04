@@ -74,6 +74,11 @@ class LawController implements IController {
             
             searchContent.addEventListener('hide.bs.collapse', () => {
                 document.querySelector('.floating-search-btn')?.classList.add('d-none');
+                // Add scroll to top behavior
+                window.scrollTo({
+                    top: 0,
+                    behavior: 'smooth'  // 부드러운 스크롤 효과
+                });                
             });
         }
     }    

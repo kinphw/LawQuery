@@ -11,7 +11,7 @@ SQLite 데이터베이스 파일을 Base64로 변환하여 JavaScript 파일로 
 import base64
 
 # SQLite .db 파일 경로
-db_file = "data/db_aesr.db"
+db_file = "data/db_i.db"
 output_js = db_file.replace('.db', '.js')
 
 # SQLite DB 파일을 Base64로 변환
