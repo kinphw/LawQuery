@@ -57,6 +57,8 @@ class SearchController implements IController {
     // 결과 테이블 이벤트
     // this.view.resultTable.setRowClickHandler();
     this.bindRowClickEvents();
+
+
   } 
 
   // 개별 이벤트바인딩 함수 > 이벤트핸들러가 호출할 때 이름만으로 호출하기 쉽게 래핑핑
@@ -78,7 +80,6 @@ class SearchController implements IController {
   private bindRowClickEvents(): void {
     this.view.resultTable.setRowClickHandler();
   }
-
 
   // 이벤트핸들러
 

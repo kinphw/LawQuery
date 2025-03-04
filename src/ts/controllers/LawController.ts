@@ -43,7 +43,8 @@ class LawController implements IController {
     private bindEvents(): void {
         this.bindHeaderEvents();
         this.bindTextSizeEvents();
-        this.bindSearchEvents();        
+        this.bindSearchEvents();  
+        this.bindToggleButtonEvents();              
     }
 
     // 개별 이벤트바인딩 함수
@@ -63,21 +64,22 @@ class LawController implements IController {
         }
     } 
 
+    private bindToggleButtonEvents(): void {
+        // Add collapse event handler
+        const searchContent = document.getElementById('lawSearchContent');
+        if (searchContent) {
+            searchContent.addEventListener('show.bs.collapse', () => {
+                document.querySelector('.floating-search-btn')?.classList.remove('d-none');
+            });
+            
+            searchContent.addEventListener('hide.bs.collapse', () => {
+                document.querySelector('.floating-search-btn')?.classList.add('d-none');
+            });
+        }
+    }    
+
 
     // 이하는 이벤트핸들러
-    
-    // private handleSearch(): void {
-    //     const selectedLaws = Array.from(document.querySelectorAll('input[type="checkbox"]:checked'))
-    //         .map(cb => (cb as HTMLInputElement).value);
-
-    //     if (selectedLaws.length) {
-    //         const results = this.model.getLawsByIds(selectedLaws);
-    //         this.currentResults = results;
-    //         this.view.render(results);
-    //         // this.bindEvents();
-    //         // this.bindHeaderEvents();
-    //     }
-    // }    
 
     private handleSearch(): void {
         const selectedLaws = Array.from(document.querySelectorAll('input[type="checkbox"]:checked'))
@@ -88,6 +90,9 @@ class LawController implements IController {
             const results = this.model.getLawsByIds(selectedLaws);
             this.currentResults = results;
             this.view.render(results);
+            this.view.showToast('검색결과를 재조회하였습니다.'); // 추가            
+
+            this.bindHeaderEvents();
         }
     }    
 
@@ -97,7 +102,7 @@ class LawController implements IController {
         this.view.lawTable.setTextSize(target.value);
         this.view.render(this.currentResults);
         // Rebind all events after re-render
-        // this.bindHeaderEvents();
+        this.bindHeaderEvents();
     }
 }
 

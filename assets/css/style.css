@@ -1,6 +1,3 @@
-body {
-    font-family: "Helvetica", "Arial", sans-serif;
-  }
   
   .multi-line {
     /* 개행(\n) 문자를 줄바꿈으로 처리 */
@@ -20,10 +17,10 @@ body {
 
 .law-table th, 
 .law-table td {
-    width: 25%;
+    /* width: 25%; */
     vertical-align: top;
-    padding: 12px;
-    text-align: left;
+    /* padding: 12px; */
+    /* text-align: left; */
 }
 
 .box-container {
@@ -79,7 +76,8 @@ input[type="radio"]:checked + label {
 
 .floating-controls {
   position: fixed;
-  top: 10px;
+  /* top: 50px; */
+  top : 0px;
   left: 300px;
   z-index: 1000;
   background-color: white;
@@ -113,6 +111,14 @@ input[type="radio"]:checked + label {
   line-height: 1.2;     /* Tighter line height */
 }
 
+#lawSearchHeader {
+  position: sticky;
+  top: 0;
+  z-index: 999;
+  background-color: white;
+  border-bottom: 1px solid rgba(0,0,0,.125);
+}
+
 #lawSearchHeader .btn-link {
   text-decoration: none;
   color: #212529;
@@ -129,7 +135,7 @@ input[type="radio"]:checked + label {
   overflow-y: auto;
   padding: 0 2rem;
   /* padding : 0; */
-  gap: 0px;  /* Minimal gap between items */
+  gap: 0px;  /* Minimal gap between items */      
 }
 
 .form-check-input {
@@ -144,4 +150,37 @@ input[type="radio"]:checked + label {
   background-color: #f8f9fa;
   border-top: 1px solid #dee2e6;
   margin-top: 0.5rem;
+}
+
+.floating-search-btn {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 1000;
+  padding: 10px;
+  background-color: white;
+  border-radius: 4px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* Toast-container */
+.toast-container {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 1000;
+}
+
+.toast-message {
+  background-color: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 12px 24px;
+  border-radius: 4px;
+  margin-bottom: 10px;
+  opacity: 0;
+  transition: opacity 0.3s ease-in-out;
+}
+
+.toast-message.show {
+  opacity: 1;
 }

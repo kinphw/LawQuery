@@ -12,6 +12,7 @@
     <div id="header"></div>
 
     <!-- 조문 검색 영역 추가 -->
+    <!-- 조문 검색 영역 추가 -->
     <div class="container mb-3">
         <div class="card">
             <div class="card-header p-0" id="lawSearchHeader">
@@ -21,22 +22,18 @@
             </div>
             <div id="lawSearchContent" class="collapse">
                 <div class="card-body p-0">
-                    <div class="row mb-2">
-                        <div class="col">
-                            <div id="lawCheckboxes" class="d-flex flex-wrap">
-                                <!-- 체크박스들이 여기에 동적으로 삽입됨 -->
-                            </div>
-                        </div>
-                    </div>
-                    <div class="row">
-                        <div class="col">
-                            <button type="button" id="lawSearchBtn" class="btn btn-primary">검색</button>
-                        </div>
+                    <div id="lawCheckboxes" class="d-flex flex-wrap">
+                        <!-- 체크박스들이 여기에 동적으로 삽입됨 -->
                     </div>
                 </div>
             </div>
         </div>
     </div>
+
+    <!-- Update floating search button div to be hidden by default -->
+    <div class="floating-search-btn d-none">
+        <button type="button" id="lawSearchBtn" class="btn btn-primary">검색</button>
+    </div>   
 
     <!-- Text size control - floating style -->
     <div class="floating-controls p-0">
