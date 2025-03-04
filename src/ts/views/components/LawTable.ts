@@ -8,7 +8,7 @@ class LawTable {
         '전자금융감독규정시행세칙\n[시행 2025. 2. 5.]\n[금융감독원세칙 , 2025. 2. 3., 일부개정]'
     ]
 
-    private currentTextSize: string = ''; // Add text size state
+    private currentTextSize: string = 'small'; // Add text size state
 
     private lawIds: string[] = []; // 조문 ID 목록 저장
 

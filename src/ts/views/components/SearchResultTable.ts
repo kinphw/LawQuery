@@ -1,6 +1,6 @@
 class SearchResultTable {
 
-    private currentTextSize: string = '';
+    private currentTextSize: string = 'small';
 
     setTextSize(size: string): void {
         this.currentTextSize = size;
