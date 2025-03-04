@@ -1,5 +1,6 @@
 interface LawResult {
-    [key: string]: string;  // Allow string indexing
+    [key: string]: string | null;  // Allow string indexing
+    id_a: string | null;    // Add id_a field
     law_content: string;
     decree_content: string;
     regulation_content: string;
@@ -14,6 +15,7 @@ class LawModel {
 
         const query = `
         SELECT
+        a.id_a, 
         a.content_a AS law_content,
     
         /* 시행령 (id_e 순으로 정렬) */
@@ -67,6 +69,7 @@ class LawModel {
         
         const query = `
         SELECT
+        a.id_a, 
         a.content_a AS law_content,
     
         /* 시행령 (id_e 순으로 정렬) */

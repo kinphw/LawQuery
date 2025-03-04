@@ -23,6 +23,28 @@
     /* text-align: left; */
 }
 
+.law-table .title-row td {
+  background-color: #e9ecef;  /* Darker background */
+  font-weight: bold;
+  border-top: 2px solid #dee2e6;
+  border-bottom: 1px solid #dee2e6;
+  padding-top: 0.75rem;      /* More vertical padding */
+  padding-bottom: 0.75rem;
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.05);  /* Subtle inner shadow */
+}
+
+.law-table .title-row:hover td {
+  background-color: #dde2e6;  /* Darker on hover */
+}
+
+.law-table .title-row .box-item {
+  background-color: #f1f3f5;
+  border-color: #ced4da;
+}
+
+
+/* box-container */
+
 .box-container {
     display: flex;
     gap: 8px;

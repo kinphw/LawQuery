@@ -73,13 +73,14 @@ class LawTable {
             //     `<th class="text-center small fw-bold py-1">${name.replace(/\n/g, '<br>')}</th>`
             // ).join('')}
 
-
-        // Data with dynamic text size
+        // Modified tbody rendering
         html += '<tbody>';
         results.forEach(row => {
-            html += '<tr>';
+            // Add title-row class if id_a is null
+            const rowClass = row.id_a === null ? 'title-row' : '';
+            html += `<tr class="${rowClass}">`;
             ['law_content', 'decree_content', 'regulation_content', 'rule_content'].forEach(col => {
-                html += `<td class="${this.currentTextSize} p-2 m-0">${this.formatContent(row[col])}</td>`;
+                html += `<td class="${this.currentTextSize} p-2 m-0 ${rowClass}">${this.formatContent(row[col])}</td>`;
             });
             html += '</tr>';
         });
@@ -98,7 +99,7 @@ class LawTable {
 
     // 개행문자를 <br>로 변환
     // |*|로 구분된 텍스트를 div로 감싸서 반환
-    private formatContent(text: string): string {
+    private formatContent(text: string|null): string {
         if (!text) return '';
         return '<div class="box-container p-0 m-0">' +
             text.split("|*|").map(item => 
