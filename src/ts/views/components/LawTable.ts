@@ -13,18 +13,40 @@ class LawTable {
     private lawIds: string[] = []; // 조문 ID 목록 저장
 
     // 체크박스 렌더링을 위한 메서드 추가
-    renderLawCheckboxes(laws: Array<{id_a: string, title_a: string}>): string {
-        this.lawIds = laws.map(law => law.id_a);
+    // renderLawCheckboxes(laws: Array<{id_a: string, title_a: string}>): string {
+    //     this.lawIds = laws.map(law => law.id_a);
         
-        return laws.map(law => `
-            <div class="form-check w-100">
-                <input class="form-check-input" type="checkbox" value="${law.id_a}" id="law${law.id_a}">
-                <label class="form-check-label small" for="law${law.id_a}">
-                    ${law.title_a}
-                </label>
-            </div>
-        `).join('');
-    }
+    //     return laws.map(law => `
+    //         <div class="form-check w-100">
+    //             <input class="form-check-input" type="checkbox" value="${law.id_a}" id="law${law.id_a}">
+    //             <label class="form-check-label small" for="law${law.id_a}">
+    //                 ${law.title_a}
+    //             </label>
+    //         </div>
+    //     `).join('');
+    // }
+
+    renderLawCheckboxes(laws: Array<LawTitle>): string {
+        this.lawIds = laws.filter(law => !law.isTitle).map(law => law.id_a!);
+        
+        return laws.map(law => {
+            if (law.isTitle) {
+                return `
+                    <div class="form-check w-100 title-row">
+                        <span class="fw-bold small bg-light d-block px-2 py-1">${law.title_a}</span>
+                    </div>
+                `;
+            }
+            return `
+                <div class="form-check w-100 ps-4">
+                    <input class="form-check-input" type="checkbox" value="${law.id_a}" id="law${law.id_a}">
+                    <label class="form-check-label small" for="law${law.id_a}">
+                        ${law.title_a}
+                    </label>
+                </div>
+            `;
+        }).join('');
+    }    
 
     render(results: LawResult[]): string {
         if (!results.length) {

@@ -114,10 +114,17 @@ class LawModel {
 
         return this.db.executeQuery(query, lawIds);
     }    
-    getLawTitles(): Array<{id_a: string, title_a: string}> {
-        const query = `SELECT DISTINCT id_a, title_a FROM db_a ORDER BY id`;
+    getLawTitles(): Array<LawTitle> {
+        const query = `
+            SELECT 
+                id_a, 
+                title_a,
+                CASE WHEN id_a IS NULL THEN 1 ELSE 0 END as isTitle 
+            FROM db_a 
+            ORDER BY id
+        `;
         return this.db.executeQuery(query);
-    }    
+    }  
 
 }
 

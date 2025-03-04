@@ -16,3 +16,9 @@ interface SearchResult {
   회답: string;
   이유: string;
 }
+
+interface LawTitle {
+  id_a: string | null;
+  title_a: string;
+  isTitle: boolean;
+}

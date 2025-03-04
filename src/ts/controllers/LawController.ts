@@ -66,16 +66,28 @@ class LawController implements IController {
 
     // 이하는 이벤트핸들러
     
+    // private handleSearch(): void {
+    //     const selectedLaws = Array.from(document.querySelectorAll('input[type="checkbox"]:checked'))
+    //         .map(cb => (cb as HTMLInputElement).value);
+
+    //     if (selectedLaws.length) {
+    //         const results = this.model.getLawsByIds(selectedLaws);
+    //         this.currentResults = results;
+    //         this.view.render(results);
+    //         // this.bindEvents();
+    //         // this.bindHeaderEvents();
+    //     }
+    // }    
+
     private handleSearch(): void {
         const selectedLaws = Array.from(document.querySelectorAll('input[type="checkbox"]:checked'))
-            .map(cb => (cb as HTMLInputElement).value);
-
+            .map(cb => (cb as HTMLInputElement).value)
+            .filter(id => id); // Filter out null values
+    
         if (selectedLaws.length) {
             const results = this.model.getLawsByIds(selectedLaws);
             this.currentResults = results;
             this.view.render(results);
-            // this.bindEvents();
-            // this.bindHeaderEvents();
         }
     }    
 
