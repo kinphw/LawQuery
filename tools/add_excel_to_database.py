@@ -12,7 +12,7 @@ import pandas as pd
 import sqlite3
 
 # 1️⃣ 기존 데이터베이스 파일 경로 설정
-db_file = "data/dataset.db"  # 기존 데이터베이스 파일 경로
+db_file = "data/db_i.db"  # 기존 데이터베이스 파일 경로
 
 # 2️⃣ 새로운 엑셀 파일 읽기
 new_excel_file = "data/db_i.xlsx"  # 추가할 새로운 Excel 파일 경로
