@@ -27,14 +27,23 @@ class SearchModel {
       conditions.push(`일련번호 LIKE '%${criteria.serial}%'`);
     }
 
+    // After (수정될 코드)
     if (criteria.keyword) {
+      const keywords = criteria.keyword.split(/\s+/).filter(k => k);
+      
       if (criteria.field === "전체") {
-        conditions.push(`(제목 LIKE '%${criteria.keyword}%' OR 
-                        질의요지 LIKE '%${criteria.keyword}%' OR 
-                        회답 LIKE '%${criteria.keyword}%' OR 
-                        이유 LIKE '%${criteria.keyword}%')`);
+        const keywordConditions = keywords.map(keyword => 
+          `(제목 LIKE '%${keyword}%' OR 
+            질의요지 LIKE '%${keyword}%' OR 
+            회답 LIKE '%${keyword}%' OR 
+            이유 LIKE '%${keyword}%')`
+        );
+        conditions.push(`(${keywordConditions.join(' AND ')})`);
       } else {
-        conditions.push(`${criteria.field} LIKE '%${criteria.keyword}%'`);
+        const keywordConditions = keywords.map(keyword => 
+          `${criteria.field} LIKE '%${keyword}%'`
+        );
+        conditions.push(`(${keywordConditions.join(' AND ')})`);
       }
     }
 
