@@ -45,7 +45,8 @@ class SearchModel {
 
 
     // Always append ORDER BY at the end
-    query += ` ORDER BY 일련번호 DESC`;
+    // query += ` ORDER BY 일련번호 DESC`;
+    query += ` ORDER BY id DESC`;
 
     // 쿼리 실행부
     const results = this.db.executeQuery(query);
