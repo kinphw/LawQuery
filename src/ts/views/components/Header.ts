@@ -43,8 +43,10 @@ class Header {
       alert(`
 LawQuery_금융법령, 유권해석, 비조치의견서 검색 및 조회를 위한 로컬 웹 어플리케이션입니다.        
 kinphw (github.com/kinphw/LawQuery)
-v0.1.0 (250304)
+v0.1.1 (250402)
 Apache license 2.0
+
+v0.1.1 DD250402 - 현장건의 추가, 검색기능 개선
 `);
   }
 }

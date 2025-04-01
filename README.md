@@ -35,7 +35,7 @@ src/
 | 유권해석 | Interpretation | I |
 
 ## Version
-0.1.0 (2025-03-04)
+0.1.1 (2025-04-02)
 
 ## License
 This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
