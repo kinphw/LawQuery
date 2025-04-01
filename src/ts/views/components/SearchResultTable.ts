@@ -17,7 +17,7 @@ class SearchResultTable {
                 <thead class="table-light">
                     <tr>
                         <th class="text-center align-middle text-nowrap w-10">구분</th>
-                        <th class="text-center align-middle text-nowrap w-10">분야</th>
+                        <th class="text-center align-middle w-10">분야</th>
                         <th class="text-center align-middle text-nowrap w-50">제목</th>
                         <th class="text-center align-middle text-nowrap w-10">일련번호</th>
                         <th class="text-center align-middle text-nowrap w-10">회신일자</th>
@@ -29,7 +29,7 @@ class SearchResultTable {
             html += `
                 <tr class="search-result-row ${this.currentTextSize}" data-row-index="${index}">
                     <td class="text-center align-middle text-nowrap w-10">${item.구분 || ''}</td>
-                    <td class="text-center align-middle text-nowrap w-10">${item.분야 || ''}</td>
+                    <td class="text-center align-middle w-10" style="word-break: break-word">${item.분야 || ''}</td>
                     <td class="align-middle w-50">${item.제목 || ''}</td>
                     <td class="align-middle text-center w-10">${item.일련번호 || ''}</td>
                     <td class="align-middle text-center w-10">${(item.회신일자 || '').split(' ')[0]}</td>
