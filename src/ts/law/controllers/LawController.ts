@@ -83,8 +83,8 @@ class LawController implements IController {
         const performTextSearch = () => {
             const searchText = searchInput.value;
             const filteredResults = this.model.filterByText(searchText, this.currentResults);
-            this.view.render(filteredResults);
-            this.view.showToast('포함하는 조문만 필터링하였습니다.');  // 토스트 메시지 추가            
+            this.view.render(filteredResults, searchText);
+            this.view.showToast('검색결과를 재조회하였습니다.');
         };
     
         // 검색 버튼 클릭 이벤트

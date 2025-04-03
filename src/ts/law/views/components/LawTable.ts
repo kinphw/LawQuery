@@ -48,7 +48,7 @@ class LawTable {
         }).join('');
     }    
 
-    render(results: LawResult[]): string {
+    render(results: LawResult[], searchText: string = ''): string {
         if (!results.length) {
             return '<div class="alert alert-warning">표시할 법령이 없습니다.</div>';
         }
@@ -80,7 +80,8 @@ class LawTable {
             const rowClass = row.id_a === null ? 'title-row' : '';
             html += `<tr class="${rowClass}">`;
             ['law_content', 'decree_content', 'regulation_content', 'rule_content'].forEach(col => {
-                html += `<td class="${this.currentTextSize} p-2 m-0 ${rowClass}">${this.formatContent(row[col])}</td>`;
+                html += `<td class="${this.currentTextSize} p-2 m-0 ${rowClass}">
+                    ${this.formatContent(row[col], searchText)}</td>`;
             });
             html += '</tr>';
         });
@@ -99,8 +100,15 @@ class LawTable {
 
     // 개행문자를 <br>로 변환
     // |*|로 구분된 텍스트를 div로 감싸서 반환
-    private formatContent(text: string|null): string {
+    private formatContent(text: string|null, searchText: string): string {
         if (!text) return '';
+        
+        // 검색어가 있을 경우 하이라이트 처리 : 250404
+        if (searchText) {
+            text = text.replace(new RegExp(searchText, 'gi'), 
+                 match => `<span class="text-danger fw-bold">${match}</span>`);
+        }
+
         return '<div class="box-container p-0 m-0">' +
             text.split("|*|").map(item => 
                 `<div class="box-item small p-2 m-0">${item.replace(/\n/g, '<br>')}</div>`

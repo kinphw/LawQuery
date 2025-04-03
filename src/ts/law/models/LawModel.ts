@@ -130,14 +130,21 @@ class LawModel {
     }  
 
     // 검색기능 추가
+    private currentSearchText: string = '';
+
     filterByText(text: string, results: LawResult[]): LawResult[] {
-      if (!text) return results;
-      
-      return results.filter(row => {
-          return ['law_content', 'decree_content', 'regulation_content', 'rule_content']
-              .some(field => row[field]?.toLowerCase().includes(text.toLowerCase()));
-      });
-  }    
+        this.currentSearchText = text;  // 검색어 저장
+        if (!text) return results;
+        
+        return results.filter(row => {
+            return ['law_content', 'decree_content', 'regulation_content', 'rule_content']
+                .some(field => row[field]?.toLowerCase().includes(text.toLowerCase()));
+        });
+    }
+
+    getCurrentSearchText(): string {
+        return this.currentSearchText;
+    } 
 
 }
 

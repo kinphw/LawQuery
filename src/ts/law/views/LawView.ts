@@ -9,9 +9,10 @@ class LawView {
         this.toastManager = new ToastManager();        
     }
 
-    render(results: LawResult[]): void {
+    render(results: LawResult[], searchText: string = ''): void {
         document.getElementById('header')!.innerHTML = this.header.render('law');
-        document.getElementById('results')!.innerHTML = this.lawTable.render(results);
+        document.getElementById('results')!.innerHTML = 
+            this.lawTable.render(results, searchText);
     }
 
     showToast(message: string): void {
