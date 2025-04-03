@@ -1,4 +1,4 @@
-/// <reference path="../controllers/SearchController.ts" />
+/// <reference path="../interpretation/controllers/SearchController.ts" />
 
 declare global {
     interface Window {

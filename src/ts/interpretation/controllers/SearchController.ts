@@ -2,9 +2,9 @@
 // import { MainView } from '../views/MainView';
 // import { SearchCriteria } from '../types/types';
 
-/// <reference path="./IController.ts" />
+/// <reference path="../../common/interfaces/IController.ts" />
 /// <reference path="../models/SearchModel.ts" />
-/// <reference path="../types/types.ts" />
+/// <reference path="../../types/types.ts" />
 /// ㄴㄴ
 
 class SearchController implements IController {

@@ -1,7 +1,7 @@
 // import { Database } from './Database';
 // import { SearchCriteria, SearchResult } from '../types/types';
 
-/// <reference path="./SearchDatabase.ts" />
+/// <reference path="../../interpretation/models/SearchDatabase.ts" />
 
 class SearchModel {
   constructor(private db: SearchDatabase) {}
