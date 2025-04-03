@@ -20,8 +20,9 @@ class SearchController implements IController {
   // 컨트롤러의 run() 역할 래퍼함수
   async initialize(): Promise<void> {
     // 데이터베이스 초기화
-    const dataset = new window.Dataset().getDatabaseBinary(); // 데이터셋 설정
-    const db = new SearchDatabase(dataset);
+    // const dataset = new window.Dataset().getDatabaseBinary(); // 데이터셋 설정
+    // const db = new SearchDatabase(dataset);
+    const db = new SearchDatabase();
     await db.init();
     
     // 모델과 뷰 초기화

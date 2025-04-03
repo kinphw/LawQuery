@@ -1,7 +1,7 @@
 class SearchDatabase {
   private db: SqlJsDatabase | null = null;
 
-  constructor(private dataset: Uint8Array) {}
+  // constructor(private dataset: Uint8Array) {}
 
   async init(): Promise<void> {
     console.log("⏳ SQLite DB 초기화 중...");
@@ -9,7 +9,13 @@ class SearchDatabase {
       locateFile: file => `assets/vendor/${file}`
     });
     
-    this.db = new SQL.Database(this.dataset);
+    // this.db = new SQL.Database(this.dataset);
+
+    // DB 파일 직접 로드
+    const response = await fetch('data/db_i.db');
+    const dbBuffer = await response.arrayBuffer();
+    this.db = new SQL.Database(new Uint8Array(dbBuffer));        
+
     console.log("✅ SQLite DB 초기화 완료!");
   }
 
