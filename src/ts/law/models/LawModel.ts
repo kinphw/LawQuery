@@ -129,6 +129,16 @@ class LawModel {
         return this.db.executeQuery(query);
     }  
 
+    // 검색기능 추가
+    filterByText(text: string, results: LawResult[]): LawResult[] {
+      if (!text) return results;
+      
+      return results.filter(row => {
+          return ['law_content', 'decree_content', 'regulation_content', 'rule_content']
+              .some(field => row[field]?.toLowerCase().includes(text.toLowerCase()));
+      });
+  }    
+
 }
 
 window.LawModel = LawModel;

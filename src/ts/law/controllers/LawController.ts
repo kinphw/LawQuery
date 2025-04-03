@@ -44,7 +44,8 @@ class LawController implements IController {
         this.bindHeaderEvents();
         this.bindTextSizeEvents();
         this.bindSearchEvents();  
-        this.bindToggleButtonEvents();              
+        this.bindToggleButtonEvents();       
+        this.bindTextSearchEvents()       
     }
 
     // 개별 이벤트바인딩 함수
@@ -75,17 +76,33 @@ class LawController implements IController {
         }
     } 
 
-    // 재사용하기 위한 함수 : 조문별 선택조회 접기
-    private handleCollapseHide(): void {
-        document.querySelector('.floating-search-btn')?.classList.add('d-none');
-        window.scrollTo({
-            top: 0,
-            behavior: 'smooth'
+    private bindTextSearchEvents(): void {
+        const searchInput = document.getElementById('lawTextSearch') as HTMLInputElement;
+        const searchBtn = document.getElementById('lawTextSearchBtn');
+        
+        const performTextSearch = () => {
+            const searchText = searchInput.value;
+            const filteredResults = this.model.filterByText(searchText, this.currentResults);
+            this.view.render(filteredResults);
+            this.view.showToast('포함하는 조문만 필터링하였습니다.');  // 토스트 메시지 추가            
+        };
+    
+        // 검색 버튼 클릭 이벤트
+        searchBtn?.addEventListener('click', performTextSearch);
+        
+        // 엔터키 이벤트
+        searchInput?.addEventListener('keypress', (e: KeyboardEvent) => {
+            if (e.key === 'Enter') {
+                e.preventDefault(); // 폼 제출 방지
+                performTextSearch();
+            }
         });
-    }    
+    }
 
 
+    ////////////////////////////////////////////////////
     // 이하는 이벤트핸들러
+    ////////////////////////////////////////////////////
 
     private handleSearch(): void {
         const selectedLaws = Array.from(document.querySelectorAll('input[type="checkbox"]:checked'))
@@ -108,6 +125,15 @@ class LawController implements IController {
 
             this.bindHeaderEvents();
         }
+    }    
+
+    // 재사용하기 위한 함수 : 조문별 선택조회 접기
+    private handleCollapseHide(): void {
+        document.querySelector('.floating-search-btn')?.classList.add('d-none');
+        window.scrollTo({
+            top: 0,
+            behavior: 'smooth'
+        });
     }    
 
 
