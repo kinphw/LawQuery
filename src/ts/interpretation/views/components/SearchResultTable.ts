@@ -52,15 +52,19 @@ class SearchResultTable {
     private formatMultiline(text: string): string { // 개행문자(\n)를 <br>로 변환
         return text ? text.replace(/\n/g, '<br>') : '';
     }
-
+    
     setRowClickHandler(): void {
-        document.querySelectorAll('.search-result-row')  // 모든 결과 행 선택
-        .forEach(row => {                               // 각 행마다
-          row.addEventListener('click', () => {         // 클릭 이벤트 리스너 추가
-            const index: string | null = row.getAttribute('data-row-index');  // 행의 인덱스 가져오기 (위에 렌더링하면서 만든 요소의 사용자정의 속성임)
-            const detailRow: HTMLElement | null = document.getElementById(`detail-${index}`);  // 상세행 찾기
-            detailRow?.classList.toggle('d-none');      // 상세행(요소) 보이기/숨기기 토글
-          });
+        document.querySelectorAll('.search-result-row, .detail-row').forEach(row => {
+            row.addEventListener('click', () => {
+                const index = row.classList.contains('search-result-row') 
+                    ? row.getAttribute('data-row-index')
+                    : row.id.replace('detail-', '');
+                    
+                const detailRow = document.getElementById(`detail-${index}`);
+                
+                // 토글 실행
+                detailRow?.classList.toggle('d-none');
+            });
         });
     }
 }
