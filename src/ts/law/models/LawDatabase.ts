@@ -5,8 +5,11 @@ class LawDatabase {
 
     async init(): Promise<void> {
         console.log("⏳ 법령 DB 초기화 중...");
+        // const SQL = await initSqlJs({
+        //     locateFile: file => "data:application/wasm;base64," + window.WASM_BASE64.trim()
+        // });
         const SQL = await initSqlJs({
-            locateFile: file => "data:application/wasm;base64," + window.WASM_BASE64.trim()
+            locateFile: (file: string) => `assets/vendor/${file}`
         });
         
         this.db = new SQL.Database(this.dataset);

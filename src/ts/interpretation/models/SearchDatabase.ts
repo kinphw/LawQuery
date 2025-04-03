@@ -6,11 +6,9 @@ class SearchDatabase {
   async init(): Promise<void> {
     console.log("⏳ SQLite DB 초기화 중...");
     const SQL = await initSqlJs({
-      locateFile: file => "data:application/wasm;base64," + window.WASM_BASE64.trim()
+      locateFile: file => `assets/vendor/${file}`
     });
     
-    // const dataset = new window.Dataset();
-    // this.db = new SQL.Database(dataset.getDatabaseBinary()); // 데이터베이스 파일 로드
     this.db = new SQL.Database(this.dataset);
     console.log("✅ SQLite DB 초기화 완료!");
   }
