@@ -55,7 +55,12 @@ class SearchModel {
 
     // Always append ORDER BY at the end
     // query += ` ORDER BY 일련번호 DESC`;
-    query += ` ORDER BY id DESC`;
+    // query += ` ORDER BY id DESC`;
+
+    query += ` ORDER BY 
+              CASE WHEN 회신일자 IS NULL THEN 1 ELSE 0 END,  -- NULL을 마지막으로
+              회신일자 DESC,                                  -- 회신일자 내림차순
+              id DESC`;  
 
     // 쿼리 실행부
     const results = this.db.executeQuery(query);
