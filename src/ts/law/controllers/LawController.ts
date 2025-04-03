@@ -13,8 +13,9 @@ class LawController implements IController {
 
     async initialize(): Promise<void> {
         // 데이터베이스 초기화
-        const dataset = new window.Dataset().getDatabaseBinary();
-        const db = new LawDatabase(dataset);
+        // const dataset = new window.Dataset().getDatabaseBinary();
+        // const db = new LawDatabase(dataset);
+        const db = new LawDatabase();
         await db.init();
         
         // 모델과 뷰 초기화
