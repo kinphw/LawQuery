@@ -65,22 +65,23 @@ class LawController implements IController {
     } 
 
     private bindToggleButtonEvents(): void {
-        // Add collapse event handler
         const searchContent = document.getElementById('lawSearchContent');
         if (searchContent) {
             searchContent.addEventListener('show.bs.collapse', () => {
                 document.querySelector('.floating-search-btn')?.classList.remove('d-none');
             });
             
-            searchContent.addEventListener('hide.bs.collapse', () => {
-                document.querySelector('.floating-search-btn')?.classList.add('d-none');
-                // Add scroll to top behavior
-                window.scrollTo({
-                    top: 0,
-                    behavior: 'smooth'  // 부드러운 스크롤 효과
-                });                
-            });
+            searchContent.addEventListener('hide.bs.collapse', () => this.handleCollapseHide());
         }
+    } 
+
+    // 재사용하기 위한 함수 : 조문별 선택조회 접기
+    private handleCollapseHide(): void {
+        document.querySelector('.floating-search-btn')?.classList.add('d-none');
+        window.scrollTo({
+            top: 0,
+            behavior: 'smooth'
+        });
     }    
 
 
@@ -95,7 +96,15 @@ class LawController implements IController {
             const results = this.model.getLawsByIds(selectedLaws);
             this.currentResults = results;
             this.view.render(results);
-            this.view.showToast('검색결과를 재조회하였습니다.'); // 추가            
+            this.view.showToast('검색결과를 재조회하였습니다.'); // 추가  
+
+            // 조문별 선택조회 접기 (Bootstrap 없이 직접 class 조작)
+            const searchContent = document.getElementById('lawSearchContent');
+            if (searchContent) {
+                searchContent.classList.remove('show');
+                searchContent.classList.add('collapse');
+                this.handleCollapseHide(); // 재사용!
+            }
 
             this.bindHeaderEvents();
         }
