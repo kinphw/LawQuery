@@ -54,11 +54,14 @@ class SearchResultTable {
     }
     
     setRowClickHandler(): void {
-        document.querySelectorAll('.search-result-row, .detail-row').forEach(row => {
+        // document.querySelectorAll('.search-result-row, .detail-row').forEach(row => {
+        document.querySelectorAll('.search-result-row').forEach(row => {
             row.addEventListener('click', () => {
-                const index = row.classList.contains('search-result-row') 
-                    ? row.getAttribute('data-row-index')
-                    : row.id.replace('detail-', '');
+                // const index = row.classList.contains('search-result-row') 
+                //     ? row.getAttribute('data-row-index')
+                //     : row.id.replace('detail-', '');
+                
+                const index = row.getAttribute('data-row-index');
                     
                 const detailRow = document.getElementById(`detail-${index}`);
                 
