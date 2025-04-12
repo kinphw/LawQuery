@@ -1,7 +1,8 @@
 logs/*
 ~*
 data/*
-src/js/
+src/frontend/js/
+src/backend/js/
 test/*
 test.py
 file_structure.txt
