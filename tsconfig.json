@@ -10,7 +10,7 @@
       "skipLibCheck": true,
       "forceConsistentCasingInFileNames": true,
       "typeRoots": [
-        "./src/ts/types"
+        "src/ts/frontend/interpretation/types"
       ],
       "lib": [
         "ES6",

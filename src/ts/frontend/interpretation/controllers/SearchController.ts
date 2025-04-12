@@ -4,8 +4,7 @@
 
 /// <reference path="../../common/interfaces/IController.ts" />
 /// <reference path="../models/SearchModel.ts" />
-/// <reference path="../../types/types.ts" />
-/// ㄴㄴ
+/// <reference path="../types/types.ts" />
 
 class SearchController implements IController {
 
