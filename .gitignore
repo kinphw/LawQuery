@@ -1,9 +1,29 @@
-logs/*
-~*
-data/*
+# 빌드 결과물
+dist/
 src/frontend/js/
 src/backend/js/
-test/*
-test.py
-file_structure.txt
+*.map
+
+# 테스트 파일
+test/
 test.html
+test.py
+
+# 데이터 및 로그
+data/*
+logs/*
+file_structure.txt
+
+# 에디터 백업
+~*
+
+# 시스템 파일
+.DS_Store
+Thumbs.db
+
+# Node
+node_modules
+
+# 환경 설정
+.env
+.env.*
