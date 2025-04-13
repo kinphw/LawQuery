@@ -12,14 +12,16 @@ module.exports = {
     clean: true
   },
   resolve: {
-    extensions: ['.ts', '.js']
+    extensions: ['.ts', '.js'],
+    fullySpecified: false  // 핵심 옵션!
   },
   module: {
     rules: [
       {
         test: /\.ts$/,
         use: 'ts-loader',
-        exclude: /node_modules/
+        exclude: /node_modules/,
+        type: 'javascript/auto' // ← 중요!
       }
     ]
   },

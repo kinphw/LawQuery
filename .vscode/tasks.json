@@ -32,6 +32,21 @@
         "args": ["-p", "tsconfig.backend.json"],
         "group": "build",
         "problemMatcher": "$tsc"
+      },
+      {
+        "label": "webpack: build",
+        "type": "npm",
+        "script": "build",
+        "group": "build",
+        "problemMatcher": []
+      },
+      {
+        "label": "webpack: watch",
+        "type": "npm",
+        "script": "watch",
+        "group": "build",
+        "isBackground": true,        
+        "problemMatcher": []
       }
     ]
   }
