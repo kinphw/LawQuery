@@ -1,8 +1,8 @@
-import { Header } from '../../common/components/Header.js';
-import { SearchForm } from './components/SearchForm.js';
-import { SearchResultTable } from './components/SearchResultTable.js';
-import { SearchResult } from '../types/SearchResult.js';
-import { ToastManager } from '../../common/components/ToastManager.js';
+import { Header } from '../../common/components/Header';
+import { SearchForm } from './components/SearchForm';
+import { SearchResultTable } from './components/SearchResultTable';
+import { SearchResult } from '../types/SearchResult';
+import { ToastManager } from '../../common/components/ToastManager';
 
 export class SearchView {
     

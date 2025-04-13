@@ -1,4 +1,6 @@
-import { SearchController } from '../interpretation/controllers/SearchController.js';
+import { SearchController } from '../interpretation/controllers/SearchController';
+
+console.log("Interpretation Entry Point Loaded");
 
 document.addEventListener('DOMContentLoaded', async () => {
   const ctrl = new SearchController();

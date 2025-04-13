@@ -1,7 +1,7 @@
-import { Header } from '../../common/components/Header.js';
-import { LawTable } from './components/LawTable.js';
-import { LawResult } from '../types/LawResult.js';
-import { ToastManager } from '../../common/components/ToastManager.js';
+import { Header } from '../../common/components/Header';
+import { LawTable } from './components/LawTable';
+import { LawResult } from '../types/LawResult';
+import { ToastManager } from '../../common/components/ToastManager';
 
 export class LawView {
     public header: Header;

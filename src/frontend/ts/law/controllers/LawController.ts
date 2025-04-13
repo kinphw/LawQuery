@@ -3,11 +3,11 @@
 // v0.0.1
 // 2025-03-03
 
-import { IController } from "../../common/interfaces/IController.js";
-import { LawDatabase } from "../models/LawDatabase.js";
-import { LawModel } from "../models/LawModel.js";
-import { LawView } from "../views/LawView.js";
-import { LawResult } from "../types/LawResult.js";
+import { IController } from "../../common/interfaces/IController";
+import { LawDatabase } from "../models/LawDatabase";
+import { LawModel } from "../models/LawModel";
+import { LawView } from "../views/LawView";
+import { LawResult } from "../types/LawResult";
 
 export class LawController implements IController {
 

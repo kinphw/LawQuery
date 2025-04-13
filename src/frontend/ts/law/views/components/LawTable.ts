@@ -1,5 +1,5 @@
-import { LawResult } from '../../types/LawResult.js';
-import { LawTitle } from '../../types/LawTitle.js';
+import { LawResult } from '../../types/LawResult';
+import { LawTitle } from '../../types/LawTitle';
 
 export class LawTable {
 

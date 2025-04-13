@@ -1,4 +1,4 @@
-import { initSqlJs, SqlJsDatabase } from "../../common/types/sql.js";
+import { initSqlJs, SqlJsDatabase } from "../../common/types/sql";
 
 export class SearchDatabase {
   private db: SqlJsDatabase | null = null;

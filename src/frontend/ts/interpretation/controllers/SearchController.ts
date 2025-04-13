@@ -1,13 +1,9 @@
-import { IController } from '../../common/interfaces/IController.js';
-import { SearchModel } from '../models/SearchModel.js';
-import { SearchView } from '../views/SearchView.js';
-import { SearchDatabase } from '../models/SearchDatabase.js';
-import { SearchResult } from '../types/SearchResult.js';
-import { SearchCriteria } from '../types/SearchCriteria.js';
-// import { SearchResultTable } from '../views/components/SearchResultTable';
-// import { SearchForm } from '../views/components/SearchForm';
-// import { Header } from '../../common/components/Header';
-// import { ToastManager } from '../../common/components/ToastManager';
+import { IController } from '../../common/interfaces/IController';
+import { SearchModel } from '../models/SearchModel';
+import { SearchView } from '../views/SearchView';
+import { SearchDatabase } from '../models/SearchDatabase';
+import { SearchResult } from '../types/SearchResult';
+import { SearchCriteria } from '../types/SearchCriteria';
 
 export class SearchController implements IController {
 

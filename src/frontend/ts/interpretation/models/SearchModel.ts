@@ -1,6 +1,6 @@
-import { SearchDatabase } from './SearchDatabase.js';
-import { SearchCriteria } from '../types/SearchCriteria.js';
-import { SearchResult } from '../types/SearchResult.js';
+import { SearchDatabase } from './SearchDatabase';
+import { SearchCriteria } from '../types/SearchCriteria';
+import { SearchResult } from '../types/SearchResult';
 
 export class SearchModel {
   constructor(private db: SearchDatabase) {}

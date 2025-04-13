@@ -1,4 +1,4 @@
-import { initSqlJs } from "../../common/types/sql.js";
+import { initSqlJs } from "../../common/types/sql";
 
 export class LawDatabase {
     private db: any;
