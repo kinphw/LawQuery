@@ -1,19 +1,23 @@
-// import { SearchModel } from '../models/SearchModel';
-// import { MainView } from '../views/MainView';
-// import { SearchCriteria } from '../types/types';
+import { IController } from '../../common/interfaces/IController.js';
+import { SearchModel } from '../models/SearchModel.js';
+import { SearchView } from '../views/SearchView.js';
+import { SearchDatabase } from '../models/SearchDatabase.js';
+import { SearchResult } from '../types/SearchResult.js';
+import { SearchCriteria } from '../types/SearchCriteria.js';
+// import { SearchResultTable } from '../views/components/SearchResultTable';
+// import { SearchForm } from '../views/components/SearchForm';
+// import { Header } from '../../common/components/Header';
+// import { ToastManager } from '../../common/components/ToastManager';
 
-/// <reference path="../../common/interfaces/IController.ts" />
-/// <reference path="../models/SearchModel.ts" />
-/// <reference path="../types/types.ts" />
+export class SearchController implements IController {
 
-class SearchController implements IController {
-
+  private model!: SearchModel
+  private view!: SearchView
   // 모델이 반환한 검색결과 저장 (재렌더링시 사용)
   private currentResults: SearchResult[] = []; // 추가
 
   constructor(
-    private model: SearchModel,
-    private view: SearchView
+
   ) {}
 
   // 컨트롤러의 run() 역할 래퍼함수
@@ -109,4 +113,3 @@ class SearchController implements IController {
     this.bindRowClickEvents(); // 검색결과가 바뀌었으므로 RowClick도 다시 바인딩
   }
 }
-window.SearchController = SearchController;

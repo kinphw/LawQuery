@@ -1,4 +1,7 @@
-class LawTable {
+import { LawResult } from '../../types/LawResult.js';
+import { LawTitle } from '../../types/LawTitle.js';
+
+export class LawTable {
 
   // 법령명 thead 설정을 위한 클래스변수수  
     public names : string[] = [
@@ -116,5 +119,3 @@ class LawTable {
             '</div>';
     }
 }
-
-window.LawTable = LawTable;

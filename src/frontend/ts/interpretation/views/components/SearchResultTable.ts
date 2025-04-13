@@ -1,4 +1,5 @@
-class SearchResultTable {
+import { SearchResult } from '../../types/SearchResult.js'; // 검색결과 타입 정의
+export class SearchResultTable {
 
     private currentTextSize: string = 'small';
 
@@ -71,5 +72,3 @@ class SearchResultTable {
         });
     }
 }
-
-window.SearchResultTable = SearchResultTable;

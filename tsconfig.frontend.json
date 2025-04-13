@@ -6,9 +6,6 @@
       "lib": ["ES2020", "DOM"],
       "rootDir": "src/frontend/ts",
       "outDir": "src/frontend/js",
-      "typeRoots": [
-        "src/frontend/ts/interpretation/types"
-      ]
     },
     "include": ["src/frontend/ts/**/*"]
   }

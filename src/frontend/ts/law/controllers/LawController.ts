@@ -2,13 +2,21 @@
 // 법령조회의 컨트롤러
 // v0.0.1
 // 2025-03-03
-class LawController implements IController {
 
+import { IController } from "../../common/interfaces/IController.js";
+import { LawDatabase } from "../models/LawDatabase.js";
+import { LawModel } from "../models/LawModel.js";
+import { LawView } from "../views/LawView.js";
+import { LawResult } from "../types/LawResult.js";
+
+export class LawController implements IController {
+
+    private model!: LawModel;
+    private view!: LawView;
     private currentResults: LawResult[] = []; // Store current results
 
     constructor(
-        private model: LawModel,
-        private view: LawView
+
     ) {}
 
     async initialize(): Promise<void> {
@@ -146,5 +154,3 @@ class LawController implements IController {
         this.bindHeaderEvents();
     }
 }
-
-window.LawController = LawController;

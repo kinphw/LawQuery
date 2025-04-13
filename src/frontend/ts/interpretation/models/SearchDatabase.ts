@@ -1,4 +1,6 @@
-class SearchDatabase {
+import { initSqlJs, SqlJsDatabase } from "../../common/types/sql.js";
+
+export class SearchDatabase {
   private db: SqlJsDatabase | null = null;
 
   // constructor(private dataset: Uint8Array) {}
@@ -32,5 +34,3 @@ class SearchDatabase {
     });
   }
 }
-
-window.SearchDatabase = SearchDatabase;

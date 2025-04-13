@@ -1,4 +1,6 @@
-class LawDatabase {
+import { initSqlJs } from "../../common/types/sql.js";
+
+export class LawDatabase {
     private db: any;
 
     // constructor(private dataset: Uint8Array) {}
@@ -36,5 +38,3 @@ class LawDatabase {
         });
     }
 }
-
-window.LawDatabase = LawDatabase;

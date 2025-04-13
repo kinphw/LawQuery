@@ -1,9 +1,8 @@
-// import { Database } from './Database';
-// import { SearchCriteria, SearchResult } from '../types/types';
+import { SearchDatabase } from './SearchDatabase.js';
+import { SearchCriteria } from '../types/SearchCriteria.js';
+import { SearchResult } from '../types/SearchResult.js';
 
-/// <reference path="../../interpretation/models/SearchDatabase.ts" />
-
-class SearchModel {
+export class SearchModel {
   constructor(private db: SearchDatabase) {}
 
   // 실제 검색을 수행하는 메서드
@@ -75,7 +74,6 @@ class SearchModel {
         field: "전체",
         keyword: ""
     });
-}
+  }
 
 }
-window.SearchModel = SearchModel;

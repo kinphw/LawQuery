@@ -7,7 +7,7 @@
  * 작성일: 2025-03-02
  * 버전: 0.0.1
  */
-class Header {
+export class Header {
 
     strVer:string = "0.1.2"; // 버전
     strDateUpdate:string = '250404'; // 업데이트 날짜 // 이곳을 수정하면 자동으로 업데이트됨
@@ -75,7 +75,3 @@ class Header {
     }
 
 }
-
-
-// Initialize header instance for global access
-window.Header = Header;

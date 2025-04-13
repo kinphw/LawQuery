@@ -1,10 +1,15 @@
-class LawView {
+import { Header } from '../../common/components/Header.js';
+import { LawTable } from './components/LawTable.js';
+import { LawResult } from '../types/LawResult.js';
+import { ToastManager } from '../../common/components/ToastManager.js';
+
+export class LawView {
     public header: Header;
     public lawTable: LawTable;
     private toastManager: ToastManager;    
 
     constructor() {
-        this.header = new window.Header();
+        this.header = new Header();
         this.lawTable = new LawTable();
         this.toastManager = new ToastManager();        
     }
@@ -20,5 +25,3 @@ class LawView {
     }
 
 }
-
-window.LawView = LawView;

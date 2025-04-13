@@ -1,4 +1,4 @@
-class ToastManager {
+export class ToastManager {
     showToast(message: string): void {
         let container = document.querySelector('.toast-container');
         if (!container) {
@@ -26,5 +26,3 @@ class ToastManager {
         }, 1000);
     }
 }
-
-window.ToastManager = ToastManager;

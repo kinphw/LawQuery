@@ -1,4 +1,4 @@
-class SearchForm {
+export class SearchForm {
     // 메서드를 매개변수로 전달받아서 그 메서드를 이벤트바인딩
     setSearchHandler(handler: () => void): void {
 
@@ -35,4 +35,3 @@ class SearchForm {
         });
     }
 }
-window.SearchForm = SearchForm;

@@ -1,9 +1,10 @@
-// import { Header } from './components/Header';
-// import { SearchForm } from './components/SearchForm';
-// import { ResultTable } from './components/ResultTable';
-// import { SearchResult } from '../types/types';
+import { Header } from '../../common/components/Header.js';
+import { SearchForm } from './components/SearchForm.js';
+import { SearchResultTable } from './components/SearchResultTable.js';
+import { SearchResult } from '../types/SearchResult.js';
+import { ToastManager } from '../../common/components/ToastManager.js';
 
-class SearchView {
+export class SearchView {
     
     // HTML 웹앱에서, 개념상 HTML은 렌더링대상 껍데기만 설계하고 세부내용은 뷰에서 동적으로 렌더링해서 붙이는 구조
     // 그리고 이벤트도 여기서 붙임
@@ -18,7 +19,7 @@ class SearchView {
         // 즉, Header는 단순 렌더링만 하는 반면, 
         // SearchForm과 ResultTable은 이벤트 바인딩과 상태 관리가 필요한 더 복잡한 컴포넌트라서 
         // 스코프를 분리
-        this.header = new window.Header(); // 이미 Header.js파일 <script src>시점에 export되어 있음
+        this.header = new Header(); // 이미 Header.js파일 <script src>시점에 export되어 있음
         this.searchForm = new SearchForm(); 
         this.resultTable = new SearchResultTable();
         this.toastManager = new ToastManager();        
@@ -44,6 +45,4 @@ class SearchView {
     showToast(message: string): void {
         this.toastManager.showToast(message);
     }
-
 }
-window.SearchView = SearchView;

@@ -1,13 +1,7 @@
-interface LawResult {
-    [key: string]: string | null;  // Allow string indexing
-    id_a: string | null;    // Add id_a field
-    law_content: string;
-    decree_content: string;
-    regulation_content: string;
-    rule_content: string;
-}
-
-class LawModel {
+import { LawDatabase } from './LawDatabase.js';
+import { LawResult } from '../types/LawResult.js';
+import { LawTitle } from '../types/LawTitle.js';
+export class LawModel {
     constructor(private db: LawDatabase) {}
 
     // 최초에 모든 법을 다 긁어서 보일때 사용
@@ -147,5 +141,3 @@ class LawModel {
     } 
 
 }
-
-window.LawModel = LawModel;
