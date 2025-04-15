@@ -7,8 +7,9 @@ const PORT = 3000;
 
 const server = http.createServer((req: IncomingMessage, res: ServerResponse) => {
   if (req.url === '/api/test') {
-    res.writeHead(200, { 'Content-Type': 'application/javascript; charset=utf-8' });
-    res.end(`alert("Test!");`);
+    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+    const response = { message: "크헤헤!" }; // JSON 객체 생성
+    res.end(JSON.stringify(response)); // JSON 문자열로 변환 후 응답
     return;
   }
 
@@ -18,4 +19,5 @@ const server = http.createServer((req: IncomingMessage, res: ServerResponse) => 
 
 server.listen(PORT, () => {
   console.log(`✅ 서버 실행 중: http://localhost:${PORT}`);
+  console.log('✅ 서버 시작 경로:', __dirname);
 });
