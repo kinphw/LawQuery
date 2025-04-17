@@ -31,14 +31,14 @@ export class LawController implements IController {
         this.view = new LawView();
 
         // 초기 데이터 로드 및 렌더링
-        const results = this.model.getAllLaws();
+        const results = await this.model.getAllLaws();
         // Store initial results
         this.currentResults = results;
 
         this.view.render(results);
 
         // 체크박스 렌더링
-        const lawTitles = this.model.getLawTitles();
+        const lawTitles = await this.model.getLawTitles();
         document.getElementById('lawCheckboxes')!.innerHTML = 
             this.view.lawTable.renderLawCheckboxes(lawTitles);
 

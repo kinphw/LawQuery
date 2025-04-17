@@ -12,5 +12,8 @@
     "build": "webpack --config webpack.config.js",
     "watch": "webpack --watch --config webpack.config.js",
     "dev": "webpack serve --config webpack.config.js --open"
+  },
+  "dependencies": {
+    "mysql2": "^3.14.0"
   }
 }

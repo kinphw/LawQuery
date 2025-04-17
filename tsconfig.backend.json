@@ -1,11 +1,13 @@
 {
     "extends": "./tsconfig.json",
     "compilerOptions": {
-      "module": "CommonJS",
-      "moduleResolution": "node",
+      "module": "NodeNext",               // ✅ 변경 포인트
+      "moduleResolution": "node",     // ✅ 핵심 포인트!
+      "esModuleInterop": true,      // <-- 이것도 켜져 있어야 import mysql from 'mysql2/promise'가 작동해요      
       "lib": ["ES2020"],
       "rootDir": "src/backend/ts",
-      "outDir": "src/backend/js"      
+      "outDir": "src/backend/js",
+      "baseUrl": ".", // 루트 기준
     },
     "include": ["src/backend/ts/**/*"]
   }

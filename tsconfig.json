@@ -5,6 +5,12 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "sourceMap": true           // ✅ 요거 추가!
+    "sourceMap": true,
+    "baseUrl": ".", // 루트 기준    
+    "moduleResolution": "node",
+    "paths": {
+      // "mysql2/promise": ["node_modules/mysql2/promise"],
+      // "mysql2": ["node_modules/mysql2"]
+    }    
   }
 }
