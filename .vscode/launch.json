@@ -10,6 +10,18 @@
       "console": "integratedTerminal",
       "skipFiles": ["<node_internals>/**"],
       "env": { "NODE_ENV": "development" }
-    }
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug Backend with Frontend Watch",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev:full"],
+      "console": "integratedTerminal",
+      "skipFiles": ["<node_internals>/**"],
+      "env": {
+        "NODE_ENV": "development"
+      }
+    }    
   ]
 }

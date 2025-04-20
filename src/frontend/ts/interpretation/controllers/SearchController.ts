@@ -1,96 +1,118 @@
-import { IController } from '../../common/interfaces/IController';
-import { SearchModel } from '../models/SearchModel';
-import { SearchView } from '../views/SearchView';
-import { SearchDatabase } from '../models/SearchDatabase';
-import { SearchResult } from '../types/SearchResult';
-import { SearchCriteria } from '../types/SearchCriteria';
+import { IController } from "../../common/interfaces/IController";
+import { SearchModel } from "../models/SearchModel";
+import { SearchView } from "../views/SearchView";
+import { SearchCriteria } from "../types/SearchCriteria";
+import { SearchResult } from "../types/SearchResult";
 
 export class SearchController implements IController {
+  private model: SearchModel;
+  private view: SearchView;
+  private currentResults: SearchResult[] = [];
 
-  private model!: SearchModel
-  private view!: SearchView
-  // 모델이 반환한 검색결과 저장 (재렌더링시 사용)
-  private currentResults: SearchResult[] = []; // 추가
+  constructor() {
+    this.model = new SearchModel();
+    this.view = new SearchView();
+  }
 
-  constructor(
-
-  ) {}
-
-  // 컨트롤러의 run() 역할 래퍼함수
   async initialize(): Promise<void> {
-    // 데이터베이스 초기화
-    // const dataset = new window.Dataset().getDatabaseBinary(); // 데이터셋 설정
-    // const db = new SearchDatabase(dataset);
-    const db = new SearchDatabase();
-    await db.init();
+    // 헤더 렌더링 (뷰 생성자에서 실행됨)
     
-    // 모델과 뷰 초기화
-    this.model = new SearchModel(db);
-    this.view = new SearchView(); // 헤더는 뷰 생성자에서 렌더링됨
-
     // 초기 데이터 로드
-    const results = this.model.getInitialData();
-
-    // 초기 데이터 저장(크기변환을 위해)
-    this.currentResults = results; // 검색 결과 저장
-
-    // Results 렌더링    
-    this.view.render(results); // 뷰에 데이터를 전달해서 렌더링
-
-    // 이벤트 바인딩을 컨트롤러에서 일괄 처리
+    this.view.showLoading();
+    const results = await this.model.getInitialData();
+    this.view.hideLoading();
+    
+    // 초기 데이터 저장
+    this.currentResults = results;
+    
+    // 검색 결과 렌더링
+    this.view.render(results);
+    
+    // 결과 건수 표시
+    const count = this.model.getLastSearchCount();
+    this.view.showToast(`총 ${count}건의 유권해석 데이터가 로드되었습니다.`);
+    
+    // 이벤트 바인딩
     this.bindEvents();
   }
-  // 이벤트바인딩 함수 : 래퍼
 
   private bindEvents(): void {
-
-    // 헤더 이벤트
     this.bindHeaderEvents();
-
-    // 글자크기 이벤트
-    this.bindTextSizeEvents();    
-
-    // 검색 폼 이벤트
-    // this.view.searchForm.setSearchHandler(() => this.performSearch());
+    this.bindTextSizeEvents();
     this.bindSearchEvents();
-    
-    // 결과 테이블 이벤트
-    // this.view.resultTable.setRowClickHandler();
-    this.bindRowClickEvents();
+  }
 
-
-  } 
-
-  // 개별 이벤트바인딩 함수 > 이벤트핸들러가 호출할 때 이름만으로 호출하기 쉽게 래핑핑
-
-  private bindHeaderEvents(): void { // 헤더 이벤트바인딩    
-    this.view.header.setInfoButtonHandler(); 
+  private bindHeaderEvents(): void {
+    this.view.header.setInfoButtonHandler();
   }
 
   private bindTextSizeEvents(): void {
     document.querySelectorAll('input[name="textSize"]').forEach(radio => {
-        radio.addEventListener('change', (e: Event) => this.handleTextSizeChange(e));        
-    });    
+      radio.addEventListener('change', (e: Event) => this.handleTextSizeChange(e));
+    });
   }
 
   private bindSearchEvents(): void {
     this.view.searchForm.setSearchHandler(() => this.performSearch());
+    this.bindRowClickEvents();
   }
 
   private bindRowClickEvents(): void {
-    this.view.resultTable.setRowClickHandler();
+    document.querySelectorAll('.search-result-row').forEach(row => {
+      row.addEventListener('click', async (e) => {
+        const target = e.currentTarget as HTMLElement;
+        const index = target.getAttribute('data-row-index');
+        const id = target.getAttribute('data-id');
+        
+        if (!id || !index) return;
+        
+        const detailRow = document.getElementById(`detail-${index}`);
+        if (!detailRow) return;
+        
+        // 이미 상세 정보가 로드되었는지 확인
+        if (detailRow.getAttribute('data-loaded') === 'true') {
+          detailRow.classList.toggle('d-none');
+          return;
+        }
+        
+        // 상세 정보 로드 중 표시
+        detailRow.innerHTML = '<td colspan="5" class="text-center p-3"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div></td>';
+        detailRow.classList.remove('d-none');
+        
+        // 상세 정보 API 호출
+        try {
+          const detail = await this.model.getDetail(parseInt(id, 10));
+          
+          if (detail) {
+            detailRow.innerHTML = `
+              <td colspan="5" class="bg-light">
+                <div><strong>질의요지:</strong><br>${this.view.resultTable.formatMultiline(detail.질의요지)}</div>
+                <br>
+                <div class="mt-2"><strong>회답:</strong><br>${this.view.resultTable.formatMultiline(detail.회답)}</div>
+                <br>
+                <div class="mt-2"><strong>이유:</strong><br>${this.view.resultTable.formatMultiline(detail.이유)}</div>
+              </td>
+            `;
+            detailRow.setAttribute('data-loaded', 'true');
+          } else {
+            detailRow.innerHTML = '<td colspan="5" class="text-center text-danger">상세 정보를 불러올 수 없습니다.</td>';
+          }
+        } catch (error) {
+          detailRow.innerHTML = '<td colspan="5" class="text-center text-danger">상세 정보를 불러오는 중 오류가 발생했습니다.</td>';
+          console.error('Detail loading error:', error);
+        }
+      });
+    });
   }
-
-  // 이벤트핸들러
 
   private handleTextSizeChange(e: Event): void {
     const target = e.target as HTMLInputElement;
     this.view.resultTable.setTextSize(target.value);
     this.view.render(this.currentResults);
-    this.bindRowClickEvents(); //렌더링했으므로 RowClick도 다시 바인딩
-  }  
+    this.bindRowClickEvents();
+  }
 
-  private performSearch(): void { // 이벤트바인딩하는 함수 (화살표함수로 넘김)
+  private async performSearch(): Promise<void> {
     const criteria: SearchCriteria = {
       type: (document.getElementById('typeSelect') as HTMLSelectElement).value,
       serial: (document.getElementById('serialInput') as HTMLInputElement).value,
@@ -98,14 +120,16 @@ export class SearchController implements IController {
       keyword: (document.getElementById('keywordInput') as HTMLInputElement).value
     };
 
-    const results = this.model.search(criteria);
-    this.currentResults = results; // 검색 결과 저장 (그래야 텍스트 크기 조절 가능)
+    this.view.showLoading();
+    const results = await this.model.search(criteria);
+    this.view.hideLoading();
+
+    this.currentResults = results;
     this.view.render(results);
 
-    this.view.showToast('검색결과를 재조회하였습니다.'); // 추가된 부분    
+    const count = this.model.getLastSearchCount();
+    this.view.showToast(`검색 완료: 총 ${count}건이 조회되었습니다.`);
 
-    // 모든 이벤트를 다시 바인딩
-    // this.bindEvents();    
-    this.bindRowClickEvents(); // 검색결과가 바뀌었으므로 RowClick도 다시 바인딩
+    this.bindRowClickEvents();
   }
 }
