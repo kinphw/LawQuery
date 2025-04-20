@@ -26,13 +26,21 @@ export class SearchResultTable {
         <tbody>`;
 
     results.forEach((item, index) => {
+
+      // 회신일자 포맷팅
+      let displayDate = '';
+      if (item.회신일자) {
+        // ISO 형식이나 다른 형식의 날짜 문자열 모두 처리
+        displayDate = new Date(item.회신일자).toISOString().split('T')[0];
+      }
+
       html += `
         <tr class="search-result-row ${this.currentTextSize}" data-row-index="${index}" data-id="${item.id}">
           <td class="text-center align-middle text-nowrap w-10">${item.구분 || ''}</td>
           <td class="text-center align-middle w-10" style="word-break: break-word">${item.분야 || ''}</td>
           <td class="align-middle w-50">${item.제목 || ''}</td>
           <td class="align-middle text-center w-10">${item.일련번호 || ''}</td>
-          <td class="align-middle text-center w-10">${(item.회신일자 || '').split(' ')[0]}</td>
+          <td class="align-middle text-center w-10">${displayDate}</td>
         </tr>
         <tr class="detail-row d-none ${this.currentTextSize}" id="detail-${index}">
           <!-- 상세 정보가 동적으로 로드됩니다 -->
