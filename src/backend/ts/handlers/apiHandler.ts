@@ -7,7 +7,6 @@ export async function apiHandler(req: IncomingMessage, res: ServerResponse) {
   const pathname = url.pathname;
 
   if (pathname.startsWith('/api/law')) {
-    console.log('테스트3');
     return lawHandler(req, res, url);
   }
   if (pathname.startsWith('/api/interpretation')) {
