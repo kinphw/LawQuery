@@ -3,6 +3,7 @@
     "@types/node": "^22.14.1",
     "ts-loader": "^9.5.2",
     "ts-node": "^10.9.2",
+    "ts-node-dev": "^2.0.0",
     "typescript": "^5.8.3",
     "webpack": "^5.99.5",
     "webpack-cli": "^6.0.1",
@@ -11,7 +12,8 @@
   "scripts": {
     "build": "webpack --config webpack.config.js",
     "watch": "webpack --watch --config webpack.config.js",
-    "dev": "webpack serve --config webpack.config.js --open"
+    "dev": "webpack serve --config webpack.config.js --open",
+    "dev:backend": "ts-node-dev --respawn --transpile-only src/backend/ts/index.ts"    
   },
   "dependencies": {
     "@types/dotenv": "^6.1.1",
