@@ -1,4 +1,4 @@
-import pool from './db';
+import db from './db'; // pool → db로 변경
 
 import type { RowDataPacket } from 'mysql2'; // ✅ 완전 OK
 import type { LawResult } from '../types/LawResult';
@@ -42,7 +42,7 @@ export class LawModel {
         ORDER BY a.id;
   
     `;
-    const [rows] = await pool.query<LawResult[]>(query);
+    const rows = await db.query<LawResult>(query);
     return rows;
   }
 
@@ -52,7 +52,7 @@ export class LawModel {
       FROM db_a
       WHERE id_a = ?
     `;
-    const [rows] = await pool.query<RowDataPacket[]>(query, [id]);
+    const rows = await db.query<LawResult>(query, [id]);
     return rows[0] || null;
   }
 }

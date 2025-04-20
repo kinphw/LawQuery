@@ -3,9 +3,15 @@
 
 import pandas as pd
 from sqlalchemy import create_engine
+from dotenv import load_dotenv
+import os
 
-# MySQL 연결 엔진 생성
-engine = create_engine("mysql+pymysql://ldbuser:1226@localhost:3306/ldb?charset=utf8mb4")
+# .env 파일 로드
+load_dotenv('../../.env')
+
+# MySQL 연결 엔진 생성 (환경변수 사용)
+db_url = f"mysql+pymysql://{os.getenv('MYSQL_USER')}:{os.getenv('MYSQL_PASSWORD')}@{os.getenv('MYSQL_HOST')}:{os.getenv('MYSQL_PORT')}/{os.getenv('MYSQL_DB')}?charset=utf8mb4"
+engine = create_engine(db_url)
 
 # 엑셀 파일 경로
 excel_path = "data/db_aesr.xlsx"
