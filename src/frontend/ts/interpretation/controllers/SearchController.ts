@@ -40,7 +40,7 @@ export class SearchController implements IController {
     
     // 초기 화면에는 첫 50개만 표시
     this.visibleResults = this.getVisibleResults();
-    this.view.render(this.visibleResults);
+    this.view.render(this.visibleResults, false);
 
     // 이벤트 바인딩
     this.bindEvents();    
@@ -68,7 +68,7 @@ export class SearchController implements IController {
     // 스크롤이 페이지 하단에 가까워지고, 더 보여줄 데이터가 있을 때
     if (scrollPosition + windowHeight > documentHeight - 300) {
       if (this.resultStartIndex + this.resultPageSize < this.currentResults.length) {
-        console.log("Loading more results");
+        // console.log("Loading more results");
         
         this.isLoading = true;
         
@@ -82,7 +82,8 @@ export class SearchController implements IController {
         this.visibleResults = [...this.visibleResults, ...nextResults];
         
         // 새 결과를 화면에 추가
-        this.view.appendResults(nextResults);
+        // this.view.appendResults(nextResults);
+        this.view.render(nextResults, true);        
         
         // 새로 추가된 행에 이벤트 바인딩
         this.bindRowClickEvents(this.resultStartIndex);
