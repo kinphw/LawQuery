@@ -13,7 +13,7 @@ export class SearchController implements IController {
   private visibleResults: SearchResult[] = []; // 현재 표시되는 결과만 저장
   private resultStartIndex = 0;
   private resultPageSize = 50; // 한 번에 표시할 행 수
-  private scrollHandler: () => void;
+  // private scrollHandler: () => void;
   private isLoading = false; // 로딩 중복 방지 플래그 추가
 
 
@@ -21,7 +21,7 @@ export class SearchController implements IController {
     this.model = new SearchModel();
     this.view = new SearchView();
 
-    this.scrollHandler = this.handleScroll.bind(this);
+    // this.scrollHandler = this.handleScroll.bind(this);
   }
 
   async initialize(): Promise<void> {
@@ -46,7 +46,7 @@ export class SearchController implements IController {
     this.bindEvents();    
     
     // 스크롤 이벤트 등록 // lazy loading을 위한 스크롤 이벤트
-    window.addEventListener('scroll', this.scrollHandler);    
+    // window.addEventListener('scroll', this.scrollHandler);    
   }
 
   private getVisibleResults(): SearchResult[] {
@@ -56,54 +56,23 @@ export class SearchController implements IController {
     );
   }
 
-// 3. handleScroll에서 데이터 추가 시 콘솔 로그 추가
-  private handleScroll(): void {
-    // 이미 로딩 중이면 중복 요청 방지
-    if (this.isLoading) return;
-    
-    const scrollPosition = window.scrollY;
-    const windowHeight = window.innerHeight;
-    const documentHeight = document.documentElement.scrollHeight;
-    
-    // 스크롤이 페이지 하단에 가까워지고, 더 보여줄 데이터가 있을 때
-    if (scrollPosition + windowHeight > documentHeight - 300) {
-      if (this.resultStartIndex + this.resultPageSize < this.currentResults.length) {
-        // console.log("Loading more results");
-        
-        this.isLoading = true;
-        
-        // 다음 페이지 시작 인덱스 설정
-        this.resultStartIndex += this.resultPageSize;
-        
-        // 다음 페이지 아이템 가져오기
-        const nextResults = this.getVisibleResults();
-        
-        // 화면에 표시된 결과에 추가
-        this.visibleResults = [...this.visibleResults, ...nextResults];
-        
-        // 새 결과를 화면에 추가
-        // this.view.appendResults(nextResults);
-        this.view.render(nextResults, true);        
-        
-        // 새로 추가된 행에 이벤트 바인딩
-        this.bindRowClickEvents(this.resultStartIndex);
-        
-        // 로딩 완료
-        this.isLoading = false;
-      }
-    }
-  }
 
-
-  /////////////
+  ///////////////////////////////////////
+  // 통합 이벤트바인딩 메서드
+  ///////////////////////////////////////
 
   private bindEvents(): void {
     this.bindHeaderEvents();
     this.bindTextSizeEvents();
     this.bindSearchEvents();
+    // 스크롤 이벤트를 여기로 이동
+    // window.addEventListener('scroll', this.handleScroll.bind(this));    
+    this.bindScrollEvents();
   }
 
-  /////////////
+  ///////////////////////////////////////
+  // 이벤트리스너 래퍼
+  ///////////////////////////////////////
 
   private bindHeaderEvents(): void {
     this.view.header.setInfoButtonHandler();
@@ -120,6 +89,10 @@ export class SearchController implements IController {
     this.bindRowClickEvents();
   }
 
+  private bindScrollEvents(): void {
+    window.addEventListener('scroll', this.handleScroll.bind(this));
+  }
+
   // private bindRowClickEvents(): void {
   private bindRowClickEvents(startIndex: number = 0): void {//  
     
@@ -132,14 +105,14 @@ export class SearchController implements IController {
         ).join(', ') : 
         '.search-result-row';
     
-    console.log(`Binding click events for rows with selector: ${selector}`);
+    // console.log(`Binding click events for rows with selector: ${selector}`);
        
     // document.querySelectorAll('.search-result-row').forEach(row => {
     //   row.addEventListener('click', async (e) => {
     document.querySelectorAll(selector).forEach(row => {
 
     // Log to verify we found the rows
-      console.log(`Found row with index: ${row.getAttribute('data-row-index')}`);
+      // console.log(`Found row with index: ${row.getAttribute('data-row-index')}`);
     
 
       row.addEventListener('click', async (e) => {    
@@ -188,7 +161,9 @@ export class SearchController implements IController {
     });
   }
 
-  //////////////////
+  ///////////////////////////////////////
+  // 개별 이벤트리스너
+  ///////////////////////////////////////
 
   private handleTextSizeChange(e: Event): void {
     const target = e.target as HTMLInputElement;
@@ -229,9 +204,50 @@ export class SearchController implements IController {
     this.bindRowClickEvents();
   }
 
+
+// 3. handleScroll에서 데이터 추가 시 콘솔 로그 추가
+  private handleScroll(): void {
+    // 이미 로딩 중이면 중복 요청 방지
+    if (this.isLoading) return;
+    
+    const scrollPosition = window.scrollY;
+    const windowHeight = window.innerHeight;
+    const documentHeight = document.documentElement.scrollHeight;
+    
+    // 스크롤이 페이지 하단에 가까워지고, 더 보여줄 데이터가 있을 때
+    if (scrollPosition + windowHeight > documentHeight - 300) {
+      if (this.resultStartIndex + this.resultPageSize < this.currentResults.length) {
+        // console.log("Loading more results");
+        
+        this.isLoading = true;
+        
+        // 다음 페이지 시작 인덱스 설정
+        this.resultStartIndex += this.resultPageSize;
+        
+        // 다음 페이지 아이템 가져오기
+        const nextResults = this.getVisibleResults();
+        
+        // 화면에 표시된 결과에 추가
+        this.visibleResults = [...this.visibleResults, ...nextResults];
+        
+        // 새 결과를 화면에 추가
+        // this.view.appendResults(nextResults);
+        this.view.render(nextResults, true);        
+        
+        // 새로 추가된 행에 이벤트 바인딩
+        this.bindRowClickEvents(this.resultStartIndex);
+        
+        // 로딩 완료
+        this.isLoading = false;
+      }
+    }
+  }
+
+
+
   dispose(): void {
-    // 스크롤 이벤트 핸들러 제거
-    window.removeEventListener('scroll', this.scrollHandler);
+    // 스크롤 이벤트 핸들러 제거 - bind(this)로 바인딩된 핸들러 제거
+    window.removeEventListener('scroll', this.handleScroll.bind(this));
   }
   
 }
