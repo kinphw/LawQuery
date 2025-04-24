@@ -170,30 +170,25 @@ export class SearchEventManager {
         
         // 스크롤이 페이지 하단에 가까워지고, 더 보여줄 데이터가 있을 때
         if (scrollPosition + windowHeight > documentHeight - 300) {
-        if (this.controller.dataManager.resultStartIndex + this.controller.dataManager.resultPageSize < this.controller.dataManager.currentResults.length) {
-            // console.log("Loading more results");
-            
-            this.isLoading = true;
-            
-            // 다음 페이지 시작 인덱스 설정
-            this.controller.dataManager.resultStartIndex += this.controller.dataManager.resultPageSize;
-            
-            // 다음 페이지 아이템 가져오기
-            const nextResults = this.controller.dataManager.getVisibleResults();
-            
-            // 화면에 표시된 결과에 추가
-            this.controller.dataManager.visibleResults = [...this.controller.dataManager.visibleResults, ...nextResults];
-            
-            // 새 결과를 화면에 추가
-            // this.view.appendResults(nextResults);
-            this.controller.view.render(nextResults, true);        
-            
-            // 새로 추가된 행에 이벤트 바인딩
-            this.bindRowClickEvents(this.controller.dataManager.resultStartIndex);
-            
-            // 로딩 완료
-            this.isLoading = false;
-        }
+            // if (this.controller.dataManager.resultStartIndex + this.controller.dataManager.resultPageSize < this.controller.dataManager.currentResults.length) {
+            if (this.controller.dataManager.hasMoreData()) {                
+                
+                this.isLoading = true;
+                
+                // DataManager에 다음 페이지 로드 위임
+                const nextResults = this.controller.dataManager.loadNextPage();                
+
+                // 새 결과를 화면에 추가
+                this.controller.view.render(nextResults, true);        
+                
+                // 새로 추가된 행에 이벤트 바인딩
+                this.bindRowClickEvents(this.controller.dataManager.getResultStartIndex());                
+                
+                // 로딩 완료
+                this.isLoading = false;
+
+                this.controller.view.showToast(`+ ${nextResults.length} Loaded (${this.controller.dataManager.getVisibleResultsCount()}/${this.controller.dataManager.currentResults.length})`);
+            }
         }
     }
 

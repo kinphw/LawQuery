@@ -190,7 +190,7 @@ input[type="radio"]:checked + label {
   position: fixed;
   top: 20px;
   right: 20px;
-  z-index: 1000;
+  z-index: 9999;  /* 가장 높은 z-index로 수정 */
 }
 
 .toast-message {

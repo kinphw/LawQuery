@@ -52,11 +52,13 @@ export class SearchController implements ISearchController {
 
     // 결과 건수 표시
     const count = this.model.getLastSearchCount();
-    this.view.showToast(`총 ${count}건의 유권해석 데이터가 로드되었습니다.`);    
+    // this.view.showToast(`총 ${count}건의 유권해석 데이터가 로드되었습니다. (초기 ${this.dataManager.getVisibleResultsCount()}건 표시)`);    
     
-    // 초기 화면에는 첫 50개만 표시
+    // 초기 화면에는 일부만 표시
     this.dataManager.setVisibleResults();    
     this.view.render(this.dataManager.getVisibleResults(), false);
+
+    this.view.showToast(`총 ${count}건의 유권해석 조회 (${this.dataManager.getVisibleResultsCount()}/${this.dataManager.currentResults.length})`);    
 
     // 이벤트 바인딩
     this.eventManager.bindEvents();    
