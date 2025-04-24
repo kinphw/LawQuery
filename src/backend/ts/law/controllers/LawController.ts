@@ -19,16 +19,16 @@ export class LawController {
     res.end(JSON.stringify(data)); // 그냥 간단하게 내보낸다...
   }
 
-  async getById(req: IncomingMessage, res: ServerResponse, id: string | null) {
-    if (!id) {
+  async getByIds(req: IncomingMessage, res: ServerResponse, lawIds: string[] | null) {
+    if (!lawIds) {
       res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
       res.end(JSON.stringify({ success: false, error: 'ID는 필수입니다.' }));
       return;
     }
 
     // const data = await this.service.getLawById(id);
-    const data = await this.model.getLawById(id);
+    const data = await this.model.getLawByIds(lawIds);
     res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-    res.end(JSON.stringify({ success: true, data }));
+    res.end(JSON.stringify(data));
   }
 }

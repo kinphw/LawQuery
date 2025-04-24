@@ -9,8 +9,8 @@
  */
 export class Header {
 
-    strVer:string = "0.1.2"; // 버전
-    strDateUpdate:string = '250404'; // 업데이트 날짜 // 이곳을 수정하면 자동으로 업데이트됨
+    strVer:string = "0.1.3"; // 버전
+    strDateUpdate:string = '250425'; // 업데이트 날짜 // 이곳을 수정하면 자동으로 업데이트됨
 
     render(currentPage: 'law' | 'interpretation'): string {        
 
@@ -56,7 +56,7 @@ export class Header {
 
     private showInfo(): void {
         alert(`
-    LawQuery_금융법령, 유권해석, 비조치의견서 검색 및 조회를 위한 웹 어플리케이션입니다.        
+    LawQuery_금융법령, 유권해석, 비조치의견서 검색 및 조회
     kinphw (github.com/kinphw/LawQuery)
     v${this.strVer} (${this.strDateUpdate})
     Apache license 2.0
@@ -66,11 +66,11 @@ export class Header {
 
     private showUpdate(): void {
         alert(`
+    v0.1.3 DD250424 (유권해석) 조회효율 개선
     v0.1.2 DD250404
     (법률조회) 검색기능 추가 및 검색시 하이라이트기능
     (유권해석조회) 검색기능 보완(본문 눌러도 접히게)
-    v0.1.1 DD250402
-    (유권해석조회) 현장건의 추가, 검색기능 개선(%%)
+    v0.1.1 DD250402 (유권해석조회) 현장건의 추가, 검색기능 개선(%%)
     `);
     }
 

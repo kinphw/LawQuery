@@ -113,13 +113,13 @@ export class LawController implements IController {
     // 이하는 이벤트핸들러
     ////////////////////////////////////////////////////
 
-    private handleSearch(): void {
+    private async handleSearch(): Promise<void> {
         const selectedLaws = Array.from(document.querySelectorAll('input[type="checkbox"]:checked'))
             .map(cb => (cb as HTMLInputElement).value)
             .filter(id => id); // Filter out null values
     
         if (selectedLaws.length) {
-            const results = this.model.getLawsByIds(selectedLaws);
+            const results = await this.model.getLawsByIds(selectedLaws);
             this.currentResults = results;
             this.view.render(results);
             this.view.showToast('검색결과를 재조회하였습니다.'); // 추가  

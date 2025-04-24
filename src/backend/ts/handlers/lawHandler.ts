@@ -11,8 +11,9 @@ export async function lawHandler(req: IncomingMessage, res: ServerResponse, url:
     return await lawController.getAll(req, res);
   }
   if (pathname === '/api/law/get' && method === 'GET') {
-    const id = url.searchParams.get('id');
-    return await lawController.getById(req, res, id);
+    // const id = url.searchParams.get('id');
+    const lawIds = url.searchParams.getAll('id'); // url객체로부터 여러 id 파라미터 모두 가져오기    
+    return await lawController.getByIds(req, res, lawIds);
   }
 
   res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
