@@ -9,8 +9,8 @@
  */
 export class Header {
 
-    strVer:string = "0.1.3"; // 버전
-    strDateUpdate:string = '250425'; // 업데이트 날짜 // 이곳을 수정하면 자동으로 업데이트됨
+    strVer:string = "0.1.31"; // 버전
+    strDateUpdate:string = '250427'; // 업데이트 날짜 // 이곳을 수정하면 자동으로 업데이트됨
 
     render(currentPage: 'law' | 'interpretation'): string {        
 
@@ -66,6 +66,7 @@ export class Header {
 
     private showUpdate(): void {
         alert(`
+    v0.1.31 DD250427 (법률) 조회효율 개선
     v0.1.3 DD250424 (유권해석) 조회효율 개선
     v0.1.2 DD250404
     (법률조회) 검색기능 추가 및 검색시 하이라이트기능

@@ -4,7 +4,7 @@
 // 2025-03-03
 
 import { IController } from "../../common/interfaces/IController";
-import { LawDatabase } from "../models/LawDatabase";
+// import { LawDatabase } from "../models/LawDatabase";
 import { LawModel } from "../models/LawModel";
 import { LawView } from "../views/LawView";
 import { LawResult } from "../types/LawResult";
@@ -23,11 +23,12 @@ export class LawController implements IController {
         // 데이터베이스 초기화
         // const dataset = new window.Dataset().getDatabaseBinary();
         // const db = new LawDatabase(dataset);
-        const db = new LawDatabase();
-        await db.init();
+        // const db = new LawDatabase();
+        // await db.init();
         
         // 모델과 뷰 초기화
-        this.model = new LawModel(db);
+        // this.model = new LawModel(db);
+        this.model = new LawModel();
         this.view = new LawView();
 
         // 초기 데이터 로드 및 렌더링

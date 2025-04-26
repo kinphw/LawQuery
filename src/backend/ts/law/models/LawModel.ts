@@ -92,7 +92,7 @@ export class LawModel {
     return rows;
   }
 
-  async getLawTitles(): Promise<Array<LawTitle>> {
+  async getLawTitles(): Promise<LawTitle[]> {
     const query = `
     SELECT 
         id_a, 

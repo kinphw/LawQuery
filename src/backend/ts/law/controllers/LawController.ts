@@ -46,4 +46,10 @@ export class LawController {
     // res.end(JSON.stringify(data));
     res.status(200).json(data);
   }
+
+  // 법령 제목만 긁어오는 메서드
+  async getTitles(req: Request, res: Response): Promise<void> {
+    const data = await this.model.getLawTitles();
+    res.status(200).json(data);
+  }
 }
