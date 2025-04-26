@@ -104,7 +104,7 @@ export class SearchModel {
   // 상세 정보를 가져오는 메서드 추가
   async getDetail(id: number): Promise<{ 질의요지: string; 회답: string; 이유: string; } | null> {
     try {
-      const response = await fetch(`/api/interpretation/detail/${id}`);
+      const response = await fetch(`/api/interpretation/detail/${id}`); // Backend에서는 :id로 id를 가져옴
       if (!response.ok) {
         throw new Error('상세정보를 가져오는 중 오류가 발생했습니다.');
       }

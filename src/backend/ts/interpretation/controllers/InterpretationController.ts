@@ -1,6 +1,6 @@
-import { IncomingMessage, ServerResponse } from 'http';
+import { Request, Response } from 'express';
 import { InterpretationModel } from '../models/InterpretationModel';
-import { URL } from 'url';
+// import { URL } from 'url';
 
 export class InterpretationController {
   private model: InterpretationModel;
@@ -9,14 +9,21 @@ export class InterpretationController {
     this.model = new InterpretationModel();
   }
 
-  async search(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  // async search(req: IncomingMessage, res: ServerResponse): Promise<void> {
+    async search(req: Request, res: Response): Promise<void> {  
     try {
-      // URL에서 쿼리 파라미터 추출
-      const url = new URL(req.url || '', `http://${req.headers.host}`);
-      const type = url.searchParams.get('type') || '전체';
-      const serial = url.searchParams.get('serial') || '';
-      const field = url.searchParams.get('field') || '전체';
-      const keyword = url.searchParams.get('keyword') || '';
+      // // URL에서 쿼리 파라미터 추출
+      // const url = new URL(req.url || '', `http://${req.headers.host}`);
+      // const type = url.searchParams.get('type') || '전체';
+      // const serial = url.searchParams.get('serial') || '';
+      // const field = url.searchParams.get('field') || '전체';
+      // const keyword = url.searchParams.get('keyword') || '';
+
+      // req.query에서 파라미터 추출
+      const type = req.query.type as string || '전체';
+      const serial = req.query.serial as string || '';
+      const field = req.query.field as string || '전체';
+      const keyword = req.query.keyword as string || '';
 
       const results = await this.model.search({ type, serial, field, keyword });
       
@@ -36,8 +43,11 @@ export class InterpretationController {
     }
   }
 
-  async getDetail(req: IncomingMessage, res: ServerResponse, id: string): Promise<void> {
+  // async getDetail(req: IncomingMessage, res: ServerResponse, id: string): Promise<void> {
+    async getDetail(req: Request, res: Response): Promise<void> {  
     try {
+      // req.params에서 id 추출
+      const id = req.params.id;
       const numId = parseInt(id, 10);
       
       if (isNaN(numId)) {
@@ -75,7 +85,8 @@ export class InterpretationController {
     }
   }
 
-  async getInitialData(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  // async getInitialData(req: IncomingMessage, res: ServerResponse): Promise<void> {
+    async getInitialData(req: Request, res: Response): Promise<void> {  
     try {
       const results = await this.model.getInitialData();
       
