@@ -1,7 +1,7 @@
 module.exports = {
   apps: [
     {
-      name: "lawquery-backend",
+      name: "lawquery-backend-dev",
       script: "node_modules/ts-node/dist/bin.js",
       args: "src/backend/ts/index.ts",
       watch: ["src/backend/ts"],
