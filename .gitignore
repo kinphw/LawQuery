@@ -27,3 +27,5 @@ node_modules
 # 환경 설정
 .env
 .env.*
+
+lq.code-workspace
