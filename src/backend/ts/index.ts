@@ -1,6 +1,6 @@
 import express from 'express';
 import cors from 'cors';
-import { LawHandler } from './handlers/LawHandler2';
+import { LawHandler } from './handlers/LawHandler';
 import { InterpretationHandler } from './handlers/InterpretationHandler';
 
 const app = express();
