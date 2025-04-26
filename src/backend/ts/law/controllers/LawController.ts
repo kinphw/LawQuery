@@ -19,7 +19,7 @@ export class LawController {
     // res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
     // res.end(JSON.stringify({ success: true, data }));
     // res.end(JSON.stringify(data)); // 그냥 간단하게 내보낸다...
-    res.status(200).json(data);
+    res.status(200).json({ success: true, data });
   }
 
   // async getByIds(req: IncomingMessage, res: ServerResponse, lawIds: string[] | null) {
@@ -44,12 +44,14 @@ export class LawController {
     const data = await this.model.getLawByIds(lawIds);
     // res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
     // res.end(JSON.stringify(data));
-    res.status(200).json(data);
+    // res.status(200).json(data);
+    res.status(200).json({ success: true, data });
   }
 
   // 법령 제목만 긁어오는 메서드
   async getTitles(req: Request, res: Response): Promise<void> {
     const data = await this.model.getLawTitles();
-    res.status(200).json(data);
+    // res.status(200).json(data);
+    res.status(200).json({ success: true, data });
   }
 }

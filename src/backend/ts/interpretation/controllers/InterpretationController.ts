@@ -27,19 +27,27 @@ export class InterpretationController {
 
       const results = await this.model.search({ type, serial, field, keyword });
       
-      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-      res.end(JSON.stringify({
-        success: true,
-        count: results.length,
-        data: results
-      }));
+      // res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+      // res.end(JSON.stringify({
+      //   success: true,
+      //   count: results.length,
+      //   data: results
+      // }));
+      res.status(200).json({          
+          success: true,
+          count: results.length,
+          data: results
+      })
     } catch (error) {
       console.error('Search error:', error);
-      res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
-      res.end(JSON.stringify({ 
-        success: false, 
-        error: '서버 오류가 발생했습니다.' 
-      }));
+      // res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+      // res.end(JSON.stringify({ 
+      //   success: false, 
+      //   error: '서버 오류가 발생했습니다.' 
+      // }));
+      res.status(500).json({
+        success: false, error: '서버 오류가 발생했습니다.' 
+      });
     }
   }
 
@@ -51,37 +59,56 @@ export class InterpretationController {
       const numId = parseInt(id, 10);
       
       if (isNaN(numId)) {
-        res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
-        res.end(JSON.stringify({ 
-          success: false, 
-          error: '올바른 ID 형식이 아닙니다.' 
-        }));
+        // res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+        // res.end(JSON.stringify({ 
+        //   success: false, 
+        //   error: '올바른 ID 형식이 아닙니다.' 
+        // }));
+
+        res.status(400).json({
+          success: false, error: '올바른 ID 형식이 아닙니다.'
+        });
+        
         return;
       }
 
       const detail = await this.model.getDetail(numId);
       
       if (!detail) {
-        res.writeHead(404, { 'Content-Type': 'application/json; charset=utf-8' });
-        res.end(JSON.stringify({ 
-          success: false, 
-          error: '해당 ID의 데이터를 찾을 수 없습니다.' 
-        }));
+        // res.writeHead(404, { 'Content-Type': 'application/json; charset=utf-8' });
+        // res.end(JSON.stringify({ 
+        //   success: false, 
+        //   error: '해당 ID의 데이터를 찾을 수 없습니다.' 
+        // }));
+
+        res.status(404).json({
+          success:false, error: '해당 ID의 데이터를 찾을 수 없습니다.'
+        });
+
         return;
       }
 
-      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-      res.end(JSON.stringify({ 
+      // res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+      // res.end(JSON.stringify({ 
+      //   success: true, 
+      //   data: detail 
+      // }));
+
+      res.status(200).json({          
         success: true, 
         data: detail 
-      }));
+      });
+
     } catch (error) {
       console.error('Get detail error:', error);
-      res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
-      res.end(JSON.stringify({ 
-        success: false, 
-        error: '서버 오류가 발생했습니다.' 
-      }));
+      // res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+      // res.end(JSON.stringify({ 
+      //   success: false, 
+      //   error: '서버 오류가 발생했습니다.' 
+      // }));
+      res.status(500).json({          
+        success: false, error: '서버 오류가 발생했습니다.' 
+      });
     }
   }
 
@@ -90,19 +117,31 @@ export class InterpretationController {
     try {
       const results = await this.model.getInitialData();
       
-      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-      res.end(JSON.stringify({
+      // res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+      // res.end(JSON.stringify({
+      //   success: true,
+      //   count: results.length,
+      //   data: results
+      // }));
+
+      res.status(200).json({          
         success: true,
         count: results.length,
         data: results
-      }));
+      });
+
     } catch (error) {
       console.error('Initial data error:', error);
-      res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
-      res.end(JSON.stringify({ 
-        success: false, 
-        error: '서버 오류가 발생했습니다.' 
-      }));
+      // res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+      // res.end(JSON.stringify({ 
+      //   success: false, 
+      //   error: '서버 오류가 발생했습니다.' 
+      // }));
+
+      res.status(500).json({
+        success: false, error: '서버 오류가 발생했습니다.' 
+      });
+
     }
   }
 }

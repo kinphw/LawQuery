@@ -13,7 +13,8 @@ export class LawModel {
         // this.currentResults = data;
 
         // ✅ 백엔드에서 배열 그대로 보내므로 타입 캐스팅만 간단히
-        const data = await response.json() as LawResult[];
+        // const data = await response.json() as LawResult[];
+        const { data } = await response.json() as { success: boolean; data: LawResult[] };
 
         this.currentResults = data;
         return this.currentResults;
@@ -30,7 +31,8 @@ export class LawModel {
         const response = await fetch(`/api/law/get?${params}`);
 
         // const response = await fetch(`/api/law/get?id=${lawIds.join(',')}`);
-        const data = await response.json() as LawResult[];
+        // const data = await response.json() as LawResult[];
+        const { data } = await response.json() as { success: boolean; data: LawResult[] };
 
         this.currentResults = data;
         return this.currentResults;
@@ -50,7 +52,8 @@ export class LawModel {
     // }  
     async getLawTitles(): Promise<LawTitle[]> {
         const response = await fetch('/api/law/getTitles');
-        const data = await response.json() as LawTitle[];
+        // const data = await response.json() as LawTitle[];
+        const { data } = await response.json() as { success: boolean; data: LawTitle[] };
         return data;
     }
 
