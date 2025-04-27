@@ -85,7 +85,7 @@ export class LawModel {
           ) AS rule_content
         
         FROM db_a a
-        WHERE a.id_a IN (${placeholders})      
+        WHERE a.id_aa IN (${placeholders}) -- 검색자를 id_aa로 변경
         ORDER BY a.id;
     `;
     const rows = await db.query<LawResult>(query, [...lawIds]); // id정보는 여기 쿼리단에서 조합해서 던짐
@@ -95,10 +95,13 @@ export class LawModel {
   async getLawTitles(): Promise<LawTitle[]> {
     const query = `
     SELECT 
-        id_a, 
+        id_aa as id_a,  -- id_a가 아니라 id_aa로 변경, 그러나 alias는 id_a로 변경해야 기존 코드와 호환
         title_a,
         CASE WHEN id_a IS NULL THEN 1 ELSE 0 END as isTitle 
-    FROM db_a 
+    FROM db_a
+    
+    WHERE title_a IS NOT NULL -- title_a가 NULL이 아닌 것만 가져옴
+    
     ORDER BY id
     `;
     return await db.query<LawTitle>(query);

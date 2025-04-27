@@ -14,7 +14,7 @@ db_url = f"mysql+pymysql://{os.getenv('MYSQL_USER')}:{os.getenv('MYSQL_PASSWORD'
 engine = create_engine(db_url)
 
 # 엑셀 파일 경로
-excel_path = "data/db_aesr.xlsx"
+excel_path = input("엑셀 파일 경로를 입력하세요: ") # data/db_aesr.xlsx
 
 # 모든 시트 읽기
 sheets = pd.read_excel(excel_path, sheet_name=None)
@@ -23,6 +23,11 @@ sheets = pd.read_excel(excel_path, sheet_name=None)
 for sheet_name, df in sheets.items():
     table_name = sheet_name.strip().lower().replace(" ", "_")  # 테이블 이름 정리
     print(f"▶ 업로드 중: 시트 '{sheet_name}' → 테이블 '{table_name}'")
+
+    # _x000D_를 \n으로 되살리기 (또는 없애기)
+    for col in df.select_dtypes(include=['object']).columns:
+        df[col] = df[col].str.replace('_x000D_', '', regex=False)
+
     df.to_sql(name=table_name, con=engine, index=False, if_exists="replace")
 
 print("✅ 모든 시트가 MySQL 테이블로 업로드되었습니다!")
