@@ -15,7 +15,8 @@ export class LawController {
   // async getAll(req: IncomingMessage, res: ServerResponse) {
   async getAll(req: Request, res: Response): Promise<void> {  
     // const data = await this.service.getAllLaws();
-    const data = await this.model.getAllLaws();
+    const dataTemp = await this.model.getAllLaws();
+    const data = this.model.toLawTree(dataTemp);
     // res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
     // res.end(JSON.stringify({ success: true, data }));
     // res.end(JSON.stringify(data)); // 그냥 간단하게 내보낸다...
