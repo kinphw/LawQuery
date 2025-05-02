@@ -65,7 +65,7 @@ export class LawEventManager {
             if (e.key === 'Enter') {
                 e.preventDefault(); // 폼 제출 방지
                 // performTextSearch();
-                this.textSearch();
+                this.textSearch()
             }
         });
     }
@@ -76,14 +76,15 @@ export class LawEventManager {
     ////////////////////////////////////////////////////
 
     // 검색어 조회 이벤트핸들러
-    private textSearch(): void {
+    private async textSearch(): Promise<void> {
 
         const searchInput = document.getElementById('lawTextSearch') as HTMLInputElement;
         const searchBtn = document.getElementById('lawTextSearchBtn');
 
         const searchText = searchInput.value;
         const filteredResults = this.controller.model.filterByText(searchText, this.controller.dataManager.currentResults);
-        this.controller.view.render(filteredResults, searchText);
+        await this.controller.view.render(filteredResults, searchText);
+        this.bindHeaderEvents();
         this.controller.view.showToast('검색결과를 재조회하였습니다.');
     }
 

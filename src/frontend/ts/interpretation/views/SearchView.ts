@@ -65,7 +65,8 @@ export class SearchView {
     }
   }  
 
-  renderHeader(): void {
+  async renderHeader(): Promise<void> {
+    await this.header.init();
     const headerContainer = document.getElementById('header');
     if (headerContainer) {
       // 'interpretation' 페이지를 현재 페이지로 지정

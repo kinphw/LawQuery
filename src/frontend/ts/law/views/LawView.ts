@@ -16,7 +16,8 @@ export class LawView {
     }
 
     // render(results: LawResult[], searchText: string = ''): void {
-    render(results: LawTreeNode[], searchText: string = ''): void {
+    async render(results: LawTreeNode[], searchText: string = ''): Promise<void> {
+        await this.header.init();
         document.getElementById('header')!.innerHTML = this.header.render('law');
         document.getElementById('results')!.innerHTML = 
             this.lawTable.render(results, searchText);

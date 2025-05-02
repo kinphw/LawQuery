@@ -47,7 +47,15 @@
         "group": "build",
         "isBackground": true,        
         "problemMatcher": []
-      }
+      },
+      {
+        "label": "Sync README version",
+        "type": "shell",
+        "command": "node",
+        "args": ["tools/update-readme-version.js"],
+        "group": "none",
+        "problemMatcher": []
+      }      
     ]
   }
   
