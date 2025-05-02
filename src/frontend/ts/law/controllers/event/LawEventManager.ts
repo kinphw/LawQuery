@@ -113,5 +113,6 @@ export class LawEventManager {
         this.controller.view.render(this.controller.dataManager.currentResults);
         // Rebind all events after re-render
         this.bindHeaderEvents();
+        this.controller.view.showToast('글자크기 변경');
     }    
 }

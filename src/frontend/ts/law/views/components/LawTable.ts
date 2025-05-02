@@ -12,7 +12,8 @@ export class LawTable {
         '전자금융감독규정시행세칙\n[시행 2025. 2. 5.]\n[금융감독원세칙 , 2025. 2. 3., 일부개정]'
     ]
 
-    private currentTextSize: string = 'small'; // Add text size state
+    // private currentTextSize: string = 'small'; // Add text size state
+    private currentTextSize: string = ''; // Add text size state
 
     private lawIds: string[] = []; // 조문 ID 목록 저장
 
@@ -135,10 +136,10 @@ export class LawTable {
         if (!law.children || law.children.length === 0) {
             // 조문만 있는 경우
             html += `<tr>
-                <td class="law-title law-box small">${this.formatContent(law.title, searchText)}</td>
-                <td class="decree-title law-box tree-indent-1 small"></td>
-                <td class="regulation-title law-box tree-indent-2 small"></td>
-                <td class="rule-title law-box tree-indent-3 small"></td>
+                <td class="law-title law-box ${this.currentTextSize}">${this.formatContent(law.title, searchText)}</td>
+                <td class="decree-title law-box tree-indent-1 ${this.currentTextSize}"></td>
+                <td class="regulation-title law-box tree-indent-2 ${this.currentTextSize}"></td>
+                <td class="rule-title law-box tree-indent-3 ${this.currentTextSize}"></td>
             </tr>`;
             return html;
         }
@@ -148,10 +149,10 @@ export class LawTable {
             if (!decree.children || decree.children.length === 0) {
                 // 시행령까지만 있는 경우
                 html += `<tr>
-                    ${i === 0 ? `<td class="law-title law-box small" rowspan="${lawRowspan}">${this.formatContent(law.title, searchText)}</td>` : ''}
-                    <td class="decree-title law-box tree-indent-1 small">${this.formatContent(decree.title, searchText)}</td>
-                    <td class="regulation-title law-box tree-indent-2 small"></td>
-                    <td class="rule-title law-box tree-indent-3 small"></td>
+                    ${i === 0 ? `<td class="law-title law-box ${this.currentTextSize}" rowspan="${lawRowspan}">${this.formatContent(law.title, searchText)}</td>` : ''}
+                    <td class="decree-title law-box tree-indent-1 ${this.currentTextSize}">${this.formatContent(decree.title, searchText)}</td>
+                    <td class="regulation-title law-box tree-indent-2 ${this.currentTextSize}"></td>
+                    <td class="rule-title law-box tree-indent-3 ${this.currentTextSize}"></td>
                 </tr>`;
                 return;
             }
@@ -160,20 +161,20 @@ export class LawTable {
                 if (!regulation.children || regulation.children.length === 0) {
                     // 감독규정까지만 있는 경우
                     html += `<tr>
-                        ${i === 0 && j === 0 ? `<td class="law-title law-box small" rowspan="${lawRowspan}">${this.formatContent(law.title, searchText)}</td>` : ''}
-                        ${j === 0 ? `<td class="decree-title law-box tree-indent-1 small" rowspan="${decreeRowspan}">${this.formatContent(decree.title, searchText)}</td>` : ''}
-                        <td class="regulation-title law-box tree-indent-2 small">${this.formatContent(regulation.title, searchText)}</td>
-                        <td class="rule-title law-box tree-indent-3 small"></td>
+                        ${i === 0 && j === 0 ? `<td class="law-title law-box ${this.currentTextSize}" rowspan="${lawRowspan}">${this.formatContent(law.title, searchText)}</td>` : ''}
+                        ${j === 0 ? `<td class="decree-title law-box tree-indent-1 ${this.currentTextSize}" rowspan="${decreeRowspan}">${this.formatContent(decree.title, searchText)}</td>` : ''}
+                        <td class="regulation-title law-box tree-indent-2 ${this.currentTextSize}">${this.formatContent(regulation.title, searchText)}</td>
+                        <td class="rule-title law-box tree-indent-3 ${this.currentTextSize}"></td>
                     </tr>`;
                     return;
                 }
                 regulation.children.forEach((rule, k) => {
                     // 시행세칙까지 있는 경우
                     html += `<tr>
-                        ${i === 0 && j === 0 && k === 0 ? `<td class="law-title law-box small" rowspan="${lawRowspan}">${this.formatContent(law.title, searchText)}</td>` : ''}
-                        ${j === 0 && k === 0 ? `<td class="decree-title law-box tree-indent-1 small" rowspan="${decreeRowspan}">${this.formatContent(decree.title, searchText)}</td>` : ''}
-                        ${k === 0 ? `<td class="regulation-title law-box tree-indent-2 small" rowspan="${regulationRowspan}">${this.formatContent(regulation.title, searchText)}</td>` : ''}
-                        <td class="rule-title law-box tree-indent-3 small">${this.formatContent(rule.title, searchText)}</td>
+                        ${i === 0 && j === 0 && k === 0 ? `<td class="law-title law-box ${this.currentTextSize}" rowspan="${lawRowspan}">${this.formatContent(law.title, searchText)}</td>` : ''}
+                        ${j === 0 && k === 0 ? `<td class="decree-title law-box tree-indent-1 ${this.currentTextSize}" rowspan="${decreeRowspan}">${this.formatContent(decree.title, searchText)}</td>` : ''}
+                        ${k === 0 ? `<td class="regulation-title law-box tree-indent-2 ${this.currentTextSize}" rowspan="${regulationRowspan}">${this.formatContent(regulation.title, searchText)}</td>` : ''}
+                        <td class="rule-title law-box tree-indent-3 ${this.currentTextSize}">${this.formatContent(rule.title, searchText)}</td>
                     </tr>`;
                 });
             });
