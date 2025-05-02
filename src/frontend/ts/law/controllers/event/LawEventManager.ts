@@ -50,21 +50,22 @@ export class LawEventManager {
         const searchInput = document.getElementById('lawTextSearch') as HTMLInputElement;
         const searchBtn = document.getElementById('lawTextSearchBtn');
         
-        const performTextSearch = () => {
-            const searchText = searchInput.value;
-            const filteredResults = this.controller.model.filterByText(searchText, this.controller.dataManager.currentResults);
-            this.controller.view.render(filteredResults, searchText);
-            this.controller.view.showToast('검색결과를 재조회하였습니다.');
-        };
+        // const performTextSearch = () => {
+        //     const searchText = searchInput.value;
+        //     const filteredResults = this.controller.model.filterByText(searchText, this.controller.dataManager.currentResults);
+        //     this.controller.view.render(filteredResults, searchText);
+        //     this.controller.view.showToast('검색결과를 재조회하였습니다.');
+        // };
     
         // 검색 버튼 클릭 이벤트
-        searchBtn?.addEventListener('click', performTextSearch);
+        searchBtn?.addEventListener('click', () => this.textSearch());
         
         // 엔터키 이벤트
         searchInput?.addEventListener('keypress', (e: KeyboardEvent) => {
             if (e.key === 'Enter') {
                 e.preventDefault(); // 폼 제출 방지
-                performTextSearch();
+                // performTextSearch();
+                this.textSearch();
             }
         });
     }
@@ -74,6 +75,19 @@ export class LawEventManager {
     // 이하는 이벤트핸들러
     ////////////////////////////////////////////////////
 
+    // 검색어 조회 이벤트핸들러
+    private textSearch(): void {
+
+        const searchInput = document.getElementById('lawTextSearch') as HTMLInputElement;
+        const searchBtn = document.getElementById('lawTextSearchBtn');
+
+        const searchText = searchInput.value;
+        const filteredResults = this.controller.model.filterByText(searchText, this.controller.dataManager.currentResults);
+        this.controller.view.render(filteredResults, searchText);
+        this.controller.view.showToast('검색결과를 재조회하였습니다.');
+    }
+
+    // 조문별 조회 이벤트핸들러러
     private async handleSearch(): Promise<void> {
         const selectedLaws = Array.from(document.querySelectorAll('input[type="checkbox"]:checked'))
             .map(cb => (cb as HTMLInputElement).value)
@@ -107,6 +121,7 @@ export class LawEventManager {
     }    
 
 
+    // 글자크기 변경 이벤트핸들러
     private handleTextSizeChange(e: Event): void {
         const target = e.target as HTMLInputElement;
         this.controller.view.lawTable.setTextSize(target.value);
