@@ -42,7 +42,8 @@ export class LawController {
     }
 
     // const data = await this.service.getLawById(id);
-    const data = await this.model.getLawByIds(lawIds);
+    const dataTemp = await this.model.getLawByIds(lawIds);
+    const data = this.model.toLawTree(dataTemp);    
     // res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
     // res.end(JSON.stringify(data));
     // res.status(200).json(data);

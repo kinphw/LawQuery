@@ -7,47 +7,47 @@ import { LawTitle } from '../types/LawTitle';
 import { LawTreeNode } from '../types/LawTreeNode';
 
 export class LawModel {
-  async getAllLawsOld(): Promise<LawResult[]> {
-    const query = `
+  // async getAllLawsOld(): Promise<LawResult[]> {
+  //   const query = `
 
-          SELECT
-          a.id_a, 
-          a.content_a AS law_content,
+  //         SELECT
+  //         a.id_a, 
+  //         a.content_a AS law_content,
         
-          -- 시행령
-          (
-            SELECT GROUP_CONCAT(DISTINCT e.content_e ORDER BY e.id SEPARATOR '|*|')
-            FROM db_e e
-            JOIN rdb_ae ae ON ae.id_e = e.id_e
-            WHERE ae.id_a = a.id_a
-          ) AS decree_content,
+  //         -- 시행령
+  //         (
+  //           SELECT GROUP_CONCAT(DISTINCT e.content_e ORDER BY e.id SEPARATOR '|*|')
+  //           FROM db_e e
+  //           JOIN rdb_ae ae ON ae.id_e = e.id_e
+  //           WHERE ae.id_a = a.id_a
+  //         ) AS decree_content,
         
-          -- 감독규정
-          (
-            SELECT GROUP_CONCAT(DISTINCT s.content_s ORDER BY s.id SEPARATOR '|*|')
-            FROM db_s s
-            JOIN rdb_es es ON es.id_s = s.id_s
-            JOIN rdb_ae ae ON ae.id_e = es.id_e
-            WHERE ae.id_a = a.id_a
-          ) AS regulation_content,
+  //         -- 감독규정
+  //         (
+  //           SELECT GROUP_CONCAT(DISTINCT s.content_s ORDER BY s.id SEPARATOR '|*|')
+  //           FROM db_s s
+  //           JOIN rdb_es es ON es.id_s = s.id_s
+  //           JOIN rdb_ae ae ON ae.id_e = es.id_e
+  //           WHERE ae.id_a = a.id_a
+  //         ) AS regulation_content,
         
-          -- 시행세칙
-          (
-            SELECT GROUP_CONCAT(DISTINCT r.content_r ORDER BY r.id SEPARATOR '|*|')
-            FROM db_r r
-            JOIN rdb_sr sr ON sr.id_r = r.id_r
-            JOIN rdb_es es ON es.id_s = sr.id_s
-            JOIN rdb_ae ae ON ae.id_e = es.id_e
-            WHERE ae.id_a = a.id_a
-          ) AS rule_content
+  //         -- 시행세칙
+  //         (
+  //           SELECT GROUP_CONCAT(DISTINCT r.content_r ORDER BY r.id SEPARATOR '|*|')
+  //           FROM db_r r
+  //           JOIN rdb_sr sr ON sr.id_r = r.id_r
+  //           JOIN rdb_es es ON es.id_s = sr.id_s
+  //           JOIN rdb_ae ae ON ae.id_e = es.id_e
+  //           WHERE ae.id_a = a.id_a
+  //         ) AS rule_content
         
-        FROM db_a a
-        ORDER BY a.id;
+  //       FROM db_a a
+  //       ORDER BY a.id;
   
-    `;
-    const rows = await db.query<LawResult>(query);
-    return rows;
-  }
+  //   `;
+  //   const rows = await db.query<LawResult>(query);
+  //   return rows;
+  // }
 
   async getAllLaws(): Promise<LawResult[]> {
     const query = `
@@ -126,41 +126,109 @@ export class LawModel {
     if (!lawIds.length) return [];
 
     const placeholders = new Array(lawIds.length).fill('?').join(',');    
-    const query = `
-          SELECT
-          a.id_a, 
-          a.content_a AS law_content,
+    // const query = `
+    //       SELECT
+    //       a.id_a, 
+    //       a.content_a AS law_content,
         
-          -- 시행령
-          (
-            SELECT GROUP_CONCAT(DISTINCT e.content_e ORDER BY e.id SEPARATOR '|*|')
-            FROM db_e e
-            JOIN rdb_ae ae ON ae.id_e = e.id_e
-            WHERE ae.id_a = a.id_a
-          ) AS decree_content,
+    //       -- 시행령
+    //       (
+    //         SELECT GROUP_CONCAT(DISTINCT e.content_e ORDER BY e.id SEPARATOR '|*|')
+    //         FROM db_e e
+    //         JOIN rdb_ae ae ON ae.id_e = e.id_e
+    //         WHERE ae.id_a = a.id_a
+    //       ) AS decree_content,
         
-          -- 감독규정
-          (
-            SELECT GROUP_CONCAT(DISTINCT s.content_s ORDER BY s.id SEPARATOR '|*|')
-            FROM db_s s
-            JOIN rdb_es es ON es.id_s = s.id_s
-            JOIN rdb_ae ae ON ae.id_e = es.id_e
-            WHERE ae.id_a = a.id_a
-          ) AS regulation_content,
+    //       -- 감독규정
+    //       (
+    //         SELECT GROUP_CONCAT(DISTINCT s.content_s ORDER BY s.id SEPARATOR '|*|')
+    //         FROM db_s s
+    //         JOIN rdb_es es ON es.id_s = s.id_s
+    //         JOIN rdb_ae ae ON ae.id_e = es.id_e
+    //         WHERE ae.id_a = a.id_a
+    //       ) AS regulation_content,
         
-          -- 시행세칙
-          (
-            SELECT GROUP_CONCAT(DISTINCT r.content_r ORDER BY r.id SEPARATOR '|*|')
-            FROM db_r r
-            JOIN rdb_sr sr ON sr.id_r = r.id_r
-            JOIN rdb_es es ON es.id_s = sr.id_s
-            JOIN rdb_ae ae ON ae.id_e = es.id_e
-            WHERE ae.id_a = a.id_a
-          ) AS rule_content
+    //       -- 시행세칙
+    //       (
+    //         SELECT GROUP_CONCAT(DISTINCT r.content_r ORDER BY r.id SEPARATOR '|*|')
+    //         FROM db_r r
+    //         JOIN rdb_sr sr ON sr.id_r = r.id_r
+    //         JOIN rdb_es es ON es.id_s = sr.id_s
+    //         JOIN rdb_ae ae ON ae.id_e = es.id_e
+    //         WHERE ae.id_a = a.id_a
+    //       ) AS rule_content
         
-        FROM db_a a
-        WHERE a.id_aa IN (${placeholders}) -- 검색자를 id_aa로 변경
-        ORDER BY a.id;
+    //     FROM db_a a
+    //     WHERE a.id_aa IN (${placeholders}) -- 검색자를 id_aa로 변경
+    //     ORDER BY a.id;
+    // `;
+
+    const query =  `
+
+    SELECT
+      t.id_aa,
+      t.id_a,
+      t.law_content,
+      t.id_e,
+      t.decree_content,
+      t.id_s,
+      t.regulation_content,
+      t.id_r,
+      t.rule_content
+    FROM (
+      SELECT
+        a.id_aa AS id_aa,
+        a.id AS ida,
+        a.id_a,
+        a.content_a AS law_content,
+        ae.id_e,
+        e.id AS ide,
+        e.content_e AS decree_content,
+        es.id_s,
+        s.id AS ids,
+        s.content_s AS regulation_content,
+        sr.id_r,
+        r.id AS idr,
+        r.content_r AS rule_content,
+        COUNT(*) OVER (PARTITION BY a.id_a) AS a_count
+      FROM db_a a
+      LEFT JOIN rdb_ae ae ON ae.id_a = a.id_a
+      LEFT JOIN rdb_es es ON es.id_e = ae.id_e
+      LEFT JOIN rdb_sr sr ON sr.id_s = es.id_s
+      LEFT JOIN db_e e ON e.id_e = ae.id_e
+      LEFT JOIN db_s s ON s.id_s = es.id_s
+      LEFT JOIN db_r r ON r.id_r = sr.id_r
+
+      UNION ALL
+
+      SELECT
+        a.id_aa AS id_aa,
+        a.id AS ida,
+        NULL AS id_a,
+        a.content_a AS law_content,
+        NULL AS id_e,
+        NULL AS ide,
+        NULL AS decree_content,
+        NULL AS id_s,
+        NULL AS ids,
+        NULL AS regulation_content,
+        NULL AS id_r,
+        NULL AS idr,
+        NULL AS rule_content,
+        1 AS a_count
+      FROM db_a a
+      WHERE a.id_a IS NULL AND a.title_a IS NOT NULL
+    ) t
+    WHERE
+      NOT (
+        t.law_content IS NOT NULL
+        AND t.decree_content IS NULL
+        AND t.regulation_content IS NULL
+        AND t.rule_content IS NULL
+        AND t.a_count > 1
+      )
+    AND t.id_aa IN (${placeholders}) -- 검색자를 id_aa로 변경
+    ORDER BY t.ida, t.ide, t.ids, t.idr;  
     `;
     const rows = await db.query<LawResult>(query, [...lawIds]); // id정보는 여기 쿼리단에서 조합해서 던짐
     return rows;
