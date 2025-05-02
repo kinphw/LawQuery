@@ -97,7 +97,7 @@ export class LawEventManager {
         if (selectedLaws.length) {
             const results = await this.controller.model.getLawsByIds(selectedLaws);
             this.controller.dataManager.currentResults = results;
-            this.controller.view.render(results);
+            await this.controller.view.render(results);
             this.controller.view.showToast('검색결과를 재조회하였습니다.'); // 추가  
 
             // 조문별 선택조회 접기 (Bootstrap 없이 직접 class 조작)
