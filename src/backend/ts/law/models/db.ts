@@ -19,6 +19,11 @@ class Database {
             waitForConnections: true,
             connectionLimit: 10,
         });
+
+        // 🔥 새 커넥션이 열릴 때마다 group_concat_max_len 세팅
+        this.pool.on('connection', (connection) => {
+            connection.query('SET SESSION group_concat_max_len = 1000000;');
+        });
     }
 
     public static getInstance(): Database {
