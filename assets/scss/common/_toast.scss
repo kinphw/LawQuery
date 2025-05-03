@@ -1,0 +1,20 @@
+.toast-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 9999;  /* 가장 높은 z-index로 수정 */
+  }
+  
+  .toast-message {
+    background-color: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 12px 24px;
+    border-radius: 4px;
+    margin-bottom: 10px;
+    opacity: 0;
+    transition: opacity 0.3s ease-in-out;
+  }
+  
+  .toast-message.show {
+    opacity: 1;
+  }

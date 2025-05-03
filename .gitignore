@@ -30,3 +30,7 @@ node_modules
 .env.*
 
 lq.code-workspace
+
+# scss 산출물
+assets/css/style.css
+

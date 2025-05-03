@@ -1,0 +1,23 @@
+input[type="radio"] {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+  }
+  
+  /* 선택된 라벨 스타일 */
+  input[type="radio"]:checked + label {
+    background-color: #6c757d;
+    color: white;
+    border-color: #6c757d;
+  }
+  
+  .btn-check:checked + .btn-outline-secondary {
+    background-color: #6c757d;
+    color: white;
+  }
+  
+  .btn-sm {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+  }

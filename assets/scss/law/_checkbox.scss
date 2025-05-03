@@ -1,0 +1,51 @@
+#lawCheckboxes {
+    display: flex;
+    flex-direction: column;
+    /* max-height: 300px; */
+    overflow-y: auto;
+    padding: 0 2rem;
+    /* padding : 0; */
+    gap: 0px;  /* Minimal gap between items */      
+  }
+  
+  .form-check {
+    position: relative;
+    margin: 0;
+    padding: 2px 0.1rem 2px 1.5rem;  /* Reduced vertical padding */
+  }
+  
+  .form-check-label {
+    font-size: 0.875rem;  /* Match Bootstrap's small */
+    line-height: 1.2;     /* Tighter line height */
+  }
+  
+  .form-check-input {
+    position: absolute;     /* Absolute positioning */
+    left: 0;               /* Align to left */
+    margin-top: 0.25rem;   /* Vertical alignment */
+  }
+  
+  /* 체크박스용 */
+  
+  .title-row {
+    background-color: #f8f9fa;
+    border-top: 1px solid #dee2e6;
+    margin-top: 0.5rem;
+  }
+
+  #lawSearchHeader {
+    position: sticky;
+    top: 0;
+    z-index: 999;
+    background-color: white;
+    border-bottom: 1px solid rgba(0,0,0,.125);
+  }
+  
+  #lawSearchHeader .btn-link {
+    text-decoration: none;
+    color: #212529;
+  }
+  
+  #lawSearchHeader .btn-link:hover {
+    color: #0d6efd;
+  }    

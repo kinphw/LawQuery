@@ -1,0 +1,24 @@
+// 공통
+// @import "common/variables";
+// @import "common/mixins";
+// @import "common/bootstrap-overrides";
+@import "common/base";
+// @import "common/header";
+// @import "common/modal";
+@import "common/toast";
+@import "common/utilities";
+
+// Law
+@import "law/layout";
+@import "law/table";
+@import "law/checkbox";
+// @import "law/penalty";
+@import "law/forms";
+// @import "law/responsive";
+
+// Interpretation
+// @import "interpretation/layout";
+// @import "interpretation/table";
+// @import "interpretation/searchform";
+// @import "interpretation/detail";
+// @import "interpretation/responsive";

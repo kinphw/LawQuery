@@ -1,0 +1,11 @@
+.multi-line {
+    /* 개행(\n) 문자를 줄바꿈으로 처리 */
+    white-space: pre-wrap; 
+    /* 필요 시 word-wrap도 함께 */
+    word-wrap: break-word;
+  }
+  
+  .text-xs {
+    font-size: 0.7rem !important;  /* 12px */
+    font-weight: 400;
+  }
