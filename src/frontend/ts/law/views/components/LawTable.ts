@@ -132,10 +132,13 @@ export class LawTable {
     ): string {
         let html = '';
         const lawRowspan = this.countLeaf(law);
+
+        // id_a가 없으면 타이틀 행으로 간주
+        const rowClass = !law.id_aa ? 'title-row' : '';        
     
         if (!law.children || law.children.length === 0) {
-            // 조문만 있는 경우
-            html += `<tr>
+            // 조문만 있는 경우 : rowClass는 여기에만 적용해도 됨
+            html += `<tr class="${rowClass}"> 
                 <td class="law-title law-box ${this.currentTextSize}">${this.formatContent(law.title, searchText)}</td>
                 <td class="decree-title law-box tree-indent-1 ${this.currentTextSize}"></td>
                 <td class="regulation-title law-box tree-indent-2 ${this.currentTextSize}"></td>
