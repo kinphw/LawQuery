@@ -14,16 +14,23 @@
     <!-- 텍스트 검색 영역 -->
     <div class="container mb-3">
         <div class="card">
-            <div class="card-body p-2">
-                <div class="input-group">
-                    <input type="text" id="lawTextSearch" class="form-control" placeholder="법령 내용 검색...">
-                    <button class="btn btn-outline-secondary" type="button" id="lawTextSearchBtn">
-                        <i class="fas fa-search"></i>
-                    </button>
-                </div>
+          <div class="card-body p-2">
+            <div class="d-flex align-items-center">
+                <div class="input-group" style="flex: 1 1 0; max-width: 90%;">
+                <input type="text" id="lawTextSearch" class="form-control" placeholder="법령 내용 검색...">
+                <button class="btn btn-outline-secondary" type="button" id="lawTextSearchBtn">
+                  <i class="fas fa-search"></i>
+                </button>
+              </div>
+
+              <button class="btn btn-warning ms-2 ms-auto" id="penaltyBtn">
+                <i class="fas fa-gavel"></i> 벌칙
+              </button>
+
             </div>
+          </div>
         </div>
-    </div>
+      </div>
 
     <!-- 조문 검색 영역 추가 -->
     <div class="container mb-3">
@@ -61,6 +68,14 @@
             <label class="btn btn-outline-secondary btn-sm" for="sizeXS">작게</label>
         </div>
     </div>
+
+    <!-- 벌칙 버튼만 별도 행(컨테이너)으로 -->
+    <!-- <div class="container mb-3 text-end">
+        <button class="btn btn-warning" id="penaltyBtn">
+        <i class="fas fa-gavel"></i> 벌칙
+        </button>
+    </div> -->
+
 
     <div id="results"></div>
 
