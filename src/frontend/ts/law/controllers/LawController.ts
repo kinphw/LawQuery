@@ -6,7 +6,14 @@
 import { IController } from "../../common/interfaces/IController";
 
 import { LawDataManager } from "./data/LawDataManager";
-import { LawEventManager } from "./event/LawEventManager";
+// import { LawEventManager } from "./event/LawEventManager";
+import { ILawEventManager } from "./event/ILawEventManager";
+import { LawHeaderEventManager } from "./event/LawHeaderEventManager";
+import { LawTextSizeEventManager } from "./event/LawTextSizeEventManager";
+import { LawSearchEventManager } from "./event/LawSearchEventManager";
+import { LawTextSearchEventManager } from "./event/LawTextSearchEventManager";
+// ...existing code...
+
 
 import { LawModel } from "../models/LawModel";
 import { LawView } from "../views/LawView";
@@ -15,7 +22,7 @@ import { LawResult } from "../types/LawResult";
 export interface ILawController extends IController {
 
     dataManager: LawDataManager;
-    eventManager: LawEventManager;
+    // eventManager: LawEventManager;
 
     model: LawModel;
     view: LawView;
@@ -25,11 +32,12 @@ export interface ILawController extends IController {
 export class LawController implements ILawController {
 
     dataManager: LawDataManager;
-    eventManager: LawEventManager;
+    // eventManager: LawEventManager;
 
     model!: LawModel;
     view!: LawView;
     // currentResults: LawResult[] = []; // Store current results
+    private eventManagers: ILawEventManager[];    
 
     constructor() {
 
@@ -39,7 +47,16 @@ export class LawController implements ILawController {
         this.view = new LawView();
 
         this.dataManager = new LawDataManager(this);
-        this.eventManager = new LawEventManager(this);
+        // this.eventManager = new LawEventManager(this);
+
+        // 이벤트매니저들을 배열로 관리
+        this.eventManagers = [
+            new LawHeaderEventManager(this),
+            new LawTextSizeEventManager(this),
+            new LawSearchEventManager(this),
+            new LawTextSearchEventManager(this)
+        ];
+
     }
 
     async initialize(): Promise<void> {
@@ -57,7 +74,10 @@ export class LawController implements ILawController {
             this.view.lawTable.renderLawCheckboxes(this.dataManager.lawTitles);
 
         // 이벤트 바인딩을 컨트롤러에서 일괄 처리
-        this.eventManager.bindEvents();
+        // this.eventManager.bindEvents();
+        // 모든 이벤트매니저의 이벤트 바인딩 실행
+        this.eventManagers.forEach(em => em.bindEvents());
+
     }
 
     // 이하는 이벤트바인딩 함수
