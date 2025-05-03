@@ -1,7 +1,5 @@
 // LawController.ts:
 // 법령조회의 컨트롤러
-// v0.0.1
-// 2025-03-03
 
 import { IController } from "../../common/interfaces/IController";
 
@@ -12,10 +10,14 @@ import { LawHeaderEventManager } from "./event/LawHeaderEventManager";
 import { LawTextSizeEventManager } from "./event/LawTextSizeEventManager";
 import { LawSearchEventManager } from "./event/LawSearchEventManager";
 import { LawTextSearchEventManager } from "./event/LawTextSearchEventManager";
-// ...existing code...
+import { LawPenaltyEventManager } from "./event/LawPenaltyEventManager"; // 250504
 
+// import { LawModel } from "../models/LawModel";
+import { LawFetchAllModel } from "../models/LawFetchAllModel";
+import { LawFetchByIdModel } from "../models/LawFetchByIdModel";
+import { LawFetchTitleModel } from "../models/LawFetchTitleModel"
+import { LawTextFilterModel } from "../models/LawTextFilterModel";
 
-import { LawModel } from "../models/LawModel";
 import { LawView } from "../views/LawView";
 import { LawResult } from "../types/LawResult";
 
@@ -24,7 +26,11 @@ export interface ILawController extends IController {
     dataManager: LawDataManager;
     // eventManager: LawEventManager;
 
-    model: LawModel;
+    // model: LawModel;
+    modelFetchAll: LawFetchAllModel;
+    modelFetchById: LawFetchByIdModel;
+    modelFetchTitle: LawFetchTitleModel;
+    modelTextFilter: LawTextFilterModel;
     view: LawView;
     // currentResults: LawResult[]; // Store current results
 }
@@ -34,7 +40,13 @@ export class LawController implements ILawController {
     dataManager: LawDataManager;
     // eventManager: LawEventManager;
 
-    model!: LawModel;
+    // model!: LawModel;
+    modelFetchAll!: LawFetchAllModel;
+    modelFetchById!: LawFetchByIdModel;
+    modelFetchTitle!: LawFetchTitleModel;
+    modelTextFilter!: LawTextFilterModel;
+
+
     view!: LawView;
     // currentResults: LawResult[] = []; // Store current results
     private eventManagers: ILawEventManager[];    
@@ -43,10 +55,16 @@ export class LawController implements ILawController {
 
         // 모델과 뷰 초기화
         // this.model = new LawModel(db);
-        this.model = new LawModel();
+        // this.model = new LawModel();
+
+        this.modelFetchAll = new LawFetchAllModel();
+        this.modelFetchById = new LawFetchByIdModel();
+        this.modelFetchTitle = new LawFetchTitleModel();
+        this.modelTextFilter = new LawTextFilterModel();
+
         this.view = new LawView();
 
-        this.dataManager = new LawDataManager(this);
+        this.dataManager = new LawDataManager();
         // this.eventManager = new LawEventManager(this);
 
         // 이벤트매니저들을 배열로 관리
@@ -54,7 +72,8 @@ export class LawController implements ILawController {
             new LawHeaderEventManager(this),
             new LawTextSizeEventManager(this),
             new LawSearchEventManager(this),
-            new LawTextSearchEventManager(this)
+            new LawTextSearchEventManager(this),
+            new LawPenaltyEventManager(this) // ← 추가            
         ];
 
     }
@@ -64,14 +83,19 @@ export class LawController implements ILawController {
         // 초기 데이터 로드 및 렌더링
         // const results = await this.model.getAllLaws();        
         // Store initial results
-        await this.dataManager.setAllLaws();
-        this.view.render(this.dataManager.currentResults);
+        // await this.dataManager.setAllLaws(); // 결합도 제거! 위임없이 컨트롤러 본연의 역할 수행        
+        this.dataManager.setCurrentResults(await this.modelFetchAll.getAllLaws());
+        // this.view.render(this.dataManager.currentResults);
+        this.view.render(this.dataManager.getCurrentResults());
+
 
         // 체크박스 렌더링
         // const lawTitles = await this.model.getLawTitles();
-        await this.dataManager.setLawTitles();
+        this.dataManager.setLawTitles(await this.modelFetchTitle.getLawTitles());
+        // await this.dataManager.setLawTitles();
         document.getElementById('lawCheckboxes')!.innerHTML = 
-            this.view.lawTable.renderLawCheckboxes(this.dataManager.lawTitles);
+            // this.view.lawTable.renderLawCheckboxes(this.dataManager.lawTitles);
+            this.view.lawTable.renderLawCheckboxes(this.dataManager.getLawTitles());
 
         // 이벤트 바인딩을 컨트롤러에서 일괄 처리
         // this.eventManager.bindEvents();

@@ -17,7 +17,10 @@ export class LawTextSizeEventManager implements ILawEventManager {
     private handleTextSizeChange(e: Event): void {
         const target = e.target as HTMLInputElement;
         this.controller.view.lawTable.setTextSize(target.value);
-        this.controller.view.render(this.controller.dataManager.currentResults);
+        this.controller.view.render(
+            // this.controller.dataManager.currentResults
+            this.controller.dataManager.getCurrentResults()
+        );
         this.controller.view.header.setInfoButtonHandler();
         this.controller.view.showToast('글자크기 변경');
     }

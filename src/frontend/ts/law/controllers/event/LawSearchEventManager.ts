@@ -32,9 +32,11 @@ export class LawSearchEventManager implements ILawEventManager {
             .filter(id => id);
 
         if (selectedLaws.length) {
-            const results = await this.controller.model.getLawsByIds(selectedLaws);
-            this.controller.dataManager.currentResults = results;
-            await this.controller.view.render(results);
+            // const results = await this.controller.model.getLawsByIds(selectedLaws);
+            this.controller.dataManager.setCurrentResults(await this.controller.modelFetchById.getLawsByIds(selectedLaws));
+            // this.controller.dataManager.currentResults = results;
+            // await this.controller.view.render(results);
+            await this.controller.view.render(this.controller.dataManager.getCurrentResults());
             this.controller.view.showToast('검색결과를 재조회하였습니다.');
 
             const searchContent = document.getElementById('lawSearchContent');
