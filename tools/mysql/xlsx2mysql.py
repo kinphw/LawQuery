@@ -5,6 +5,8 @@ import pandas as pd
 from sqlalchemy import create_engine
 from dotenv import load_dotenv
 import os
+import tkinter as tk
+from tkinter import filedialog
 
 # .env 파일 로드
 load_dotenv('../../.env')
@@ -13,8 +15,18 @@ load_dotenv('../../.env')
 db_url = f"mysql+pymysql://{os.getenv('MYSQL_USER')}:{os.getenv('MYSQL_PASSWORD')}@{os.getenv('MYSQL_HOST')}:{os.getenv('MYSQL_PORT')}/{os.getenv('MYSQL_DB')}?charset=utf8mb4"
 engine = create_engine(db_url)
 
-# 엑셀 파일 경로
-excel_path = input("엑셀 파일 경로를 입력하세요: ") # data/db_aesr.xlsx
+# 엑셀 파일 선택 다이얼로그
+root = tk.Tk()
+root.withdraw()
+excel_path = filedialog.askopenfilename(
+    title="업로드할 엑셀 파일을 선택하세요",
+    filetypes=[("Excel files", "*.xlsx *.xls")],
+    initialdir=os.getcwd()  # 현재 작업 디렉토리에서 시작
+)
+
+if not excel_path:
+    print("❌ 엑셀 파일을 선택하지 않았습니다.")
+    exit()
 
 # 모든 시트 읽기
 sheets = pd.read_excel(excel_path, sheet_name=None)
