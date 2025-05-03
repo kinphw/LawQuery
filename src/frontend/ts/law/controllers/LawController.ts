@@ -17,8 +17,10 @@ import { LawFetchAllModel } from "../models/LawFetchAllModel";
 import { LawFetchByIdModel } from "../models/LawFetchByIdModel";
 import { LawFetchTitleModel } from "../models/LawFetchTitleModel"
 import { LawTextFilterModel } from "../models/LawTextFilterModel";
+import { LawFetchPenaltyModel } from "../models/LawFetchPenaltyModel";
 
 import { LawView } from "../views/LawView";
+import { LawPenaltyView } from "../views/components/LawPenaltyView";
 import { LawResult } from "../types/LawResult";
 
 export interface ILawController extends IController {
@@ -31,7 +33,9 @@ export interface ILawController extends IController {
     modelFetchById: LawFetchByIdModel;
     modelFetchTitle: LawFetchTitleModel;
     modelTextFilter: LawTextFilterModel;
+    modelFetchPenalty: LawFetchPenaltyModel; // 250504
     view: LawView;
+    viewPenalty: LawPenaltyView; // 250504
     // currentResults: LawResult[]; // Store current results
 }
 
@@ -45,9 +49,11 @@ export class LawController implements ILawController {
     modelFetchById!: LawFetchByIdModel;
     modelFetchTitle!: LawFetchTitleModel;
     modelTextFilter!: LawTextFilterModel;
+    modelFetchPenalty!: LawFetchPenaltyModel; // 250504
 
 
     view!: LawView;
+    viewPenalty!: LawPenaltyView; // 250504
     // currentResults: LawResult[] = []; // Store current results
     private eventManagers: ILawEventManager[];    
 
@@ -61,8 +67,10 @@ export class LawController implements ILawController {
         this.modelFetchById = new LawFetchByIdModel();
         this.modelFetchTitle = new LawFetchTitleModel();
         this.modelTextFilter = new LawTextFilterModel();
+        this.modelFetchPenalty = new LawFetchPenaltyModel(); // 250504
 
         this.view = new LawView();
+        this.viewPenalty = new LawPenaltyView(); // 250504
 
         this.dataManager = new LawDataManager();
         // this.eventManager = new LawEventManager(this);

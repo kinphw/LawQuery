@@ -15,5 +15,6 @@ export class LawHandler {
     this.router.get('/all', this.controller.getAll.bind(this.controller));
     this.router.get('/get', this.controller.getByIds.bind(this.controller)); // 파라미터 처리를 컨트롤러로 위임
     this.router.get('/getTitles', this.controller.getTitles.bind(this.controller));
+    this.router.get('/penalty', this.controller.getPenalty.bind(this.controller)); // 250504
   }
 }

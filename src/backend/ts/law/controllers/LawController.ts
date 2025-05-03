@@ -56,4 +56,11 @@ export class LawController {
     // res.status(200).json(data);
     res.status(200).json({ success: true, data });
   }
+
+  async getPenalty(req : Request, res: Response): Promise<void> {
+    const data = await this.model.getPenalty();
+    // res.status(200).json(data);
+    res.status(200).json({ success: true, data });
+  }
+
 }

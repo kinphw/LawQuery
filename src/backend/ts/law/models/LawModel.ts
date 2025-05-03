@@ -5,6 +5,7 @@ import type { LawResult } from '../types/LawResult';
 // import { LawTitle } from '../types/LawTitle';
 import { LawTitle } from '../types/LawTitle';
 import { LawTreeNode } from '../types/LawTreeNode';
+import { LawPenalty } from "../types/LawPenalty"; // 250504
 
 export class LawModel {
   // async getAllLawsOld(): Promise<LawResult[]> {
@@ -364,5 +365,60 @@ export class LawModel {
   
     return result;
   }  
+
+
+  async getPenalty(id_a?: string[]): Promise<LawPenalty[]> {
+
+    const baseQuery = `
+      select 
+      -- pa.id,
+      pa.category,
+      -- pa.item_a_phy,
+      pa.item_a_log,
+      pa.content_pa,
+      pe.content_pe,
+
+      pa.id_a,
+      a.content_a,
+
+      -- pa.penalty_a_phy,
+
+      p.penalty_a_log,
+      pe.penalty_e_log
+
+      -- pe.id,
+
+
+      from db_penalty_a pa
+
+      left outer join db_penalty p 
+      on pa.penalty_a_phy = p.penalty_a_phy -- penalty_a_phy를 key로 => p에서 penalty_law_log 가져옴
+
+      left outer join db_penalty_e pe
+      on pa.item_a_phy = pe.item_a_phy -- item_law_phy를 key로 => pe에서 content_e, penalty_e_log
+
+      left outer join db_a a
+      on pa.id_a = a.id_a -- id_a를 key로 => a에서 content_a 가져옴
+
+      WHERE pa.id_a IS NOT NULL
+
+      -- order by pe.id, pa.id;
+
+    `;
+
+    let query = baseQuery;
+    let params: any[] = [];
+    
+    if (id_a && id_a.length > 0) {
+      const placeholders = id_a.map(() => '?').join(',');
+      query += ` AND pa.id_a IN (${placeholders})`;
+      params = id_a;
+    }
+    
+    query += ` ORDER BY pe.id, pa.id`;
+
+    const result = await db.query<LawPenalty>(query);
+    return result;
+  }
 
 }
