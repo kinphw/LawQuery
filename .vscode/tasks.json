@@ -2,7 +2,7 @@
     "version": "2.0.0",
     "tasks": [
       {
-        "label": "Watch Frontend",
+        "label": "tsc:Watch Frontend",
         "type": "shell",
         "command": "tsc",
         "args": ["-p", "tsconfig.frontend.json", "--watch"],
@@ -10,7 +10,7 @@
         "problemMatcher": "$tsc-watch"
       },
       {
-        "label": "Watch Backend",
+        "label": "tsc:Watch Backend",
         "type": "shell",
         "command": "tsc",
         "args": ["-p", "tsconfig.backend.json", "--watch"],
@@ -18,7 +18,7 @@
         "problemMatcher": "$tsc-watch"
       },
       {
-        "label": "Build Frontend",
+        "label": "tsc:Build Frontend",
         "type": "shell",
         "command": "tsc",
         "args": ["-p", "tsconfig.frontend.json"],
@@ -26,7 +26,7 @@
         "problemMatcher": "$tsc"
       },
       {
-        "label": "Build Backend",
+        "label": "tsc:Build Backend",
         "type": "shell",
         "command": "tsc",
         "args": ["-p", "tsconfig.backend.json"],
@@ -55,6 +55,17 @@
         "args": ["tools/update-readme-version.js"],
         "group": "none",
         "problemMatcher": []
+      },
+      {
+        "label": "Deploy to Server",
+        "type": "shell",
+        "command": "./deploy.sh",
+        "group": {
+          "kind": "build",
+          "isDefault": false
+        },
+        "problemMatcher": [],
+        "detail": "배포 스크립트를 실행합니다"
       }      
     ]
   }
