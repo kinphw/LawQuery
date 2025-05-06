@@ -17,19 +17,11 @@ export class LawTable {
 
     private lawIds: string[] = []; // 조문 ID 목록 저장
 
-    // 체크박스 렌더링을 위한 메서드 추가
-    // renderLawCheckboxes(laws: Array<{id_a: string, title_a: string}>): string {
-    //     this.lawIds = laws.map(law => law.id_a);
-        
-    //     return laws.map(law => `
-    //         <div class="form-check w-100">
-    //             <input class="form-check-input" type="checkbox" value="${law.id_a}" id="law${law.id_a}">
-    //             <label class="form-check-label small" for="law${law.id_a}">
-    //                 ${law.title_a}
-    //             </label>
-    //         </div>
-    //     `).join('');
-    // }
+    private penaltyIds: Set<string> = new Set(); // 벌칙 ID 목록 저장
+
+    public setPenaltyIds(penaltyIds: string[]): void {
+        this.penaltyIds = new Set(penaltyIds);
+    };
 
     renderLawCheckboxes(laws: Array<LawTitle>): string {
         this.lawIds = laws.filter(law => !law.isTitle).map(law => law.id_a!);
@@ -96,7 +88,7 @@ export class LawTable {
     //     return html;
     // }
 
-    render(results: LawTreeNode[], searchText: string = ''): string {
+    render(results: LawTreeNode[], searchText: string = '', penaltyIds: string[] = []): string {
         if (!results.length) {
             return '<div class="alert alert-warning">표시할 법령이 없습니다.</div>';
         }
@@ -139,7 +131,10 @@ export class LawTable {
         if (!law.children || law.children.length === 0) {
             // 조문만 있는 경우 : rowClass는 여기에만 적용해도 됨
             html += `<tr class="${rowClass}"> 
-                <td class="law-title law-box ${this.currentTextSize}">${this.formatContent(law.title, searchText)}</td>
+                <td class="law-title law-box ${this.currentTextSize}">
+                    ${this.formatContent(law.title, searchText)}
+                    ${this.renderPenaltyButton(law.id)}
+                </td>
                 <td class="decree-title law-box tree-indent-1 ${this.currentTextSize}"></td>
                 <td class="regulation-title law-box tree-indent-2 ${this.currentTextSize}"></td>
                 <td class="rule-title law-box tree-indent-3 ${this.currentTextSize}"></td>
@@ -152,7 +147,10 @@ export class LawTable {
             if (!decree.children || decree.children.length === 0) {
                 // 시행령까지만 있는 경우
                 html += `<tr>
-                    ${i === 0 ? `<td class="law-title law-box ${this.currentTextSize}" rowspan="${lawRowspan}">${this.formatContent(law.title, searchText)}</td>` : ''}
+                    ${i === 0 ? `<td class="law-title law-box ${this.currentTextSize}" rowspan="${lawRowspan}">
+                        ${this.formatContent(law.title, searchText)}
+                        ${this.renderPenaltyButton(law.id)}
+                    </td>` : ''}
                     <td class="decree-title law-box tree-indent-1 ${this.currentTextSize}">${this.formatContent(decree.title, searchText)}</td>
                     <td class="regulation-title law-box tree-indent-2 ${this.currentTextSize}"></td>
                     <td class="rule-title law-box tree-indent-3 ${this.currentTextSize}"></td>
@@ -164,7 +162,10 @@ export class LawTable {
                 if (!regulation.children || regulation.children.length === 0) {
                     // 감독규정까지만 있는 경우
                     html += `<tr>
-                        ${i === 0 && j === 0 ? `<td class="law-title law-box ${this.currentTextSize}" rowspan="${lawRowspan}">${this.formatContent(law.title, searchText)}</td>` : ''}
+                        ${i === 0 && j === 0 ? `<td class="law-title law-box ${this.currentTextSize}" rowspan="${lawRowspan}">
+                            ${this.formatContent(law.title, searchText)}
+                            ${this.renderPenaltyButton(law.id)}
+                        </td>` : ''}
                         ${j === 0 ? `<td class="decree-title law-box tree-indent-1 ${this.currentTextSize}" rowspan="${decreeRowspan}">${this.formatContent(decree.title, searchText)}</td>` : ''}
                         <td class="regulation-title law-box tree-indent-2 ${this.currentTextSize}">${this.formatContent(regulation.title, searchText)}</td>
                         <td class="rule-title law-box tree-indent-3 ${this.currentTextSize}"></td>
@@ -174,7 +175,10 @@ export class LawTable {
                 regulation.children.forEach((rule, k) => {
                     // 시행세칙까지 있는 경우
                     html += `<tr>
-                        ${i === 0 && j === 0 && k === 0 ? `<td class="law-title law-box ${this.currentTextSize}" rowspan="${lawRowspan}">${this.formatContent(law.title, searchText)}</td>` : ''}
+                        ${i === 0 && j === 0 && k === 0 ? `<td class="law-title law-box ${this.currentTextSize}" rowspan="${lawRowspan}">
+                            ${this.formatContent(law.title, searchText)}
+                            ${this.renderPenaltyButton(law.id)}
+                        </td>` : ''}
                         ${j === 0 && k === 0 ? `<td class="decree-title law-box tree-indent-1 ${this.currentTextSize}" rowspan="${decreeRowspan}">${this.formatContent(decree.title, searchText)}</td>` : ''}
                         ${k === 0 ? `<td class="regulation-title law-box tree-indent-2 ${this.currentTextSize}" rowspan="${regulationRowspan}">${this.formatContent(regulation.title, searchText)}</td>` : ''}
                         <td class="rule-title law-box tree-indent-3 ${this.currentTextSize}">${this.formatContent(rule.title, searchText)}</td>
@@ -189,6 +193,16 @@ export class LawTable {
         if (!node.children || node.children.length === 0) return 1;
         return node.children.reduce((sum, child) => sum + this.countLeaf(child), 0);
     }
+
+    // 벌칙 버튼 렌더링 유틸
+    private renderPenaltyButton(id_a: string | null): string {
+        if (id_a && this.penaltyIds.has(id_a)) {
+            return `<button type="button" class="btn btn-outline-danger btn-sm ms-2 law-penalty-btn" data-id_a="${id_a}">
+                <i class="fas fa-gavel"></i> 벌칙
+            </button>`;
+        }
+        return '';
+    }    
 
 
 

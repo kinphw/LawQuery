@@ -18,6 +18,7 @@ import { LawFetchByIdModel } from "../models/LawFetchByIdModel";
 import { LawFetchTitleModel } from "../models/LawFetchTitleModel"
 import { LawTextFilterModel } from "../models/LawTextFilterModel";
 import { LawFetchPenaltyModel } from "../models/LawFetchPenaltyModel";
+import { LawFetchPenaltyIdsModel } from "../models/LawFetchPenaltyIdsModel";
 
 import { LawView } from "../views/LawView";
 import { LawPenaltyView } from "../views/components/LawPenaltyView";
@@ -34,9 +35,14 @@ export interface ILawController extends IController {
     modelFetchTitle: LawFetchTitleModel;
     modelTextFilter: LawTextFilterModel;
     modelFetchPenalty: LawFetchPenaltyModel; // 250504
+    modelFetchPenaltyIds: LawFetchPenaltyIdsModel; // 250505
     view: LawView;
     viewPenalty: LawPenaltyView; // 250504
     // currentResults: LawResult[]; // Store current results
+
+    bindPostRenderEvents(): void; // 동적으로 생성된 버튼에만 이벤트를 바인딩하는 메서드
+    bindAllEvents(): void; // 이벤트매니저에서 호출하기 위한 public 메서드
+
 }
 
 export class LawController implements ILawController {
@@ -50,12 +56,16 @@ export class LawController implements ILawController {
     modelFetchTitle!: LawFetchTitleModel;
     modelTextFilter!: LawTextFilterModel;
     modelFetchPenalty!: LawFetchPenaltyModel; // 250504
+    modelFetchPenaltyIds!: LawFetchPenaltyIdsModel; // 250505
 
 
     view!: LawView;
     viewPenalty!: LawPenaltyView; // 250504
     // currentResults: LawResult[] = []; // Store current results
     private eventManagers: ILawEventManager[];    
+    public penaltyEventManager: LawPenaltyEventManager;
+
+
 
     constructor() {
 
@@ -68,12 +78,12 @@ export class LawController implements ILawController {
         this.modelFetchTitle = new LawFetchTitleModel();
         this.modelTextFilter = new LawTextFilterModel();
         this.modelFetchPenalty = new LawFetchPenaltyModel(); // 250504
+        this.modelFetchPenaltyIds = new LawFetchPenaltyIdsModel(); // 250505
 
-        this.view = new LawView();
-        this.viewPenalty = new LawPenaltyView(); // 250504
+        this.dataManager = new LawDataManager();        
 
-        this.dataManager = new LawDataManager();
-        // this.eventManager = new LawEventManager(this);
+        this.penaltyEventManager = new LawPenaltyEventManager(this);
+
 
         // 이벤트매니저들을 배열로 관리
         this.eventManagers = [
@@ -81,13 +91,26 @@ export class LawController implements ILawController {
             new LawTextSizeEventManager(this),
             new LawSearchEventManager(this),
             new LawTextSearchEventManager(this),
-            new LawPenaltyEventManager(this) // ← 추가            
-        ];
+            // new LawPenaltyEventManager(this) // ← 추가            
+            this.penaltyEventManager // ← 바로 등록
+
+        ];        
+
+        this.view = new LawView();
+        this.viewPenalty = new LawPenaltyView(); // 250504
+
+
+        // this.eventManager = new LawEventManager(this);
+
+
 
     }
 
     async initialize(): Promise<void> {
 
+        // 초기 벌칙 id_a 로드 : 250505
+        this.dataManager.setPenaltyIds(await this.modelFetchPenaltyIds.getPenaltyIds());
+        this.view.setPenaltyIds(this.dataManager.getPenaltyIds());
         // 초기 데이터 로드 및 렌더링
         // const results = await this.model.getAllLaws();        
         // Store initial results
@@ -108,9 +131,27 @@ export class LawController implements ILawController {
         // 이벤트 바인딩을 컨트롤러에서 일괄 처리
         // this.eventManager.bindEvents();
         // 모든 이벤트매니저의 이벤트 바인딩 실행
-        this.eventManagers.forEach(em => em.bindEvents());
+        // this.eventManagers.forEach(em => em.bindEvents());
+        this.bindAllEvents();
 
     }
+
+    // 이벤트매니저에서 호출하기 위한 public 메서드
+    public bindAllEvents(): void {
+        this.eventManagers.forEach(em => em.bindEvents());
+    }    
+
+    /**
+     * 렌더링 후 동적으로 생성된 버튼에만 이벤트를 바인딩하는 메서드
+     * (info 버튼, 조문별 벌칙 버튼)
+     */
+    public bindPostRenderEvents(): void {
+        // 1. Info/Changelog 버튼 바인딩
+        this.view.header.setInfoButtonHandler();
+
+        // 2. 조문별 벌칙 버튼 바인딩
+        this.penaltyEventManager.bindArticlePenaltyButtons();
+    }    
 
     // 이하는 이벤트바인딩 함수
 

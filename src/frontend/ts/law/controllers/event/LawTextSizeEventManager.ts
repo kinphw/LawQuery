@@ -14,14 +14,16 @@ export class LawTextSizeEventManager implements ILawEventManager {
         });
     }
 
-    private handleTextSizeChange(e: Event): void {
+    private async handleTextSizeChange(e: Event): Promise<void> {
         const target = e.target as HTMLInputElement;
         this.controller.view.lawTable.setTextSize(target.value);
-        this.controller.view.render(
+        await this.controller.view.render(
             // this.controller.dataManager.currentResults
             this.controller.dataManager.getCurrentResults()
         );
-        this.controller.view.header.setInfoButtonHandler();
+        // this.controller.view.header.setInfoButtonHandler();
+        this.controller.bindPostRenderEvents();
+
         this.controller.view.showToast('글자크기 변경');
     }
 }

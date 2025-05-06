@@ -58,8 +58,23 @@ export class LawController {
   }
 
   async getPenalty(req : Request, res: Response): Promise<void> {
-    const data = await this.model.getPenalty();
+
+    // req.query.id를 배열로 변환 // 250506
+    const id_a = Array.isArray(req.query.id_a)
+        ? req.query.id_a as string[]
+        : req.query.id_a
+        ? [req.query.id_a as string]
+        : [];    
+
+    // const data = await this.model.getPenalty();
+    // id_a가 비어 있으면 전체, 아니면 해당 id만
+    const data = await this.model.getPenalty(id_a.length > 0 ? id_a : undefined);
     // res.status(200).json(data);
+    res.status(200).json({ success: true, data });
+  }
+
+  async getPenaltyIds(req : Request, res: Response): Promise<void> {
+    const data = await this.model.getPenaltyIds();   
     res.status(200).json({ success: true, data });
   }
 

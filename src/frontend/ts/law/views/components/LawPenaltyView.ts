@@ -5,7 +5,7 @@ export class LawPenaltyView {
         return `
             <div class="table-responsive small" style="height:100%;">
             <table class="table table-bordered table-sm align-middle">
-                <thead class="table-primary">
+                <thead class="table-dark">
                     <tr>
                         <th class="text-center align-middle" style="width:5%; position:sticky; top:0; z-index:2;">구분</th>
                         <th class="text-center align-middle" style="width:10%; position:sticky; top:0; z-index:2;">근거</th>

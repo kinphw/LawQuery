@@ -417,8 +417,19 @@ export class LawModel {
     
     query += ` ORDER BY pe.id, pa.id`;
 
-    const result = await db.query<LawPenalty>(query);
+    const result = await db.query<LawPenalty>(query, params);
     return result;
   }
+
+  async getPenaltyIds(): Promise<string[]> {
+    const query = `
+        SELECT DISTINCT pa.id_a -- 반환값은 id_a의 배열
+        FROM db_penalty_a pa
+        WHERE pa.id_a IS NOT NULL
+        ORDER BY pa.id_a
+    `;
+    const rows = await db.query<{ id_a: string }>(query);
+    return rows.map(row => row.id_a);
+}
 
 }

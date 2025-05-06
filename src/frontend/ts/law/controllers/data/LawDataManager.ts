@@ -11,6 +11,8 @@ export class LawDataManager {
     private currentResults: LawTreeNode[] = []; // Store current results // 캡슐화하여 은닉
     private lawTitles: LawTitle[] = []; // Store law titles // 캡슐화
 
+    private penaltyIds: string[] = []; // Store penalty IDs // 캡슐화
+
     // constructor(ILawController: ILawController) {
     //     // this.controller = ILawController;
     // }
@@ -37,5 +39,12 @@ export class LawDataManager {
     }
     public getLawTitles(): LawTitle[] {
         return this.lawTitles;
+    }
+
+    public setPenaltyIds(penaltyIds: string[]): void {
+        this.penaltyIds = penaltyIds;
+    }
+    public getPenaltyIds(): string[] {
+        return this.penaltyIds;
     }
 }

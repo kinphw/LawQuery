@@ -33,7 +33,9 @@ export class LawTextSearchEventManager implements ILawEventManager {
         // this.controller.dataManager.setCurrentResults(filteredResults);
 
         await this.controller.view.render(filteredResults, searchText);
-        this.controller.view.header.setInfoButtonHandler();
+        // this.controller.view.header.setInfoButtonHandler();
+        this.controller.bindPostRenderEvents();
+
         this.controller.view.showToast('검색결과를 재조회하였습니다.');
     }
 }

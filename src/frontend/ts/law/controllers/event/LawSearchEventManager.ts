@@ -46,7 +46,8 @@ export class LawSearchEventManager implements ILawEventManager {
                 this.handleCollapseHide();
             }
 
-            this.controller.view.header.setInfoButtonHandler();
+            // this.controller.view.header.setInfoButtonHandler();
+            this.controller.bindPostRenderEvents();
         }
     }
 
