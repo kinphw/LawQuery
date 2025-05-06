@@ -35,3 +35,54 @@
     top: 0;
     z-index: 999;  /* Lower than floating controls */
   }
+
+// 벌칙 테이블 공통 스타일
+.penalty-table {
+  border-collapse: collapse !important;
+  
+  thead {
+    th {
+      padding: 6px !important;
+      margin: 0 !important;
+      position: sticky;
+      z-index: 2;
+      
+      // 첫 번째 행의 th 스타일
+      &.header-row-1 {
+        top: 0;
+      }
+      
+      // 두 번째 행의 th 스타일
+      &.header-row-2 {
+        top: 30px;
+      }
+    }
+    
+    .text-center {
+      text-align: center;
+    }
+    
+    .align-middle {
+      vertical-align: middle;
+    }
+  }
+  
+  tbody {
+    td {
+      vertical-align: middle;
+      
+      &.text-break {
+        word-break: break-word;
+      }
+      
+      &.text-center {
+        text-align: center;
+      }
+    }
+  }
+  
+  .btn-outline-primary.btn-sm {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+  }
+}  

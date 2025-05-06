@@ -238,13 +238,10 @@ export class LawModel {
   async getLawTitles(): Promise<LawTitle[]> {
     const query = `
     SELECT 
-        id_aa as id_a,  -- id_a가 아니라 id_aa로 변경, 그러나 alias는 id_a로 변경해야 기존 코드와 호환
+        DISTINCT id_aa as id_a,  -- id_a가 아니라 id_aa로 변경, 그러나 alias는 id_a로 변경해야 기존 코드와 호환
         title_a,
         CASE WHEN id_a IS NULL THEN 1 ELSE 0 END as isTitle 
-    FROM db_a
-    
-    WHERE title_a IS NOT NULL -- title_a가 NULL이 아닌 것만 가져옴
-    
+    FROM db_a    
     ORDER BY id
     `;
     return await db.query<LawTitle>(query);
@@ -378,7 +375,8 @@ export class LawModel {
       pa.content_pa,
       pe.content_pe,
 
-      pa.id_a,
+      pa.id_a,      
+      a.title_a, -- 250506 : 법령제목 추가 => 렌더링할 목적
       a.content_a,
 
       -- pa.penalty_a_phy,
@@ -387,7 +385,6 @@ export class LawModel {
       pe.penalty_e_log
 
       -- pe.id,
-
 
       from db_penalty_a pa
 
@@ -415,7 +412,7 @@ export class LawModel {
       params = id_a;
     }
     
-    query += ` ORDER BY pe.id, pa.id`;
+    query += ` ORDER BY a.id, pe.id, pa.id`; // a.id 추가 (select에는 없음)
 
     const result = await db.query<LawPenalty>(query, params);
     return result;
