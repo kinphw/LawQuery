@@ -2,14 +2,15 @@ import mysql, { Pool, PoolConnection, RowDataPacket, ResultSetHeader } from 'mys
 import dotenv from 'dotenv';
 import path from 'path';
 
-// .env 파일 로드 (상대 경로로 프로젝트 루트의 .env 파일 지정)
-dotenv.config({ path: path.resolve(__dirname, '../../../../../.env') });
-
-class Database {
-    private static instance: Database;
+class DbContext {
+    private static instance: DbContext;
     private pool: Pool;
 
     private constructor() {
+
+        // .env 파일 로드 (상대 경로로 프로젝트 루트의 .env 파일 지정)
+        dotenv.config({ path: path.resolve(__dirname, '../../../../../.env') });
+
         this.pool = mysql.createPool({
             host: process.env.MYSQL_HOST || 'localhost',
             user: process.env.MYSQL_USER,
@@ -26,11 +27,11 @@ class Database {
         });
     }
 
-    public static getInstance(): Database {
-        if (!Database.instance) {
-            Database.instance = new Database();
+    public static getInstance(): DbContext {
+        if (!DbContext.instance) {
+            DbContext.instance = new DbContext();
         }
-        return Database.instance;
+        return DbContext.instance;
     }
 
     // ✅ 제네릭으로 통일 (자동완성 잘 됨!)
@@ -48,4 +49,11 @@ class Database {
     }
 }
 
-export default Database.getInstance();
+// 싱글톤 인스턴스 생성 및 내보내기
+const db = DbContext.getInstance();
+
+// 기본 내보내기로 db 인스턴스만 제공
+export default db;
+
+// 필요한 경우 타입으로 DbContext 클래스에 접근 가능하도록 타입 내보내기
+export type DbContextType = DbContext;

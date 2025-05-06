@@ -1,4 +1,4 @@
-import db from '../../law/models/db'; // 기존 db 인스턴스 재활용
+import db from '../../law/models/DbContext'; // 기존 db 인스턴스 재활용
 import type { SearchResult } from '../types/SearchResult';
 import type { DetailResult } from '../types/DetailResult';
 

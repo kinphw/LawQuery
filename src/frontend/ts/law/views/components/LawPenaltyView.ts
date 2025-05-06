@@ -8,8 +8,7 @@ export class LawPenaltyView {
                 <div class="btn-group" role="group" aria-label="정렬 옵션">
                     <button type="button" class="btn btn-outline-primary" id="sortByPenalty">벌칙순</button>
                     <button type="button" class="btn btn-outline-primary" id="sortByCause">원인순</button>
-                </div>
-                <small class="text-muted ms-2">* 벌칙순: 벌칙 종류별 정렬 / 원인순: 법령 조항별 정렬</small>
+                </div>                
             </div>
             ` : ''}    
 
