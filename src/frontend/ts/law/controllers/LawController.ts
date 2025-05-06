@@ -10,7 +10,7 @@ import { LawHeaderEventManager } from "./event/LawHeaderEventManager";
 import { LawTextSizeEventManager } from "./event/LawTextSizeEventManager";
 import { LawSearchEventManager } from "./event/LawSearchEventManager";
 import { LawTextSearchEventManager } from "./event/LawTextSearchEventManager";
-import { LawPenaltyEventManager } from "./event/LawPenaltyEventManager"; // 250504
+import { LawPenaltyEventManager } from "./event/penalty/LawPenaltyEventManager"; // 250504
 
 // import { LawModel } from "../models/LawModel";
 import { LawFetchAllModel } from "../models/LawFetchAllModel";
@@ -150,7 +150,8 @@ export class LawController implements ILawController {
         this.view.header.setInfoButtonHandler();
 
         // 2. 조문별 벌칙 버튼 바인딩
-        this.penaltyEventManager.bindArticlePenaltyButtons();
+        // this.penaltyEventManager.bindArticlePenaltyButtons();
+        this.penaltyEventManager.bindArticleEvents();
     }    
 
     // 이하는 이벤트바인딩 함수

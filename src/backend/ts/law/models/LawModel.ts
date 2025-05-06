@@ -364,7 +364,7 @@ export class LawModel {
   }  
 
 
-  async getPenalty(id_a?: string[]): Promise<LawPenalty[]> {
+  async getPenalty(id_a?: string[], sortByPenalty:boolean = true): Promise<LawPenalty[]> {
 
     const baseQuery = `
       select 
@@ -412,7 +412,16 @@ export class LawModel {
       params = id_a;
     }
     
-    query += ` ORDER BY a.id, pe.id, pa.id`; // a.id 추가 (select에는 없음)
+    // query += ` ORDER BY a.id, pe.id, pa.id`; // a.id 추가 (select에는 없음)
+
+    // 정렬 기준: boolean 값에 따라 ORDER BY 절 변경
+    if (sortByPenalty) {
+      // 기본 벌칙순 정렬 (벌칙 정보 기준)
+      query += ` ORDER BY pe.id, pa.id`;
+    } else {
+      // 원인순 정렬 (법조문 기준)
+      query += ` ORDER BY a.id, pe.id, pa.id`;
+    }    
 
     const result = await db.query<LawPenalty>(query, params);
     return result;
@@ -427,6 +436,6 @@ export class LawModel {
     `;
     const rows = await db.query<{ id_a: string }>(query);
     return rows.map(row => row.id_a);
-}
+  }
 
 }
