@@ -16,7 +16,7 @@ export class LawTextSizeEventManager implements ILawEventManager {
 
     private async handleTextSizeChange(e: Event): Promise<void> {
         const target = e.target as HTMLInputElement;
-        this.controller.view.lawTable.setTextSize(target.value);
+        this.controller.view.setTextSize(target.value);
         await this.controller.view.render(
             // this.controller.dataManager.currentResults
             this.controller.dataManager.getCurrentResults()

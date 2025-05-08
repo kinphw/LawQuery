@@ -124,11 +124,13 @@ export class LawController implements ILawController {
         // const lawTitles = await this.model.getLawTitles();
         this.dataManager.setLawTitles(await this.modelFetchTitle.getLawTitles());
         // await this.dataManager.setLawTitles();
-        document.getElementById('lawCheckboxes')!.innerHTML = 
-            // this.view.lawTable.renderLawCheckboxes(this.dataManager.lawTitles);
-            this.view.lawTable.renderLawCheckboxes(this.dataManager.getLawTitles());
 
-        // 이벤트 바인딩을 컨트롤러에서 일괄 처리
+        // document.getElementById('lawCheckboxes')!.innerHTML = 
+            // this.view.lawTable.renderLawCheckboxes(this.dataManager.lawTitles);
+            // this.view.lawTable.renderLawCheckboxes(this.dataManager.getLawTitles());
+
+        this.view.renderLawCheckboxes(this.dataManager.getLawTitles());
+            // 이벤트 바인딩을 컨트롤러에서 일괄 처리
         // this.eventManager.bindEvents();
         // 모든 이벤트매니저의 이벤트 바인딩 실행
         // this.eventManagers.forEach(em => em.bindEvents());
@@ -147,7 +149,7 @@ export class LawController implements ILawController {
      */
     public bindPostRenderEvents(): void {
         // 1. Info/Changelog 버튼 바인딩
-        this.view.header.setInfoButtonHandler();
+        this.view.setInfoButtonHandler();
 
         // 2. 조문별 벌칙 버튼 바인딩
         // this.penaltyEventManager.bindArticlePenaltyButtons();

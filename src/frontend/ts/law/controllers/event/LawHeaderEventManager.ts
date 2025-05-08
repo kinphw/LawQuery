@@ -9,6 +9,6 @@ export class LawHeaderEventManager implements ILawEventManager {
     }
 
     private bindHeaderEvents(): void {
-        this.controller.view.header.setInfoButtonHandler();
+        this.controller.view.setInfoButtonHandler();
     }
 }
