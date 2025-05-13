@@ -1,9 +1,11 @@
 .law-ref-modal-popup {
     position: fixed;
-    min-width: 260px;
-    max-width: 400px;
+    width: 25vw;                // 화면 너비의 1/4
+    min-width: 220px;
+    max-width: 600px;
+    height: auto;               // 내용에 따라 자동
     min-height: 80px;
-    max-height: 300px;
+    max-height: 60vh;           // 화면 높이의 60%
     background: #fff;
     border: 1.5px solid #007bff;
     border-radius: 8px;
@@ -12,11 +14,14 @@
     padding: 0;
     overflow: hidden;
     display: block;
+    resize: both;         // ← 추가
+    overflow: auto;       // ← 추가    
   }
   
   .law-ref-popup-header {
     background: #f1f3f9;
     padding: 8px 12px 6px 12px;
+    font-size: 0.875em;
     font-weight: bold;
     border-bottom: 1px solid #e0e0e0;
     cursor: move;
@@ -28,8 +33,10 @@
   
   .law-ref-popup-body {
     padding: 12px;
-    font-size: 0.97em;
-    max-height: 200px;
+    // font-size: 0.97em;
+    font-size: 0.875em;
+    // max-height: 200px;
+    // max-height:600px;
     overflow-y: auto;
     white-space: pre-line;
   }
