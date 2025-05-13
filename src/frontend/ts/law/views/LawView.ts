@@ -17,6 +17,8 @@ export class LawView {
     // 벌칙정보 저장 //이건 최초 컨트롤러가 initialize할 때 세팅해주고, 이후에는 자체 사용
     // private penaltyIds: string[] = []; // 벌칙 ID 목록 저장
     private penaltyIds: Set<string> = new Set();
+    private referenceIds: Set<string> = new Set();
+
 
     setPenaltyIds(penaltyIds: string[]): void {
         this.penaltyIds = new Set(penaltyIds);
@@ -27,6 +29,17 @@ export class LawView {
         return this.penaltyIds;
     }
     ////////////////////////////
+
+
+    setReferenceIds(referenceIds: string[]): void {
+        this.referenceIds = new Set(referenceIds);
+    }
+    
+    getReferenceIds(): Set<string> {
+        return this.referenceIds;
+    }
+    
+    //////////////////////////////
 
 
     constructor() {

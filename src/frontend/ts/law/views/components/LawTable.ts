@@ -136,7 +136,13 @@ export class LawTable {
         if (!law.children || law.children.length === 0) {
             html += this.renderRow({
                 rowClass,
-                lawTd: this.td('law-title', law.title, searchText, lawRowspan, this.renderPenaltyButton(law.id)),
+                lawTd: this.td('law-title', 
+                    law.title, 
+                    searchText, 
+                    lawRowspan, 
+                    // this.renderPenaltyButton(law.id)
+                    this.renderPenaltyButton(law.id) + this.renderReferenceButton(law.id)
+                ),
                 decreeTd: this.emptyTd('decree-title'),
                 regulationTd: this.emptyTd('regulation-title'),
                 ruleTd: this.emptyTd('rule-title')
@@ -150,7 +156,13 @@ export class LawTable {
             if (!decree.children || decree.children.length === 0) {
                 html += this.renderRow({
                     rowClass: '',
-                    lawTd: i === 0 ? this.td('law-title', law.title, searchText, lawRowspan, this.renderPenaltyButton(law.id)) : '',
+                    lawTd: i === 0 ? this.td('law-title', 
+                        law.title, 
+                        searchText, 
+                        lawRowspan, 
+                        //this.renderPenaltyButton(law.id)
+                        this.renderPenaltyButton(law.id) + this.renderReferenceButton(law.id)
+                    ) : '',
                     decreeTd: this.td('decree-title', decree.title, searchText),
                     regulationTd: this.emptyTd('regulation-title'),
                     ruleTd: this.emptyTd('rule-title')
@@ -163,7 +175,13 @@ export class LawTable {
                 if (!regulation.children || regulation.children.length === 0) {
                     html += this.renderRow({
                         rowClass: '',
-                        lawTd: i === 0 && j === 0 ? this.td('law-title', law.title, searchText, lawRowspan, this.renderPenaltyButton(law.id)) : '',
+                        lawTd: i === 0 && j === 0 ? this.td('law-title', 
+                            law.title, 
+                            searchText, 
+                            lawRowspan, 
+                            //this.renderPenaltyButton(law.id)
+                            this.renderPenaltyButton(law.id) + this.renderReferenceButton(law.id)
+                        ) : '',
                         decreeTd: j === 0 ? this.td('decree-title', decree.title, searchText, decreeRowspan) : '',
                         regulationTd: this.td('regulation-title', regulation.title, searchText),
                         ruleTd: this.emptyTd('rule-title')
@@ -173,7 +191,13 @@ export class LawTable {
                 regulation.children.forEach((rule, k) => {
                     html += this.renderRow({
                         rowClass: '',
-                        lawTd: i === 0 && j === 0 && k === 0 ? this.td('law-title', law.title, searchText, lawRowspan, this.renderPenaltyButton(law.id)) : '',
+                        lawTd: i === 0 && j === 0 && k === 0 ? this.td('law-title', 
+                            law.title, 
+                            searchText, 
+                            lawRowspan, 
+                            //this.renderPenaltyButton(law.id)
+                            this.renderPenaltyButton(law.id) + this.renderReferenceButton(law.id)
+                        ) : '',
                         decreeTd: j === 0 && k === 0 ? this.td('decree-title', decree.title, searchText, decreeRowspan) : '',
                         regulationTd: k === 0 ? this.td('regulation-title', regulation.title, searchText, regulationRowspan) : '',
                         ruleTd: this.td('rule-title', rule.title, searchText)
@@ -211,6 +235,21 @@ export class LawTable {
             </button>`;
         }
         return '';
+    }    
+
+    // 참조 버튼 렌더링 유틸
+    private renderReferenceButton(id: string | null): string {
+        if (!id || !this.lawView.getReferenceIds().has(id)) return '';
+        return `
+            <span style="position:relative;display:inline-block;">
+                <button type="button" class="btn btn-outline-info btn-sm ms-2 law-ref-btn" data-id="${id}">참조</button>
+                <div class="law-ref-popup d-none" style="
+                    position:absolute; left:0; top:110%; z-index:1000; min-width:200px; max-width:400px;
+                    background:#fff; border:1px solid #ccc; border-radius:4px; box-shadow:0 2px 8px rgba(0,0,0,0.15);
+                    padding:8px; font-size:0.95em; white-space:pre-line;
+                "></div>
+            </span>
+        `;
     }    
 
     // Setters

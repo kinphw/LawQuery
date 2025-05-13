@@ -1,16 +1,20 @@
 import { Router } from 'express';
 import { LawController } from '../law/controllers/LawController';
 import { PenaltyController } from '../law/controllers/PenaltyController';
+import { ReferenceController } from '../law/controllers/ReferenceController';
 
 export class LawHandler {
   public router: Router;
   private controller: LawController;
   private penaltyController: PenaltyController;
+  private referenceController: ReferenceController;
+
 
   constructor() {
     this.router = Router();
     this.controller = new LawController();
     this.penaltyController = new PenaltyController();
+    this.referenceController = new ReferenceController(); 
     this.initializeRoutes();
   }
 
@@ -20,5 +24,7 @@ export class LawHandler {
     this.router.get('/getTitles', this.controller.getTitles.bind(this.controller));
     this.router.get('/penalty', this.penaltyController.getPenalty.bind(this.penaltyController)); // 250504
     this.router.get('/penaltyIds', this.penaltyController.getPenaltyIds.bind(this.penaltyController)); // 250505
+    this.router.get('/reference', this.referenceController.getReference.bind(this.referenceController)); // 참조규정
+    this.router.get('/referenceIds', this.referenceController.getReferenceIds.bind(this.referenceController)); 
   }
 }

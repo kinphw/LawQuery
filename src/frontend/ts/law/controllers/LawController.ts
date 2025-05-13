@@ -11,6 +11,7 @@ import { LawTextSizeEventManager } from "./event/LawTextSizeEventManager";
 import { LawSearchEventManager } from "./event/LawSearchEventManager";
 import { LawTextSearchEventManager } from "./event/LawTextSearchEventManager";
 import { LawPenaltyEventManager } from "./event/penalty/LawPenaltyEventManager"; // 250504
+import { LawReferenceEventManager } from "./event/reference/LawReferenceEventManager"; //250514
 
 // import { LawModel } from "../models/LawModel";
 import { LawFetchAllModel } from "../models/LawFetchAllModel";
@@ -92,7 +93,8 @@ export class LawController implements ILawController {
             new LawSearchEventManager(this),
             new LawTextSearchEventManager(this),
             // new LawPenaltyEventManager(this) // ← 추가            
-            this.penaltyEventManager // ← 바로 등록
+            this.penaltyEventManager, // ← 바로 등록
+            new LawReferenceEventManager(), // ← 추가            
 
         ];        
 
@@ -111,6 +113,11 @@ export class LawController implements ILawController {
         // 초기 벌칙 id_a 로드 : 250505
         this.dataManager.setPenaltyIds(await this.modelFetchPenaltyIds.getPenaltyIds());
         this.view.setPenaltyIds(this.dataManager.getPenaltyIds());
+
+        const response = await fetch('/api/law/referenceIds');
+        const { data: referenceIds } = await response.json();
+        this.view.setReferenceIds(referenceIds);
+    
         // 초기 데이터 로드 및 렌더링
         // const results = await this.model.getAllLaws();        
         // Store initial results
