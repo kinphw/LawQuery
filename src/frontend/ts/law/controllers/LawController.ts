@@ -20,6 +20,8 @@ import { LawFetchTitleModel } from "../models/LawFetchTitleModel"
 import { LawTextFilterModel } from "../models/LawTextFilterModel";
 import { LawFetchPenaltyModel } from "../models/LawFetchPenaltyModel";
 import { LawFetchPenaltyIdsModel } from "../models/LawFetchPenaltyIdsModel";
+import { LawFetchReferenceModel } from "../models/LawFetchReferenceModel";
+import { LawFetchReferenceIdsModel } from "../models/LawFetchReferenceIdsModel";
 
 import { LawView } from "../views/LawView";
 import { LawPenaltyView } from "../views/components/LawPenaltyView";
@@ -37,6 +39,11 @@ export interface ILawController extends IController {
     modelTextFilter: LawTextFilterModel;
     modelFetchPenalty: LawFetchPenaltyModel; // 250504
     modelFetchPenaltyIds: LawFetchPenaltyIdsModel; // 250505
+
+    modelFetchReference: LawFetchReferenceModel;           // 추가
+    modelFetchReferenceIds: LawFetchReferenceIdsModel;     // 추가
+
+
     view: LawView;
     viewPenalty: LawPenaltyView; // 250504
     // currentResults: LawResult[]; // Store current results
@@ -59,6 +66,10 @@ export class LawController implements ILawController {
     modelFetchPenalty!: LawFetchPenaltyModel; // 250504
     modelFetchPenaltyIds!: LawFetchPenaltyIdsModel; // 250505
 
+    modelFetchReference!: LawFetchReferenceModel;           // 추가
+    modelFetchReferenceIds!: LawFetchReferenceIdsModel;     // 추가
+  
+
 
     view!: LawView;
     viewPenalty!: LawPenaltyView; // 250504
@@ -80,6 +91,10 @@ export class LawController implements ILawController {
         this.modelTextFilter = new LawTextFilterModel();
         this.modelFetchPenalty = new LawFetchPenaltyModel(); // 250504
         this.modelFetchPenaltyIds = new LawFetchPenaltyIdsModel(); // 250505
+
+        this.modelFetchReference = new LawFetchReferenceModel();           // 추가
+        this.modelFetchReferenceIds = new LawFetchReferenceIdsModel();     // 추가
+  
 
         this.dataManager = new LawDataManager();        
 
@@ -114,10 +129,10 @@ export class LawController implements ILawController {
         this.dataManager.setPenaltyIds(await this.modelFetchPenaltyIds.getPenaltyIds());
         this.view.setPenaltyIds(this.dataManager.getPenaltyIds());
 
-        const response = await fetch('/api/law/referenceIds');
-        const { data: referenceIds } = await response.json();
-        this.view.setReferenceIds(referenceIds);
-    
+        // 참조 id 세팅 (모델 사용)
+        this.dataManager.setReferenceIds(await this.modelFetchReferenceIds.getReferenceIds());
+        this.view.setReferenceIds(this.dataManager.getReferenceIds());
+
         // 초기 데이터 로드 및 렌더링
         // const results = await this.model.getAllLaws();        
         // Store initial results

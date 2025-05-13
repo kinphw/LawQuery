@@ -13,6 +13,9 @@ export class LawDataManager {
 
     private penaltyIds: string[] = []; // Store penalty IDs // 캡슐화
 
+    private referenceIds: Set<string> = new Set();
+
+
     // constructor(ILawController: ILawController) {
     //     // this.controller = ILawController;
     // }
@@ -47,4 +50,11 @@ export class LawDataManager {
     public getPenaltyIds(): string[] {
         return this.penaltyIds;
     }
+
+    public setReferenceIds(ids: string[]) {
+        this.referenceIds = new Set(ids);
+    }
+    public getReferenceIds(): string[] {
+        return Array.from(this.referenceIds);
+    }  
 }
