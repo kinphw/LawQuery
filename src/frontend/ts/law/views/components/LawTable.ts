@@ -241,14 +241,8 @@ export class LawTable {
     private renderReferenceButton(id: string | null): string {
         if (!id || !this.lawView.getReferenceIds().has(id)) return '';
         return `
-            <span style="position:relative;display:inline-block;">
-                <button type="button" class="btn btn-outline-info btn-sm ms-2 law-ref-btn" data-id="${id}">참조</button>
-                <div class="law-ref-popup d-none" style="
-                    position:absolute; left:0; top:110%; z-index:1000; min-width:200px; max-width:400px;
-                    background:#fff; border:1px solid #ccc; border-radius:4px; box-shadow:0 2px 8px rgba(0,0,0,0.15);
-                    padding:8px; font-size:0.95em; white-space:pre-line;
-                "></div>
-            </span>
+            <button type="button" class="btn btn-outline-info btn-sm ms-2 law-ref-btn" data-id="${id}">참조</button>
+            <div class="law-ref-popup d-none"></div>
         `;
     }    
 
