@@ -5,7 +5,7 @@
     max-width: 600px;
     height: auto;               // 내용에 따라 자동
     min-height: 80px;
-    max-height: 60vh;           // 화면 높이의 60%
+    max-height: 90vh;           // 화면 높이의 60%
     background: #fff;
     border: 1.5px solid #007bff;
     border-radius: 8px;
@@ -19,6 +19,8 @@
   }
   
   .law-ref-popup-header {
+    position: sticky; /* 헤더를 스크롤 영역 상단에 고정 */
+    top: 0; /* 스크롤 시 상단에 고정 */    
     background: #f1f3f9;
     padding: 8px 12px 6px 12px;
     font-size: 0.875em;
@@ -29,6 +31,7 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
+    z-index: 1; /* 헤더가 다른 요소 위에 표시되도록 설정 */    
   }
   
   .law-ref-popup-body {
