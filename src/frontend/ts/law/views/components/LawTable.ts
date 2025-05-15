@@ -3,10 +3,22 @@ import { LawTitle } from '../../types/LawTitle';
 import { LawTreeNode } from '../../types/LawTreeNode';
 import { LawView } from '../LawView';
 
-export class LawTable {
+type Path = [
+    LawTreeNode | null, LawTreeNode | null,
+    LawTreeNode | null, LawTreeNode | null];
 
+export class LawTable {
+    
     // Test
-    private lawView: LawView;
+    private lawView: LawView;    
+
+    // 0: 법 / 1: 시행령 / 2: 감독규정 / 3: 세칙
+    private static readonly COL_CLASS = [
+        'law-title', 'decree-title', 'regulation-title', 'rule-title'
+    ] as const;
+    private static readonly INDENT_CLASS = [
+        '', 'tree-indent-1', 'tree-indent-2', 'tree-indent-3'
+    ] as const;
 
     constructor(lawView: LawView) {
         this.lawView = lawView; // Dependency injection
@@ -44,169 +56,46 @@ export class LawTable {
         `;
     
         html += '<tbody>';
+        // 각 법령에 대해 순환하면서 LawRows를 렌더링
         results.forEach(law => {
             html += this.renderLawRows(law, searchText);
         });
         html += '</tbody></table></div>';
         return html;
     }
-    
-    // renderLawRow는 html을 반환하도록!
-    // 계층 구조를 4단 표로 렌더링 (rowspan 중복 없이)
-    // private renderLawRows(
-    //     law: LawTreeNode,
-    //     searchText: string
-    // ): string {
-    //     let html = '';
-    //     const lawRowspan = this.countLeaf(law);
 
-    //     // id_a가 없으면 타이틀 행으로 간주
-    //     const rowClass = !law.id_aa ? 'title-row' : '';        
-    
-    //     if (!law.children || law.children.length === 0) {
-    //         // 조문만 있는 경우 : rowClass는 여기에만 적용해도 됨
-    //         html += `<tr class="${rowClass}"> 
-    //             <td class="law-title law-box ${this.currentTextSize}">
-    //                 ${this.formatContent(law.title, searchText)}
-    //                 ${this.renderPenaltyButton(law.id)}
-    //             </td>
-    //             <td class="decree-title law-box tree-indent-1 ${this.currentTextSize}"></td>
-    //             <td class="regulation-title law-box tree-indent-2 ${this.currentTextSize}"></td>
-    //             <td class="rule-title law-box tree-indent-3 ${this.currentTextSize}"></td>
-    //         </tr>`;
-    //         return html;
-    //     }
-    
-    //     law.children.forEach((decree, i) => {
-    //         const decreeRowspan = this.countLeaf(decree);
-    //         if (!decree.children || decree.children.length === 0) {
-    //             // 시행령까지만 있는 경우
-    //             html += `<tr>
-    //                 ${i === 0 ? `<td class="law-title law-box ${this.currentTextSize}" rowspan="${lawRowspan}">
-    //                     ${this.formatContent(law.title, searchText)}
-    //                     ${this.renderPenaltyButton(law.id)}
-    //                 </td>` : ''}
-    //                 <td class="decree-title law-box tree-indent-1 ${this.currentTextSize}">${this.formatContent(decree.title, searchText)}</td>
-    //                 <td class="regulation-title law-box tree-indent-2 ${this.currentTextSize}"></td>
-    //                 <td class="rule-title law-box tree-indent-3 ${this.currentTextSize}"></td>
-    //             </tr>`;
-    //             return;
-    //         }
-    //         decree.children.forEach((regulation, j) => {
-    //             const regulationRowspan = this.countLeaf(regulation);
-    //             if (!regulation.children || regulation.children.length === 0) {
-    //                 // 감독규정까지만 있는 경우
-    //                 html += `<tr>
-    //                     ${i === 0 && j === 0 ? `<td class="law-title law-box ${this.currentTextSize}" rowspan="${lawRowspan}">
-    //                         ${this.formatContent(law.title, searchText)}
-    //                         ${this.renderPenaltyButton(law.id)}
-    //                     </td>` : ''}
-    //                     ${j === 0 ? `<td class="decree-title law-box tree-indent-1 ${this.currentTextSize}" rowspan="${decreeRowspan}">${this.formatContent(decree.title, searchText)}</td>` : ''}
-    //                     <td class="regulation-title law-box tree-indent-2 ${this.currentTextSize}">${this.formatContent(regulation.title, searchText)}</td>
-    //                     <td class="rule-title law-box tree-indent-3 ${this.currentTextSize}"></td>
-    //                 </tr>`;
-    //                 return;
-    //             }
-    //             regulation.children.forEach((rule, k) => {
-    //                 // 시행세칙까지 있는 경우
-    //                 html += `<tr>
-    //                     ${i === 0 && j === 0 && k === 0 ? `<td class="law-title law-box ${this.currentTextSize}" rowspan="${lawRowspan}">
-    //                         ${this.formatContent(law.title, searchText)}
-    //                         ${this.renderPenaltyButton(law.id)}
-    //                     </td>` : ''}
-    //                     ${j === 0 && k === 0 ? `<td class="decree-title law-box tree-indent-1 ${this.currentTextSize}" rowspan="${decreeRowspan}">${this.formatContent(decree.title, searchText)}</td>` : ''}
-    //                     ${k === 0 ? `<td class="regulation-title law-box tree-indent-2 ${this.currentTextSize}" rowspan="${regulationRowspan}">${this.formatContent(regulation.title, searchText)}</td>` : ''}
-    //                     <td class="rule-title law-box tree-indent-3 ${this.currentTextSize}">${this.formatContent(rule.title, searchText)}</td>
-    //                 </tr>`;
-    //             });
-    //         });
-    //     });
-    //     return html;
-    // }
+    private renderLawRows(root: LawTreeNode, search: string): string {
+        const paths    = this.collectPaths(root);
+        const rowspans = this.calcRowspans(paths);
+      
+        return paths
+          .map((path, r) => {
+            const tds = path.map((node, c) => {
+              if (!node) return this.emptyTd(LawTable.COL_CLASS[c]);   // 빈 깊이
+              if (rowspans[r][c] === 0) return '';                     // rowspan으로 병합
+            //   const extra = c === 0                                       // 0열(법)만 버튼
+            //     ? this.renderPenaltyButton(node.id) + this.renderReferenceButton(node.id)
+            //     : '';
+              // 모든 단계에서 참조 버튼 추가
+              let extra = this.renderReferenceButton(node.id);
+              if (c === 0) {
+                  // 법 단계에서만 벌칙 버튼 추가
+                  extra += this.renderPenaltyButton(node.id);
+              }
 
-    private renderLawRows(
-        law: LawTreeNode,
-        searchText: string
-    ): string {
-        let html = '';
-        const lawRowspan = this.countLeaf(law);
-        const rowClass = !law.id_aa ? 'title-row' : '';
-    
-        // 조문만 있는 경우
-        if (!law.children || law.children.length === 0) {
-            html += this.renderRow({
-                rowClass,
-                lawTd: this.td('law-title', 
-                    law.title, 
-                    searchText, 
-                    lawRowspan, 
-                    // this.renderPenaltyButton(law.id)
-                    this.renderPenaltyButton(law.id) + this.renderReferenceButton(law.id)
-                ),
-                decreeTd: this.emptyTd('decree-title'),
-                regulationTd: this.emptyTd('regulation-title'),
-                ruleTd: this.emptyTd('rule-title')
-            });
-            return html;
-        }
-    
-        law.children.forEach((decree, i) => {
-            const decreeRowspan = this.countLeaf(decree);
-            // 시행령까지만 있는 경우
-            if (!decree.children || decree.children.length === 0) {
-                html += this.renderRow({
-                    rowClass: '',
-                    lawTd: i === 0 ? this.td('law-title', 
-                        law.title, 
-                        searchText, 
-                        lawRowspan, 
-                        //this.renderPenaltyButton(law.id)
-                        this.renderPenaltyButton(law.id) + this.renderReferenceButton(law.id)
-                    ) : '',
-                    decreeTd: this.td('decree-title', decree.title, searchText),
-                    regulationTd: this.emptyTd('regulation-title'),
-                    ruleTd: this.emptyTd('rule-title')
-                });
-                return;
-            }
-            decree.children.forEach((regulation, j) => {
-                const regulationRowspan = this.countLeaf(regulation);
-                // 감독규정까지만 있는 경우
-                if (!regulation.children || regulation.children.length === 0) {
-                    html += this.renderRow({
-                        rowClass: '',
-                        lawTd: i === 0 && j === 0 ? this.td('law-title', 
-                            law.title, 
-                            searchText, 
-                            lawRowspan, 
-                            //this.renderPenaltyButton(law.id)
-                            this.renderPenaltyButton(law.id) + this.renderReferenceButton(law.id)
-                        ) : '',
-                        decreeTd: j === 0 ? this.td('decree-title', decree.title, searchText, decreeRowspan) : '',
-                        regulationTd: this.td('regulation-title', regulation.title, searchText),
-                        ruleTd: this.emptyTd('rule-title')
-                    });
-                    return;
-                }
-                regulation.children.forEach((rule, k) => {
-                    html += this.renderRow({
-                        rowClass: '',
-                        lawTd: i === 0 && j === 0 && k === 0 ? this.td('law-title', 
-                            law.title, 
-                            searchText, 
-                            lawRowspan, 
-                            //this.renderPenaltyButton(law.id)
-                            this.renderPenaltyButton(law.id) + this.renderReferenceButton(law.id)
-                        ) : '',
-                        decreeTd: j === 0 && k === 0 ? this.td('decree-title', decree.title, searchText, decreeRowspan) : '',
-                        regulationTd: k === 0 ? this.td('regulation-title', regulation.title, searchText, regulationRowspan) : '',
-                        ruleTd: this.td('rule-title', rule.title, searchText)
-                    });
-                });
-            });
-        });
-        return html;
-    }
+              return this.td(
+                `${LawTable.COL_CLASS[c]} ${LawTable.INDENT_CLASS[c]}`,
+                node.title, search,
+                rowspans[r][c],
+                extra
+              );
+            }).join('');
+            // 법령 제목 열이 있는 첫 행에만 title-row 부여
+            const cls = r === 0 && !root.id_aa ? 'title-row' : '';
+            return `<tr class="${cls}">${tds}</tr>`;
+          })
+          .join('');
+      }    
     
     // 헬퍼 함수들
     private td(className: string, text: string | null, searchText: string, rowspan?: number, extraHtml: string = ''): string {
@@ -216,16 +105,49 @@ export class LawTable {
     private emptyTd(className: string): string {
         return `<td class="${className} law-box ${this.currentTextSize}"></td>`;
     }
-    private renderRow({ rowClass = '', lawTd = '', decreeTd = '', regulationTd = '', ruleTd = '' }): string {
-        return `<tr class="${rowClass}">${lawTd}${decreeTd}${regulationTd}${ruleTd}</tr>`;
-    }
 
-
-    // leaf(시행세칙) 개수 세기
-    private countLeaf(node: LawTreeNode): number {
-        if (!node.children || node.children.length === 0) return 1;
-        return node.children.reduce((sum, child) => sum + this.countLeaf(child), 0);
+    /** leaf 경로(Path)들을 수집 ── 깊이는 4단으로 고정 */
+    private collectPaths(root: LawTreeNode): Path[] {
+        const paths: Path[] = [];
+        const walk = (
+        node: LawTreeNode,
+        acc: [LawTreeNode | null, LawTreeNode | null,
+                LawTreeNode | null, LawTreeNode | null]
+        ) => {
+        const [law, dec, reg] = acc;
+        const next: Path = [
+            law ?? node,
+            law && !dec ? node : dec,
+            dec && !reg ? node : reg,
+            reg ? node : null,
+        ];
+        if (!node.children?.length) {
+            paths.push(next);
+            return;
+        }
+        node.children.forEach(child => walk(child, next));
+        };
+        walk(root, [null, null, null, null]);
+        return paths;
     }
+    
+    /** 각 열별로 ‘같은 노드가 몇 행 연속되는지’ → rowspan 배열 */
+    private calcRowspans(paths: Path[]): number[][] {
+        const span: number[][] = paths.map(_ => [0, 0, 0, 0]);
+        for (let col = 0; col < 4; col++) {
+        let i = 0;
+        while (i < paths.length) {
+            let len = 1;
+            while (i + len < paths.length &&
+                paths[i][col] === paths[i + len][col]) len++;
+            span[i][col] = len;           // 블록 첫 행에만 기록
+            i += len;
+        }
+        }
+        return span;
+    }
+  
+    /////////////////////////////////
 
     // 벌칙 버튼 렌더링 유틸
     private renderPenaltyButton(id_a: string | null): string {
