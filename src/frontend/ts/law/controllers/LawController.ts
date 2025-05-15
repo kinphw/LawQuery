@@ -75,9 +75,8 @@ export class LawController implements ILawController {
     viewPenalty!: LawPenaltyView; // 250504
     // currentResults: LawResult[] = []; // Store current results
     private eventManagers: ILawEventManager[];    
-    public penaltyEventManager: LawPenaltyEventManager;
-
-
+    private penaltyEventManager: LawPenaltyEventManager;
+    private referenceEventManager: LawReferenceEventManager; // 250515
 
     constructor() {
 
@@ -99,6 +98,7 @@ export class LawController implements ILawController {
         this.dataManager = new LawDataManager();        
 
         this.penaltyEventManager = new LawPenaltyEventManager(this);
+        this.referenceEventManager = new LawReferenceEventManager(); // 250515
 
 
         // 이벤트매니저들을 배열로 관리
@@ -109,7 +109,9 @@ export class LawController implements ILawController {
             new LawTextSearchEventManager(this),
             // new LawPenaltyEventManager(this) // ← 추가            
             this.penaltyEventManager, // ← 바로 등록
-            new LawReferenceEventManager(), // ← 추가            
+            // new LawReferenceEventManager(), // ← 추가      
+            this.referenceEventManager // ← 바로 등록      
+            
 
         ];        
 
@@ -175,7 +177,9 @@ export class LawController implements ILawController {
 
         // 2. 조문별 벌칙 버튼 바인딩
         // this.penaltyEventManager.bindArticlePenaltyButtons();
-        this.penaltyEventManager.bindArticleEvents();
+        this.penaltyEventManager.bindArticleEvents();        
+        this.referenceEventManager.bindEvents();
+        
     }    
 
     // 이하는 이벤트바인딩 함수
