@@ -73,12 +73,15 @@ export class LawModel extends LawBaseModel {
         a.content_a AS law_content,
         ae.id_e,
         e.id AS ide,
+        ae.id AS id_ae, -- 추가
         e.content_e AS decree_content,
         es.id_s,
         s.id AS ids,
+        es.id AS id_es, -- 추가
         s.content_s AS regulation_content,
         sr.id_r,
         r.id AS idr,
+        sr.id AS id_sr, -- 추가
         r.content_r AS rule_content,
         COUNT(*) OVER (PARTITION BY a.id_a) AS a_count
       FROM db_a a
@@ -98,12 +101,15 @@ export class LawModel extends LawBaseModel {
         a.content_a AS law_content,
         NULL AS id_e,
         NULL AS ide,
+        NULL AS id_ae, -- 추가
         NULL AS decree_content,
         NULL AS id_s,
         NULL AS ids,
+        NULL AS id_es, -- 추가
         NULL AS regulation_content,
         NULL AS id_r,
         NULL AS idr,
+        NULL AS id_sr, -- 추가
         NULL AS rule_content,
         1 AS a_count
       FROM db_a a
@@ -117,8 +123,12 @@ export class LawModel extends LawBaseModel {
         AND t.rule_content IS NULL
         AND t.a_count > 1
       )
-    ORDER BY t.ida, t.ide, t.ids, t.idr;
-  
+    -- ORDER BY t.ida, t.ide, t.ids, t.idr;
+    ORDER BY
+      t.ida,
+      t.id_ae,
+      t.id_es,
+      t.id_sr;  
     `;
     const rows = await this.db.query<LawResult>(query);
     return rows;
@@ -186,12 +196,15 @@ export class LawModel extends LawBaseModel {
         a.content_a AS law_content,
         ae.id_e,
         e.id AS ide,
+        ae.id AS id_ae, -- 추가
         e.content_e AS decree_content,
         es.id_s,
         s.id AS ids,
+        es.id AS id_es, -- 추가
         s.content_s AS regulation_content,
         sr.id_r,
         r.id AS idr,
+        sr.id AS id_sr, -- 추가
         r.content_r AS rule_content,
         COUNT(*) OVER (PARTITION BY a.id_a) AS a_count
       FROM db_a a
@@ -211,12 +224,15 @@ export class LawModel extends LawBaseModel {
         a.content_a AS law_content,
         NULL AS id_e,
         NULL AS ide,
+        NULL AS id_ae, -- 추가
         NULL AS decree_content,
         NULL AS id_s,
         NULL AS ids,
+        NULL AS id_es, -- 추가
         NULL AS regulation_content,
         NULL AS id_r,
         NULL AS idr,
+        NULL AS id_sr, -- 추가
         NULL AS rule_content,
         1 AS a_count
       FROM db_a a
@@ -231,7 +247,12 @@ export class LawModel extends LawBaseModel {
         AND t.a_count > 1
       )
     AND t.id_aa IN (${placeholders}) -- 검색자를 id_aa로 변경
-    ORDER BY t.ida, t.ide, t.ids, t.idr;  
+    -- ORDER BY t.ida, t.ide, t.ids, t.idr;  
+    ORDER BY 
+      t.ida,
+      t.id_ae,
+      t.id_es,
+      t.id_sr;  
     `;
     const rows = await this.db.query<LawResult>(query, [...lawIds]); // id정보는 여기 쿼리단에서 조합해서 던짐
     return rows;
