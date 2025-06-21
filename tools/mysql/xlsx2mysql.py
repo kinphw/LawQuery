@@ -11,8 +11,11 @@ from tkinter import filedialog
 # .env 파일 로드
 load_dotenv('../../.env')
 
+MYSQL_DB = 'ldb_y' # 하드코딩
+
 # MySQL 연결 엔진 생성 (환경변수 사용)
-db_url = f"mysql+pymysql://{os.getenv('MYSQL_USER')}:{os.getenv('MYSQL_PASSWORD')}@{os.getenv('MYSQL_HOST')}:{os.getenv('MYSQL_PORT')}/{os.getenv('MYSQL_DB')}?charset=utf8mb4"
+#db_url = f"mysql+pymysql://{os.getenv('MYSQL_USER')}:{os.getenv('MYSQL_PASSWORD')}@{os.getenv('MYSQL_HOST')}:{os.getenv('MYSQL_PORT')}/{os.getenv('MYSQL_DB')}?charset=utf8mb4"
+db_url = f"mysql+pymysql://{os.getenv('MYSQL_USER')}:{os.getenv('MYSQL_PASSWORD')}@{os.getenv('MYSQL_HOST')}:{os.getenv('MYSQL_PORT')}/{MYSQL_DB}?charset=utf8mb4"
 engine = create_engine(db_url)
 
 # 엑셀 파일 선택 다이얼로그

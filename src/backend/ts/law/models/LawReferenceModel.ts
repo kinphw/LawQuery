@@ -1,12 +1,19 @@
-import db from '../models/DbContext';
+import DbContext from '../../common/DbContext';
+import {LawBaseModel} from './LawBaseModel';
 
-export class LawReferenceModel {
+export class LawReferenceModel extends LawBaseModel {
+
+    // private db: DbContext;
+    // constructor() {
+    //     this.db = DbContext.getInstance('ldb_j'); // 'ldb_j'는 법률 데이터베이스의 이름
+    // }
+
     async getReferenceContent(id: string): Promise<string[] | null> {
         // const rows = await db.query<{ ref_content: string }>(
         //     'SELECT ref_content FROM db_ref WHERE id_origin = ?', [id]
         // );
 
-        const rows = await db.query<{ ref_content: string }>(
+        const rows = await this.db.query<{ ref_content: string }>(
             `SELECT 
                 CASE 
                     WHEN ref_type = 'text' THEN ref_content
@@ -28,7 +35,7 @@ export class LawReferenceModel {
     }
 
     async getReferenceIds(): Promise<string[]> {
-        const rows = await db.query<{ id_origin: string }>(
+        const rows = await this.db.query<{ id_origin: string }>(
             'SELECT DISTINCT id_origin FROM db_ref'
         );
         return rows.map(row => row.id_origin);

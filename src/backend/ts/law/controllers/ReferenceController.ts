@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import db from '../models/DbContext';
+import db from '../../common/DbContext';
 import { LawReferenceModel } from '../models/LawReferenceModel';
 
 

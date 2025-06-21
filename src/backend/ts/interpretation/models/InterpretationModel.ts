@@ -1,8 +1,13 @@
-import db from '../../law/models/DbContext'; // 기존 db 인스턴스 재활용
+import DbContext from '../../common/DbContext'; // 기존 db 인스턴스 재활용
 import type { SearchResult } from '../types/SearchResult';
 import type { DetailResult } from '../types/DetailResult';
 
 export class InterpretationModel {
+
+  private db: DbContext;
+  constructor() {
+    this.db = DbContext.getInstance('ldb_i'); // 'db_i'는 해석 데이터베이스의 이름
+  }
   async search(criteria: { 
     type: string; 
     serial: string; 
@@ -65,7 +70,7 @@ export class InterpretationModel {
         id DESC
     `;
 
-    const results = await db.query<SearchResult>(query, params);
+    const results = await this.db.query<SearchResult>(query, params);
     return results;
   }
 
@@ -77,7 +82,7 @@ export class InterpretationModel {
       WHERE id = ?
     `;
     
-    const results = await db.query<DetailResult>(query, [id]);
+    const results = await this.db.query<DetailResult>(query, [id]);
     return results.length > 0 ? results[0] : null;
   }
 
