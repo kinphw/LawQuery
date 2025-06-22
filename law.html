@@ -10,6 +10,18 @@
 </head>
 <body>
     <div id="header"></div>
+    <!-- 법령 선택 드롭다운 -->
+    <div class="d-flex justify-content-center align-items-center my-3">
+        <div class="dropdown">
+            <button class="btn btn-dark dropdown-toggle" type="button" id="lawDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                법령 선택
+            </button>
+            <ul class="dropdown-menu" aria-labelledby="lawDropdown">
+                <li><a class="dropdown-item" href="?law=j&step=4">전자금융거래법</a></li>
+                <li><a class="dropdown-item" href="?law=y&step=5">여신전문금융업법</a></li>
+            </ul>
+        </div>
+    </div>
 
     <!-- 텍스트 검색 영역 -->
     <div class="container mb-3">

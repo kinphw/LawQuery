@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { LawController } from '../law/controllers/LawController';
 import { PenaltyController } from '../law/controllers/PenaltyController';
 import { ReferenceController } from '../law/controllers/ReferenceController';
+// import { LawMiddleware } from '../law/middleware/LawMiddleware';
 
 export class LawHandler {
   public router: Router;
@@ -19,6 +20,10 @@ export class LawHandler {
   }
 
   private initializeRoutes(): void {
+
+    // 법률 관련 미들웨어 적용 :
+    // this.router.use(LawMiddleware); 
+
     this.router.get('/all', this.controller.getAll.bind(this.controller));
     this.router.get('/get', this.controller.getByIds.bind(this.controller)); // 파라미터 처리를 컨트롤러로 위임
     this.router.get('/getTitles', this.controller.getTitles.bind(this.controller));

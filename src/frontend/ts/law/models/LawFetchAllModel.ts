@@ -1,8 +1,17 @@
 import { LawTreeNode } from '../types/LawTreeNode';
+import ApiUrlBuilder from '../util/ApiUrlBuilder';
 export class LawFetchAllModel {
 
     async getAllLaws(): Promise<LawTreeNode[]> {
-        const response = await fetch('/api/law/all');
+
+        // URL 파라미터에서 `law`와 `step` 값을 읽어옴
+        // const urlParams = new URLSearchParams(window.location.search);
+        // const law = urlParams.get('law') || 'j'; // 기본값: 'j'
+        // const step = urlParams.get('step') || '4'; // 기본값: '4'
+        const url:string = ApiUrlBuilder.build('/api/law/all');
+
+        // const response = await fetch('/api/law/all');
+        const response = await fetch(url);
         // const data = await response.json();
         // this.currentResults = data;
 

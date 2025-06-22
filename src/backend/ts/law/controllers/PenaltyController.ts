@@ -10,6 +10,11 @@ export class PenaltyController extends BaseLawController<LawPenaltyModel> {
   }
   async getPenalty(req : Request, res: Response): Promise<void> {
 
+    // 요청별 구조를 읽는다
+    const dbName : string = req.query.law as string;
+    const lawSteps = req.query.step as string;    
+    const dbContext = this.getDbContext(dbName);
+
     // req.query.id를 배열로 변환 // 250506
     const id_a = Array.isArray(req.query.id_a)
         ? req.query.id_a as string[]
@@ -32,6 +37,7 @@ export class PenaltyController extends BaseLawController<LawPenaltyModel> {
     // const data = await this.model.getPenalty();
     // id_a가 비어 있으면 전체, 아니면 해당 id만
     const data = await this.model.getPenalty(
+      dbContext,
       id_a.length > 0 ? id_a : undefined,
       sortByPenalty
     );
@@ -40,7 +46,13 @@ export class PenaltyController extends BaseLawController<LawPenaltyModel> {
   }
 
   async getPenaltyIds(req : Request, res: Response): Promise<void> {
-    const data = await this.model.getPenaltyIds();   
+
+    // 요청별 구조를 읽는다
+    const dbName : string = req.query.law as string;
+    const lawSteps = req.query.step as string;    
+    const dbContext = this.getDbContext(dbName);
+
+    const data = await this.model.getPenaltyIds(dbContext);   
     res.status(200).json({ success: true, data });
   }
 

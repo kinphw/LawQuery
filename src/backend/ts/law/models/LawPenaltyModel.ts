@@ -1,10 +1,16 @@
 import { LawBaseModel } from './LawBaseModel';
 import { LawPenalty } from '../types/LawPenalty';
+import DbContext from '../../common/DbContext';
 
 export class LawPenaltyModel extends LawBaseModel {
 
-    async getPenalty(id_a?: string[], sortByPenalty:boolean = true): Promise<LawPenalty[]> {
+    async getPenalty(dbContext: DbContext, id_a?: string[], sortByPenalty:boolean = true): Promise<LawPenalty[]> {
 
+        this.setDbContext(dbContext); // DbContext 설정
+
+        // 250506 : 법령제목 추가
+        // 250506 : id_a가 비어 있으면 전체, 아니면 해당 id만
+        // 250506 : sortByPenalty가 true면 벌칙순, false면 원인순 정렬
         const baseQuery = `
           select 
           -- pa.id,
@@ -66,7 +72,8 @@ export class LawPenaltyModel extends LawBaseModel {
         return result;
       }
     
-      async getPenaltyIds(): Promise<string[]> {
+      async getPenaltyIds(dbContext:DbContext): Promise<string[]> {
+        // this.setDbContext(dbContext); // DbContext 설정
         const query = `
             SELECT DISTINCT pa.id_a -- 반환값은 id_a의 배열
             FROM db_penalty_a pa

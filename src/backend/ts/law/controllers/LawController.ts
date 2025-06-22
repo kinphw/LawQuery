@@ -3,6 +3,7 @@ import { Request, Response } from 'express';
 import { BaseLawController } from './BaseLawController';
 // import { LawService } from '../services/LawService';
 import { LawModel } from '../models/LawModel';
+import DbContext from '../../common/DbContext';
 
 export class LawController extends BaseLawController<LawModel> {
   // private service: LawService;
@@ -12,11 +13,18 @@ export class LawController extends BaseLawController<LawModel> {
     super(new LawModel());
   }
 
-  // async getAll(req: IncomingMessage, res: ServerResponse) {
+  // /all
   async getAll(req: Request, res: Response): Promise<void> {  
+
+    // 요청별 구조를 읽는다
+    const dbName : string = req.query.law as string;
+    const lawSteps = req.query.step as string;    
+    const dbContext = this.getDbContext(dbName);
+
     // const data = await this.service.getAllLaws();
-    const dataTemp = await this.model.getAllLaws();
+    const dataTemp = await this.model.getAllLaws(dbContext);
     const data = this.model.toLawTree(dataTemp);
+
     // res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
     // res.end(JSON.stringify({ success: true, data }));
     // res.end(JSON.stringify(data)); // 그냥 간단하게 내보낸다...
@@ -25,6 +33,11 @@ export class LawController extends BaseLawController<LawModel> {
 
   // async getByIds(req: IncomingMessage, res: ServerResponse, lawIds: string[] | null) {
   async getByIds(req: Request, res: Response): Promise<void> {  
+
+    // 요청별 구조를 읽는다
+    const dbName : string = req.query.law as string;
+    const lawSteps = req.query.step as string;    
+    const dbContext = this.getDbContext(dbName);    
 
     // req.query.id를 배열로 변환
     const lawIds = Array.isArray(req.query.id)
@@ -42,7 +55,7 @@ export class LawController extends BaseLawController<LawModel> {
     }
 
     // const data = await this.service.getLawById(id);
-    const dataTemp = await this.model.getLawByIds(lawIds);
+    const dataTemp = await this.model.getLawByIds(dbContext, lawIds);
     const data = this.model.toLawTree(dataTemp);    
     // res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
     // res.end(JSON.stringify(data));
@@ -52,7 +65,14 @@ export class LawController extends BaseLawController<LawModel> {
 
   // 법령 제목만 긁어오는 메서드
   async getTitles(req: Request, res: Response): Promise<void> {
-    const data = await this.model.getLawTitles();
+
+    const dbName = req.query.law as string;
+
+    // DbContext 설정
+    // this.setDbContext(dbName);    
+    const dbContext = this.getDbContext(dbName);
+
+    const data = await this.model.getLawTitles(dbContext);
     // res.status(200).json(data);
     res.status(200).json({ success: true, data });
   }

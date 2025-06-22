@@ -1,4 +1,5 @@
 import { ReferencePopupManager } from './ReferencePopupManager';
+import ApiUrlBuilder from '../../../util/ApiUrlBuilder';
 
 export class ReferenceButtonHandler {
     private popupManager: ReferencePopupManager;
@@ -19,8 +20,12 @@ export class ReferenceButtonHandler {
                 // 이미 열려있으면 닫기
                 this.popupManager.closePopup();
 
+                // ApiUrlBuilder를 사용하여 URL 생성
+                const additionalParams = { id };
+                const url = ApiUrlBuilder.buildWithParams('/api/law/reference', additionalParams);
+
                 // fetch 참조규정
-                const res = await fetch(`/api/law/reference?id=${encodeURIComponent(id)}`);
+                const res = await fetch(url);
                 const { data }: {data:string[]} = await res.json();
 
                 // console.log('참조 fetch 결과', data); // ← fetch 결과 확인

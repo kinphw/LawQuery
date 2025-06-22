@@ -8,51 +8,13 @@ import { LawTitle } from '../types/LawTitle';
 import { LawTreeNode } from '../types/LawTreeNode';
 import { LawPenalty } from "../types/LawPenalty"; // 250504
 import { TreeConverter } from '../utils/TreeConverter';
+import DbContext from '../../common/DbContext';
 
 export class LawModel extends LawBaseModel {
-  // async getAllLawsOld(): Promise<LawResult[]> {
-  //   const query = `
 
-  //         SELECT
-  //         a.id_a, 
-  //         a.content_a AS law_content,
-        
-  //         -- 시행령
-  //         (
-  //           SELECT GROUP_CONCAT(DISTINCT e.content_e ORDER BY e.id SEPARATOR '|*|')
-  //           FROM db_e e
-  //           JOIN rdb_ae ae ON ae.id_e = e.id_e
-  //           WHERE ae.id_a = a.id_a
-  //         ) AS decree_content,
-        
-  //         -- 감독규정
-  //         (
-  //           SELECT GROUP_CONCAT(DISTINCT s.content_s ORDER BY s.id SEPARATOR '|*|')
-  //           FROM db_s s
-  //           JOIN rdb_es es ON es.id_s = s.id_s
-  //           JOIN rdb_ae ae ON ae.id_e = es.id_e
-  //           WHERE ae.id_a = a.id_a
-  //         ) AS regulation_content,
-        
-  //         -- 시행세칙
-  //         (
-  //           SELECT GROUP_CONCAT(DISTINCT r.content_r ORDER BY r.id SEPARATOR '|*|')
-  //           FROM db_r r
-  //           JOIN rdb_sr sr ON sr.id_r = r.id_r
-  //           JOIN rdb_es es ON es.id_s = sr.id_s
-  //           JOIN rdb_ae ae ON ae.id_e = es.id_e
-  //           WHERE ae.id_a = a.id_a
-  //         ) AS rule_content
-        
-  //       FROM db_a a
-  //       ORDER BY a.id;
-  
-  //   `;
-  //   const rows = await db.query<LawResult>(query);
-  //   return rows;
-  // }
+  async getAllLaws(dbContext: DbContext): Promise<LawResult[]> {
 
-  async getAllLaws(): Promise<LawResult[]> {
+    this.setDbContext(dbContext); // DbContext 설정
     const query = `
 
     SELECT
@@ -135,46 +97,12 @@ export class LawModel extends LawBaseModel {
   }
 
 
-  async getLawByIds(lawIds: string[]): Promise<LawResult[]> {
+  async getLawByIds(dbContext: DbContext, lawIds: string[]): Promise<LawResult[]> {
+
+    this.setDbContext(dbContext); // DbContext 설정    
     if (!lawIds.length) return [];
 
     const placeholders = new Array(lawIds.length).fill('?').join(',');    
-    // const query = `
-    //       SELECT
-    //       a.id_a, 
-    //       a.content_a AS law_content,
-        
-    //       -- 시행령
-    //       (
-    //         SELECT GROUP_CONCAT(DISTINCT e.content_e ORDER BY e.id SEPARATOR '|*|')
-    //         FROM db_e e
-    //         JOIN rdb_ae ae ON ae.id_e = e.id_e
-    //         WHERE ae.id_a = a.id_a
-    //       ) AS decree_content,
-        
-    //       -- 감독규정
-    //       (
-    //         SELECT GROUP_CONCAT(DISTINCT s.content_s ORDER BY s.id SEPARATOR '|*|')
-    //         FROM db_s s
-    //         JOIN rdb_es es ON es.id_s = s.id_s
-    //         JOIN rdb_ae ae ON ae.id_e = es.id_e
-    //         WHERE ae.id_a = a.id_a
-    //       ) AS regulation_content,
-        
-    //       -- 시행세칙
-    //       (
-    //         SELECT GROUP_CONCAT(DISTINCT r.content_r ORDER BY r.id SEPARATOR '|*|')
-    //         FROM db_r r
-    //         JOIN rdb_sr sr ON sr.id_r = r.id_r
-    //         JOIN rdb_es es ON es.id_s = sr.id_s
-    //         JOIN rdb_ae ae ON ae.id_e = es.id_e
-    //         WHERE ae.id_a = a.id_a
-    //       ) AS rule_content
-        
-    //     FROM db_a a
-    //     WHERE a.id_aa IN (${placeholders}) -- 검색자를 id_aa로 변경
-    //     ORDER BY a.id;
-    // `;
 
     const query =  `
 
@@ -258,7 +186,9 @@ export class LawModel extends LawBaseModel {
     return rows;
   }
 
-  async getLawTitles(): Promise<LawTitle[]> {
+  async getLawTitles(dbContext: DbContext): Promise<LawTitle[]> {
+
+    this.setDbContext(dbContext); // DbContext 설정
     const query = `
     SELECT 
         DISTINCT id_aa as id_a,  -- id_a가 아니라 id_aa로 변경, 그러나 alias는 id_a로 변경해야 기존 코드와 호환
@@ -269,58 +199,6 @@ export class LawModel extends LawBaseModel {
     `;
     return await this.db.query<LawTitle>(query);
   }
-
-  // JSON으로 변환 : 250430
-  // toLawTree(rows: LawResult[]) : LawTreeNode[]{
-  //   const lawMap = new Map<string, any>();
-
-  //   rows.forEach(row => {
-  //     // 1. 조문(법)
-  //     if (!lawMap.has(row.id_a)) {
-  //       lawMap.set(row.id_a, {
-  //         id: row.id_a,
-  //         id_aa: row.id_aa,
-  //         title: row.law_content,
-  //         children: []
-  //       });
-  //     }
-  //     const law = lawMap.get(row.id_a);
-
-  //     // 2. 시행령
-  //     let decree = row.id_e && law.children.find((d: any) => d.id === row.id_e);
-  //     if (!decree && row.id_e) {
-  //       decree = {
-  //         id: row.id_e,
-  //         title: row.decree_content,
-  //         children: []
-  //       };
-  //       law.children.push(decree);
-  //     }
-
-  //     // 3. 감독규정
-  //     let regulation = decree && row.id_s && decree.children.find((s: any) => s.id === row.id_s);
-  //     if (!regulation && decree && row.id_s) {
-  //       regulation = {
-  //         id: row.id_s,
-  //         title: row.regulation_content,
-  //         children: []
-  //       };
-  //       decree.children.push(regulation);
-  //     }
-
-  //     // 4. 시행세칙
-  //     if (regulation && row.id_r) {
-  //       if (!regulation.children.find((r: any) => r.id === row.id_r)) {
-  //         regulation.children.push({
-  //           id: row.id_r,
-  //           title: row.rule_content
-  //         });
-  //       }
-  //     }
-  //   });
-
-  //   return Array.from(lawMap.values());
-  // }  
 
   toLawTree(rows: LawResult[]): LawTreeNode[] {
     return TreeConverter.toLawTree(rows);
