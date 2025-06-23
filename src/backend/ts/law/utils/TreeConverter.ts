@@ -53,11 +53,23 @@ export class TreeConverter {
         decree.children.push(regulation);
       }
   
-      if (regulation && row.id_r) {
-        if (!regulation.children.find((r: any) => r.id === row.id_r)) {
-          regulation.children.push({
-            id: row.id_r,
-            title: row.rule_content
+      let rule = regulation && row.id_r && regulation.children.find((r: any) => r.id === row.id_r);
+      if (!rule && regulation && row.id_r) {
+        rule = {
+          id: row.id_r,
+          title: row.rule_content,
+          children: []
+        };
+        regulation.children.push(rule);
+      }
+
+      // 📌 5단계 정보 추가 (선택적으로 처리)
+      if (rule && row.id_b && row.book_content) {
+        if (!rule.children.find((b: any) => b.id === row.id_b)) {
+          rule.children.push({
+            id: row.id_b,
+            title: row.book_content,
+            children: []
           });
         }
       }
@@ -65,5 +77,4 @@ export class TreeConverter {
   
     return result;
   }  
-
 }

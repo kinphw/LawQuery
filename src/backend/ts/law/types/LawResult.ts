@@ -11,4 +11,7 @@ export interface LawResult extends RowDataPacket {
     regulation_content: string | null;
     id_r: string | null;
     rule_content: string | null;
+
+    id_b?: string | null;
+    book_content?: string | null;
 }

@@ -25,7 +25,7 @@ import { LawFetchReferenceIdsModel } from "../models/LawFetchReferenceIdsModel";
 
 import { LawView } from "../views/LawView";
 import { LawPenaltyView } from "../views/components/LawPenaltyView";
-import { LawResult } from "../types/LawResult";
+// import { LawResult } from "../types/LawResult";
 
 export interface ILawController extends IController {
 

@@ -18,11 +18,11 @@ export class LawController extends BaseLawController<LawModel> {
 
     // 요청별 구조를 읽는다
     const dbName : string = req.query.law as string;
-    const lawSteps = req.query.step as string;    
+    const step : number = parseInt(req.query.step as string);
     const dbContext = this.getDbContext(dbName);
 
     // const data = await this.service.getAllLaws();
-    const dataTemp = await this.model.getAllLaws(dbContext);
+    const dataTemp = await this.model.getAllLaws(dbContext, step);
     const data = this.model.toLawTree(dataTemp);
 
     // res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
@@ -36,8 +36,8 @@ export class LawController extends BaseLawController<LawModel> {
 
     // 요청별 구조를 읽는다
     const dbName : string = req.query.law as string;
-    const lawSteps = req.query.step as string;    
-    const dbContext = this.getDbContext(dbName);    
+    const step : number = parseInt(req.query.step as string);
+    const dbContext = this.getDbContext(dbName);
 
     // req.query.id를 배열로 변환
     const lawIds = Array.isArray(req.query.id)
@@ -55,7 +55,7 @@ export class LawController extends BaseLawController<LawModel> {
     }
 
     // const data = await this.service.getLawById(id);
-    const dataTemp = await this.model.getLawByIds(dbContext, lawIds);
+    const dataTemp = await this.model.getLawByIds(dbContext, step, lawIds);
     const data = this.model.toLawTree(dataTemp);    
     // res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
     // res.end(JSON.stringify(data));

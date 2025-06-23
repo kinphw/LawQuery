@@ -1,4 +1,4 @@
-import { LawResult } from '../../types/LawResult';
+// import { LawResult } from '../../types/LawResult';
 import { LawTitle } from '../../types/LawTitle';
 import { LawTreeNode } from '../../types/LawTreeNode';
 import { LawView } from '../LawView';
@@ -11,6 +11,7 @@ export class LawTable {
     
     // Test
     private lawView: LawView;    
+    private step:number;
 
     // 법령명 thead 설정을 위한 클래스변수 // 250623
     public names: string[] = []; 
@@ -48,10 +49,12 @@ export class LawTable {
                 '여신전문금융업법\n[시행 2025. 4. 22.]\n[법률 제20716호, 2025. 1. 21., 일부개정]',
                 '여신전문금융업법 시행령\n[시행 2024. 12. 10.]\n[대통령령 제35064호, 2024. 12. 10., 일부개정]',
                 '여신전문금융업법 시행규칙\n[시행 2020. 8. 5.]\n[총리령 제1635호, 2020. 8. 5., 타법개정]',
-                '여신전문금융업감독규정\n[시행 2025. 2. 14.]\n[금융위원회고시 제2025-3호, 2025. 2. 5., 일부개정]'//,
-                // '여신전문금융업감독업무시행세칙[시행 2024. 6. 28.] [금융감독원세칙 , 2024. 6. 28., 일부개정]'
+                '여신전문금융업감독규정\n[시행 2025. 2. 14.]\n[금융위원회고시 제2025-3호, 2025. 2. 5., 일부개정]',
+                '여신전문금융업감독업무시행세칙\n[시행 2024. 6. 28.]\n[금융감독원세칙 , 2024. 6. 28., 일부개정]'
             ]
         }
+
+        this.step = parseInt(urlParams.get('step') || '4', 10); // 기본값: 4단계
         
         // this.names = law === 'y'
         //     ? [
@@ -84,12 +87,12 @@ export class LawTable {
         if (!results.length) {
             return '<div class="alert alert-warning">표시할 법령이 없습니다.</div>';
         }
-    
+
         let html = '<div><table class="table table-bordered law-table">';
         html += `
             <thead class="table-dark sticky-top">
                 <tr>
-                    ${this.names.map(name => {
+                    ${this.names.slice(0, this.step).map(name => {
                         const parts = name.split('\n');
                         return `<th class="text-center py-1">
                             <div class="small">${parts[0]}</div>
@@ -99,9 +102,8 @@ export class LawTable {
                 </tr>
             </thead>
         `;
-    
+
         html += '<tbody>';
-        // 각 법령에 대해 순환하면서 LawRows를 렌더링
         results.forEach(law => {
             html += this.renderLawRows(law, searchText);
         });
@@ -110,37 +112,28 @@ export class LawTable {
     }
 
     private renderLawRows(root: LawTreeNode, search: string): string {
-        const paths    = this.collectPaths(root);
+        const paths = this.collectPaths(root);
         const rowspans = this.calcRowspans(paths);
-      
-        return paths
-          .map((path, r) => {
-            const tds = path.map((node, c) => {
-              if (!node) return this.emptyTd(LawTable.COL_CLASS[c]);   // 빈 깊이
-              if (rowspans[r][c] === 0) return '';                     // rowspan으로 병합
-            //   const extra = c === 0                                       // 0열(법)만 버튼
-            //     ? this.renderPenaltyButton(node.id) + this.renderReferenceButton(node.id)
-            //     : '';
-              // 모든 단계에서 참조 버튼 추가
-              let extra = this.renderReferenceButton(node.id);
-              if (c === 0) {
-                  // 법 단계에서만 벌칙 버튼 추가
-                  extra += this.renderPenaltyButton(node.id);
-              }
 
-              return this.td(
-                `${LawTable.COL_CLASS[c]} ${LawTable.INDENT_CLASS[c]}`,
-                node.title, search,
-                rowspans[r][c],
-                extra
-              );
+        return paths.map((path, r) => {
+            const tds = path.map((node, c) => {
+                if (!node) return this.emptyTd(LawTable.COL_CLASS[c]);
+                if (rowspans[r][c] === 0) return ''; // rowspan이 0인 경우 빈 셀
+                let extra = this.renderReferenceButton(node.id);
+                if (c === 0) {
+                    extra += this.renderPenaltyButton(node.id);
+                }
+                return this.td(
+                    `${LawTable.COL_CLASS[c]} ${LawTable.INDENT_CLASS[c]}`,
+                    node.title, search,
+                    rowspans[r][c],
+                    extra
+                );
             }).join('');
-            // 법령 제목 열이 있는 첫 행에만 title-row 부여
             const cls = r === 0 && !root.id_aa ? 'title-row' : '';
             return `<tr class="${cls}">${tds}</tr>`;
-          })
-          .join('');
-      }    
+        }).join('');
+    }
     
     // 헬퍼 함수들
     private td(className: string, text: string | null, searchText: string, rowspan?: number, extraHtml: string = ''): string {
@@ -151,43 +144,40 @@ export class LawTable {
         return `<td class="${className} law-box ${this.currentTextSize}"></td>`;
     }
 
-    /** leaf 경로(Path)들을 수집 ── 깊이는 4단으로 고정 */
+    /** leaf 경로(Path)들을 수집 */     
     private collectPaths(root: LawTreeNode): Path[] {
         const paths: Path[] = [];
         const walk = (
-        node: LawTreeNode,
-        acc: [LawTreeNode | null, LawTreeNode | null,
-                LawTreeNode | null, LawTreeNode | null]
+            node: LawTreeNode,
+            acc: Array<LawTreeNode | null>,
+            depth: number
         ) => {
-        const [law, dec, reg] = acc;
-        const next: Path = [
-            law ?? node,
-            law && !dec ? node : dec,
-            dec && !reg ? node : reg,
-            reg ? node : null,
-        ];
-        if (!node.children?.length) {
-            paths.push(next);
-            return;
-        }
-        node.children.forEach(child => walk(child, next));
+            const next = acc.slice();
+            next[depth] = node;
+            if (!node.children?.length || depth === this.step - 1) {
+                // 리프 노드이거나 최대 단계에 도달하면 경로 추가
+                paths.push(next.slice(0, this.step) as Path);
+                return;
+            }
+            node.children.forEach(child => walk(child, next, depth + 1));
         };
-        walk(root, [null, null, null, null]);
-        return paths;
+        walk(root, Array(this.step).fill(null), 0);
+        return paths as Path[];
     }
     
     /** 각 열별로 ‘같은 노드가 몇 행 연속되는지’ → rowspan 배열 */
     private calcRowspans(paths: Path[]): number[][] {
-        const span: number[][] = paths.map(_ => [0, 0, 0, 0]);
-        for (let col = 0; col < 4; col++) {
-        let i = 0;
-        while (i < paths.length) {
-            let len = 1;
-            while (i + len < paths.length &&
-                paths[i][col] === paths[i + len][col]) len++;
-            span[i][col] = len;           // 블록 첫 행에만 기록
-            i += len;
-        }
+        const span: number[][] = paths.map(() => Array(this.step).fill(0));
+        for (let col = 0; col < this.step; col++) {
+            let i = 0;
+            while (i < paths.length) {
+                let len = 1;
+                // 같은 노드가 연속되는 경우 길이를 계산
+                while (i + len < paths.length &&
+                    paths[i][col] === paths[i + len][col]) len++;
+                span[i][col] = len; // 블록 첫 행에만 rowspan 기록
+                i += len;
+            }
         }
         return span;
     }
