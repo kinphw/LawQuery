@@ -27,6 +27,8 @@ import { LawView } from "../views/LawView";
 import { LawPenaltyView } from "../views/components/LawPenaltyView";
 // import { LawResult } from "../types/LawResult";
 
+import { CurrentLawBox } from "../views/components/CurrentLawBox";
+
 export interface ILawController extends IController {
 
     dataManager: LawDataManager;
@@ -126,6 +128,8 @@ export class LawController implements ILawController {
     }
 
     async initialize(): Promise<void> {
+
+        CurrentLawBox.update();
 
         // 초기 벌칙 id_a 로드 : 250505
         this.dataManager.setPenaltyIds(await this.modelFetchPenaltyIds.getPenaltyIds());

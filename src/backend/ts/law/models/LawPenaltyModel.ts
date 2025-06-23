@@ -73,7 +73,7 @@ export class LawPenaltyModel extends LawBaseModel {
       }
     
       async getPenaltyIds(dbContext:DbContext): Promise<string[]> {
-        // this.setDbContext(dbContext); // DbContext 설정
+        this.setDbContext(dbContext); // DbContext 설정
         const query = `
             SELECT DISTINCT pa.id_a -- 반환값은 id_a의 배열
             FROM db_penalty_a pa
