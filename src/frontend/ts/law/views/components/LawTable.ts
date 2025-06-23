@@ -127,7 +127,8 @@ export class LawTable {
                     `${LawTable.COL_CLASS[c]} ${LawTable.INDENT_CLASS[c]}`,
                     node.title, search,
                     rowspans[r][c],
-                    extra
+                    extra,
+                    node.id ?? undefined // id를 data-id 속성으로 추가
                 );
             }).join('');
             const cls = r === 0 && !root.id_aa ? 'title-row' : '';
@@ -135,10 +136,11 @@ export class LawTable {
         }).join('');
     }
     
-    // 헬퍼 함수들
-    private td(className: string, text: string | null, searchText: string, rowspan?: number, extraHtml: string = ''): string {
+    // 헬퍼 함수들 // id를 <td>의 data-id 속성으로 추가
+    private td(className: string, text: string | null, searchText: string, rowspan?: number, extraHtml: string = '', id?: string): string {
         const rowAttr = rowspan && rowspan > 1 ? ` rowspan="${rowspan}"` : '';
-        return `<td class="${className} law-box ${this.currentTextSize}"${rowAttr}>${this.formatContent(text, searchText)}${extraHtml}</td>`;
+        const idAttr = id ? ` data-id="${id}"` : ''; // id를 data-id로 추가
+        return `<td class="${className} law-box ${this.currentTextSize}"${rowAttr}${idAttr}>${this.formatContent(text, searchText)}${extraHtml}</td>`;
     }
     private emptyTd(className: string): string {
         return `<td class="${className} law-box ${this.currentTextSize}"></td>`;
