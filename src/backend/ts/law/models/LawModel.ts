@@ -225,7 +225,8 @@ export class LawModel extends LawBaseModel {
 
     let query = '';
     if (step ===4) {
-      const query =  `
+      // Debug : 250702
+      query =  `
 
       SELECT
         t.id_aa,
