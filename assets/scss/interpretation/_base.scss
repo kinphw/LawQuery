@@ -1,0 +1,18 @@
+@media (max-width: 767.98px) { // 768px보다 살짝 작게
+  .container {
+    width: 100% !important;
+    max-width: none !important;
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+  }
+}
+
+// 태블릿에서도 적용하고 싶다면
+@media (max-width: 991.98px) {
+  .container {
+    width: 100% !important;
+    max-width: none !important;
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+  }
+}

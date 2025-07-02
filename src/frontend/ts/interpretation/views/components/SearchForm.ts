@@ -9,7 +9,8 @@ export class SearchForm {
         }
 
         // 엔터키 이벤트
-        ['serialInput', 'keywordInput'].forEach(id => {
+        //['serialInput', 'keywordInput'].forEach(id => {
+        ['serialInput', 'keywordInput', 'startDateInput', 'endDateInput'].forEach(id => {
             const input = document.getElementById(id);
             if (input) {
                 input.addEventListener('keydown', (e: KeyboardEvent) => {
