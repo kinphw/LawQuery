@@ -24,8 +24,11 @@ export class InterpretationController {
       const serial = req.query.serial as string || '';
       const field = req.query.field as string || '전체';
       const keyword = req.query.keyword as string || '';
+      const startDate = req.query.startDate as string || undefined;
+      const endDate = req.query.endDate as string || undefined;
 
-      const results = await this.model.search({ type, serial, field, keyword });
+
+      const results = await this.model.search({ type, serial, field, keyword, startDate, endDate });
       
       // res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
       // res.end(JSON.stringify({

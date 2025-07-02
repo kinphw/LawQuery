@@ -13,6 +13,8 @@ export class InterpretationModel {
     serial: string; 
     field: string; 
     keyword: string;
+    startDate?: string;
+    endDate?: string;    
   }): Promise<SearchResult[]> {
     let query = `
       SELECT 
@@ -58,6 +60,16 @@ export class InterpretationModel {
         });
       }
     }
+
+    if (criteria.startDate) {
+        conditions.push(`회신일자 >= ?`);
+        params.push(criteria.startDate);
+    }
+
+    if (criteria.endDate) {
+        conditions.push(`회신일자 <= ?`);
+        params.push(criteria.endDate);
+    }    
 
     if (conditions.length > 0) {
       query += " AND " + conditions.join(" AND ");

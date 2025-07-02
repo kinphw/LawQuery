@@ -78,6 +78,8 @@ export class SearchModel {
       url.searchParams.append('serial', criteria.serial || '');
       url.searchParams.append('field', criteria.field);
       url.searchParams.append('keyword', criteria.keyword || '');
+      if (criteria.startDate) url.searchParams.append('startDate', criteria.startDate);
+      if (criteria.endDate) url.searchParams.append('endDate', criteria.endDate);
       
       // API 호출
       const response = await fetch(url.toString());

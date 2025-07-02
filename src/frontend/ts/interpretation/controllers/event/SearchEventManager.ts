@@ -133,10 +133,12 @@ export class SearchEventManager {
 
     private async performSearch(): Promise<void> {
         const criteria: SearchCriteria = {
-        type: (document.getElementById('typeSelect') as HTMLSelectElement).value,
-        serial: (document.getElementById('serialInput') as HTMLInputElement).value,
-        field: (document.getElementById('fieldSelect') as HTMLSelectElement).value,
-        keyword: (document.getElementById('keywordInput') as HTMLInputElement).value
+          type: (document.getElementById('typeSelect') as HTMLSelectElement).value,
+          serial: (document.getElementById('serialInput') as HTMLInputElement).value,
+          field: (document.getElementById('fieldSelect') as HTMLSelectElement).value,
+          keyword: (document.getElementById('keywordInput') as HTMLInputElement).value,
+          startDate: (document.getElementById('startDateInput') as HTMLInputElement).value,
+          endDate: (document.getElementById('endDateInput') as HTMLInputElement).value          
         };
 
         this.controller.view.showLoading();
