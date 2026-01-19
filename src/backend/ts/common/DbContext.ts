@@ -19,6 +19,8 @@ class DbContext {
             port: parseInt(process.env.MYSQL_PORT || '3306'),
             waitForConnections: true,
             connectionLimit: 10,
+            timezone: '+09:00', // 한국 시간대(KST) 설정
+            dateStrings: true, // datetime을 문자열로 반환하여 timezone 변환 방지 (UTC 문제 해결)
         });
 
         // 🔥 새 커넥션이 열릴 때마다 group_concat_max_len 세팅

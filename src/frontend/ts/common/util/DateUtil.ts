@@ -12,6 +12,8 @@ export class DateUtil {
   //   return new Intl.DateTimeFormat('ko-KR', options).format(date);
   // }
   static formatDate(item:string) :string {
-    return new Date(item).toISOString().split('T')[0];
+    // "2025-06-09 00:00:00" 형식의 문자열에서 날짜 부분만 추출
+    if (!item) return '';
+    return item.split(' ')[0]; // YYYY-MM-DD 부분만 반환
   }
 }
