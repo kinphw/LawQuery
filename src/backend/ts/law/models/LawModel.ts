@@ -380,7 +380,7 @@ export class LawModel extends LawBaseModel {
       `;
     }
 
-    const rows = await this.db.query<LawResult>(query, [...lawIds]); // id정보는 여기 쿼리단에서 조합해서 던짐
+    const rows = await this.db.query<LawResult>(query, [...lawIds, ...lawIds]); // id정보는 여기 쿼리단에서 조합해서 던짐
     return rows;
   }
 
