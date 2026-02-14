@@ -3,5 +3,6 @@ export interface LawTreeNode {
     id_aa?: string;
     title: string | null;
     children?: LawTreeNode[];
-    isTitle?: boolean;
+    isTitle?: boolean; // 타이틀 구분용
+    isVirtual?: boolean; // 가상 노드 여부
 }

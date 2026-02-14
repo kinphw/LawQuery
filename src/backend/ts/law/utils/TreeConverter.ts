@@ -52,8 +52,9 @@ export class TreeConverter {
         if (!decreeNode) {
           decreeNode = {
             id: vId,
-            title: '(..)', // Shell node title
-            children: []
+            title: '', // Empty title for virtual node
+            children: [],
+            isVirtual: true
           };
           law.children.push(decreeNode);
         }
@@ -83,8 +84,9 @@ export class TreeConverter {
         if (!regulationNode) {
           regulationNode = {
             id: vId,
-            title: '(..)',
-            children: []
+            title: '',
+            children: [],
+            isVirtual: true
           };
           decreeNode.children.push(regulationNode);
         }
@@ -114,8 +116,9 @@ export class TreeConverter {
         if (!ruleNode) {
           ruleNode = {
             id: vId,
-            title: '(..)',
-            children: []
+            title: '',
+            children: [],
+            isVirtual: true
           };
           regulationNode.children.push(ruleNode);
         }

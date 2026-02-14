@@ -8,13 +8,13 @@ type Path = [
     LawTreeNode | null, LawTreeNode | null];
 
 export class LawTable {
-    
+
     // Test
-    private lawView: LawView;    
-    private step:number;
+    private lawView: LawView;
+    private step: number;
 
     // 법령명 thead 설정을 위한 클래스변수 // 250623
-    public names: string[] = []; 
+    public names: string[] = [];
 
     // 0: 법 / 1: 시행령 / 2: 감독규정 / 3: 세칙
     private static readonly COL_CLASS = [
@@ -55,7 +55,7 @@ export class LawTable {
         }
 
         this.step = parseInt(urlParams.get('step') || '4', 10); // 기본값: 4단계
-        
+
         // this.names = law === 'y'
         //     ? [
         //         '여신전문금융업법[시행 2025. 4. 22.] [법률 제20716호, 2025. 1. 21., 일부개정]',
@@ -70,7 +70,7 @@ export class LawTable {
         //         '전자금융감독규정\n[시행 2025. 2. 5.]\n[금융위원회고시 제2025-4호, 2025. 2. 5., 일부개정]',
         //         '전자금융감독규정시행세칙\n[시행 2025. 2. 5.]\n[금융감독원세칙 , 2025. 2. 3., 일부개정]'
         //     ];
-    }    
+    }
 
     // 법령명 thead 설정을 위한 클래스변수
     // public names : string[] = [
@@ -93,12 +93,12 @@ export class LawTable {
             <thead class="table-dark sticky-top">
                 <tr>
                     ${this.names.slice(0, this.step).map(name => {
-                        const parts = name.split('\n');
-                        return `<th class="text-center py-1">
+            const parts = name.split('\n');
+            return `<th class="text-center py-1">
                             <div class="small">${parts[0]}</div>
                             <div class="text-xs">${parts.slice(1).join('<br>')}</div>
                         </th>`;
-                    }).join('')}
+        }).join('')}
                 </tr>
             </thead>
         `;
@@ -128,25 +128,30 @@ export class LawTable {
                     node.title, search,
                     rowspans[r][c],
                     extra,
-                    node.id ?? undefined // id를 data-id 속성으로 추가
+                    node.id ?? undefined, // id를 data-id 속성으로 추가
+                    node.isVirtual // 가상 노드 여부 전달
                 );
             }).join('');
             const cls = r === 0 && !root.id_aa ? 'title-row' : '';
             return `<tr class="${cls}">${tds}</tr>`;
         }).join('');
     }
-    
+
     // 헬퍼 함수들 // id를 <td>의 data-id 속성으로 추가
-    private td(className: string, text: string | null, searchText: string, rowspan?: number, extraHtml: string = '', id?: string): string {
+    private td(className: string, text: string | null, searchText: string, rowspan?: number, extraHtml: string = '', id?: string, isVirtual?: boolean): string {
         const rowAttr = rowspan && rowspan > 1 ? ` rowspan="${rowspan}"` : '';
         const idAttr = id ? ` data-id="${id}"` : ''; // id를 data-id로 추가
-        return `<td class="${className} law-box ${this.currentTextSize}"${rowAttr}${idAttr}>${this.formatContent(text, searchText)}${extraHtml}</td>`;
+
+        // 가상 노드인 경우 virtual-cell 클래스 추가
+        const finalClass = isVirtual ? `${className} law-box ${this.currentTextSize} virtual-cell` : `${className} law-box ${this.currentTextSize}`;
+
+        return `<td class="${finalClass}"${rowAttr}${idAttr}>${this.formatContent(text, searchText)}${extraHtml}</td>`;
     }
     private emptyTd(className: string): string {
         return `<td class="${className} law-box ${this.currentTextSize}"></td>`;
     }
 
-    /** leaf 경로(Path)들을 수집 */     
+    /** leaf 경로(Path)들을 수집 */
     private collectPaths(root: LawTreeNode): Path[] {
         const paths: Path[] = [];
         const walk = (
@@ -166,7 +171,7 @@ export class LawTable {
         walk(root, Array(this.step).fill(null), 0);
         return paths as Path[];
     }
-    
+
     /** 각 열별로 ‘같은 노드가 몇 행 연속되는지’ → rowspan 배열 */
     private calcRowspans(paths: Path[]): number[][] {
         const span: number[][] = paths.map(() => Array(this.step).fill(0));
@@ -183,7 +188,7 @@ export class LawTable {
         }
         return span;
     }
-  
+
     /////////////////////////////////
 
     // 벌칙 버튼 렌더링 유틸
@@ -194,7 +199,7 @@ export class LawTable {
             </button>`;
         }
         return '';
-    }    
+    }
 
     // 참조 버튼 렌더링 유틸
     private renderReferenceButton(id: string | null): string {
@@ -203,7 +208,7 @@ export class LawTable {
             <button type="button" class="btn btn-outline-info btn-sm ms-2 law-ref-btn" data-id="${id}">참조</button>
             <div class="law-ref-popup d-none"></div>
         `;
-    }    
+    }
 
     // Setters
 
