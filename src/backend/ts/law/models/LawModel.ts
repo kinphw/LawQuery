@@ -16,70 +16,63 @@ export class LawModel extends LawBaseModel {
 
     this.setDbContext(dbContext); // DbContext 설정
 
-    let query:string = '';
+    let query: string = '';
 
     if (step === 4) {
       query = `
-
-      SELECT
-        t.id_aa,
-        t.id_a,
-        t.law_content,
-        t.id_e,
-        t.decree_content,
-        t.id_s,
-        t.regulation_content,
-        t.id_r,
-        t.rule_content
-      FROM (
-        SELECT
-          a.id_aa AS id_aa,
+      WITH RECURSIVE paths AS (
+        SELECT 
+          a.id_aa,
           a.id AS ida,
           a.id_a,
           a.content_a AS law_content,
-          ae.id_e,
-          e.id AS ide,
-          ae.id AS id_ae, -- 추가
-          e.content_e AS decree_content,
-          es.id_s,
-          s.id AS ids,
-          es.id AS id_es, -- 추가
-          s.content_s AS regulation_content,
-          sr.id_r,
-          r.id AS idr,
-          sr.id AS id_sr, -- 추가
-          r.content_r AS rule_content,
-          COUNT(*) OVER (PARTITION BY a.id_a) AS a_count
+          a.id_a AS current_node,
+          CAST(NULL AS CHAR(100)) AS id_e,
+          CAST(NULL AS CHAR(100)) AS id_s,
+          CAST(NULL AS CHAR(100)) AS id_r,
+          0 AS depth
         FROM db_a a
-        LEFT JOIN rdb_ae ae ON ae.id_a = a.id_a
-        LEFT JOIN rdb_es es ON es.id_e = ae.id_e
-        LEFT JOIN rdb_sr sr ON sr.id_s = es.id_s
-        LEFT JOIN db_e e ON e.id_e = ae.id_e
-        LEFT JOIN db_s s ON s.id_s = es.id_s
-        LEFT JOIN db_r r ON r.id_r = sr.id_r
+        WHERE a.id_a IS NOT NULL
 
         UNION ALL
 
-        SELECT
-          a.id_aa AS id_aa,
-          a.id AS ida,
-          NULL AS id_a,
-          a.content_a AS law_content,
-          NULL AS id_e,
-          NULL AS ide,
-          NULL AS id_ae, -- 추가
-          NULL AS decree_content,
-          NULL AS id_s,
-          NULL AS ids,
-          NULL AS id_es, -- 추가
-          NULL AS regulation_content,
-          NULL AS id_r,
-          NULL AS idr,
-          NULL AS id_sr, -- 추가
-          NULL AS rule_content,
-          1 AS a_count
-        FROM db_a a
-        WHERE a.id_a IS NULL AND a.title_a IS NOT NULL
+        SELECT 
+          p.id_aa, p.ida, p.id_a, p.law_content,
+          rdb.id_end,
+          CASE WHEN rdb.id_end LIKE 'E%' THEN rdb.id_end ELSE p.id_e END,
+          CASE WHEN rdb.id_end LIKE 'S%' THEN rdb.id_end ELSE p.id_s END,
+          CASE WHEN rdb.id_end LIKE 'R%' THEN rdb.id_end ELSE p.id_r END,
+          p.depth + 1
+        FROM paths p
+        JOIN rdb ON rdb.id_start = p.current_node
+        WHERE p.depth < 3
+          AND (
+            (p.current_node LIKE 'A%' AND (rdb.id_end LIKE 'E%' OR rdb.id_end LIKE 'S%' OR rdb.id_end LIKE 'R%'))
+            OR (p.current_node LIKE 'E%' AND (rdb.id_end LIKE 'S%' OR rdb.id_end LIKE 'R%'))
+            OR (p.current_node LIKE 'S%' AND rdb.id_end LIKE 'R%')
+          )
+      )
+      SELECT * FROM (
+        SELECT 
+          p.id_aa, p.id_a, p.law_content,
+          p.id_e, e.content_e AS decree_content,
+          p.id_s, s.content_s AS regulation_content,
+          p.id_r, r.content_r AS rule_content,
+          p.ida,
+          COUNT(*) OVER (PARTITION BY p.id_a) AS a_count
+        FROM paths p
+        LEFT JOIN db_e e ON e.id_e = p.id_e
+        LEFT JOIN db_s s ON s.id_s = p.id_s
+        LEFT JOIN db_r r ON r.id_r = p.id_r
+        WHERE NOT EXISTS (
+          SELECT 1 FROM rdb 
+          WHERE id_start = p.current_node
+            AND (
+              (p.current_node LIKE 'A%' AND (id_end LIKE 'E%' OR id_end LIKE 'S%' OR id_end LIKE 'R%'))
+              OR (p.current_node LIKE 'E%' AND (id_end LIKE 'S%' OR id_end LIKE 'R%'))
+              OR (p.current_node LIKE 'S%' AND id_end LIKE 'R%')
+            )
+        )
       ) t
       WHERE
         NOT (
@@ -89,204 +82,185 @@ export class LawModel extends LawBaseModel {
           AND t.rule_content IS NULL
           AND t.a_count > 1
         )
-      -- ORDER BY t.ida, t.ide, t.ids, t.idr;
-      ORDER BY
-        t.ida,
-        t.id_ae,
-        t.id_es,
-        t.id_sr;  
+
+      UNION ALL
+
+      SELECT 
+        a.id_aa, NULL, a.content_a,
+        NULL, NULL, NULL, NULL, NULL, NULL,
+        a.id AS ida,
+        1 AS a_count
+      FROM db_a a
+      WHERE a.id_a IS NULL AND a.title_a IS NOT NULL
+
+      ORDER BY 
+        ida,
+        id_a,
+        id_e,
+        id_s,
+        id_r;  
       `;
     };
 
     if (step === 5) {
       query = `
-        SELECT
-          t.id_aa,
-          t.id_a,
-          t.law_content,
-          t.id_e,
-          t.decree_content,
-          t.id_s,
-          t.regulation_content,
-          t.id_r,
-          t.rule_content,
-          t.id_b,                -- 📌 추가
-          t.book_content         -- 📌 추가
-        FROM (
-          SELECT
-            a.id_aa AS id_aa,
-            a.id AS ida,
-            a.id_a,
-            a.content_a AS law_content,
+      WITH RECURSIVE paths AS (
+        SELECT 
+          a.id_aa,
+          a.id AS ida,
+          a.id_a,
+          a.content_a AS law_content,
+          a.id_a AS current_node,
+          CAST(NULL AS CHAR(100)) AS id_e,
+          CAST(NULL AS CHAR(100)) AS id_s,
+          CAST(NULL AS CHAR(100)) AS id_r,
+          CAST(NULL AS CHAR(100)) AS id_b,
+          0 AS depth
+        FROM db_a a
+        WHERE a.id_a IS NOT NULL
 
-            ae.id_e,
-            e.id AS ide,
-            ae.id AS id_ae,
+        UNION ALL
 
-            e.content_e AS decree_content,
-
-            es.id_s,
-            s.id AS ids,
-            es.id AS id_es,
-
-            s.content_s AS regulation_content,
-
-            sr.id_r,
-            r.id AS idr,
-            sr.id AS id_sr,
-
-            r.content_r AS rule_content,
-
-            rb.id_b,             -- 📌 추가
-            b.id AS idb,         -- 📌 추가
-            rb.id AS id_rb,      -- 📌 추가
-
-            b.content_b AS book_content,  -- 📌 추가
-
-            COUNT(*) OVER (PARTITION BY a.id_a) AS a_count
-
-          FROM db_a a
-          LEFT JOIN rdb_ae ae ON ae.id_a = a.id_a
-          LEFT JOIN db_e e ON e.id_e = ae.id_e
-
-          LEFT JOIN rdb_es es ON es.id_e = ae.id_e
-          LEFT JOIN db_s s ON s.id_s = es.id_s
-
-          LEFT JOIN rdb_sr sr ON sr.id_s = es.id_s
-          LEFT JOIN db_r r ON r.id_r = sr.id_r
-
-          LEFT JOIN rdb_rb rb ON rb.id_r = sr.id_r    -- 📌 추가된 연결 테이블
-          LEFT JOIN db_b b ON b.id_b = rb.id_b        -- 📌 추가된 최종 단계 테이블
-
-          UNION ALL
-
-          SELECT
-            a.id_aa AS id_aa,
-            a.id AS ida,
-            NULL AS id_a,
-            a.content_a AS law_content,
-
-            NULL AS id_e,
-            NULL AS ide,
-            NULL AS id_ae,
-
-            NULL AS decree_content,
-
-            NULL AS id_s,
-            NULL AS ids,
-            NULL AS id_es,
-
-            NULL AS regulation_content,
-
-            NULL AS id_r,
-            NULL AS idr,
-            NULL AS id_sr,
-
-            NULL AS rule_content,
-
-            NULL AS id_b,           -- 📌 추가
-            NULL AS idb,            -- 📌 추가
-            NULL AS id_rb,          -- 📌 추가
-
-            NULL AS book_content,   -- 📌 추가
-
-            1 AS a_count
-          FROM db_a a
-          WHERE a.id_a IS NULL AND a.title_a IS NOT NULL
-        ) t
-        WHERE
-          NOT (
-            t.law_content IS NOT NULL
-            AND t.decree_content IS NULL
-            AND t.regulation_content IS NULL
-            AND t.rule_content IS NULL
-            AND t.book_content IS NULL      -- 📌 추가된 WHERE 조건
-            AND t.a_count > 1
+        SELECT 
+          p.id_aa, p.ida, p.id_a, p.law_content,
+          rdb.id_end,
+          CASE WHEN rdb.id_end LIKE 'E%' THEN rdb.id_end ELSE p.id_e END,
+          CASE WHEN rdb.id_end LIKE 'S%' THEN rdb.id_end ELSE p.id_s END,
+          CASE WHEN rdb.id_end LIKE 'R%' THEN rdb.id_end ELSE p.id_r END,
+          CASE WHEN rdb.id_end LIKE 'B%' THEN rdb.id_end ELSE p.id_b END,
+          p.depth + 1
+        FROM paths p
+        JOIN rdb ON rdb.id_start = p.current_node
+        WHERE p.depth < 4
+          AND (
+            (p.current_node LIKE 'A%' AND (rdb.id_end LIKE 'E%' OR rdb.id_end LIKE 'S%' OR rdb.id_end LIKE 'R%' OR rdb.id_end LIKE 'B%'))
+            OR (p.current_node LIKE 'E%' AND (rdb.id_end LIKE 'S%' OR rdb.id_end LIKE 'R%' OR rdb.id_end LIKE 'B%'))
+            OR (p.current_node LIKE 'S%' AND (rdb.id_end LIKE 'R%' OR rdb.id_end LIKE 'B%'))
+            OR (p.current_node LIKE 'R%' AND rdb.id_end LIKE 'B%')
           )
-        ORDER BY
-          t.ida,
-          t.id_ae,
-          t.id_es,
-          t.id_sr,
-          t.id_rb;                 -- 📌 정렬 기준 추가
-      `
+      )
+      SELECT * FROM (
+        SELECT 
+          p.id_aa, p.id_a, p.law_content,
+          p.id_e, e.content_e AS decree_content,
+          p.id_s, s.content_s AS regulation_content,
+          p.id_r, r.content_r AS rule_content,
+          p.id_b, b.content_b AS book_content,
+          p.ida,
+          COUNT(*) OVER (PARTITION BY p.id_a) AS a_count 
+        FROM paths p
+        LEFT JOIN db_e e ON e.id_e = p.id_e
+        LEFT JOIN db_s s ON s.id_s = p.id_s
+        LEFT JOIN db_r r ON r.id_r = p.id_r
+        LEFT JOIN db_b b ON b.id_b = p.id_b
+        WHERE NOT EXISTS (
+          SELECT 1 FROM rdb 
+          WHERE id_start = p.current_node
+            AND (
+              (p.current_node LIKE 'A%' AND (id_end LIKE 'E%' OR id_end LIKE 'S%' OR id_end LIKE 'R%' OR id_end LIKE 'B%'))
+              OR (p.current_node LIKE 'E%' AND (id_end LIKE 'S%' OR id_end LIKE 'R%' OR id_end LIKE 'B%'))
+              OR (p.current_node LIKE 'S%' AND (id_end LIKE 'R%' OR id_end LIKE 'B%'))
+              OR (p.current_node LIKE 'R%' AND id_end LIKE 'B%')
+            )
+        )
+      ) t
+      WHERE
+        NOT (
+          t.law_content IS NOT NULL
+          AND t.decree_content IS NULL
+          AND t.regulation_content IS NULL
+          AND t.rule_content IS NULL
+          AND t.book_content IS NULL
+          AND t.a_count > 1
+        )
+
+      UNION ALL
+
+      SELECT 
+        a.id_aa, NULL, a.content_a,
+        NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
+        a.id AS ida,
+        1 AS a_count
+      FROM db_a a
+      WHERE a.id_a IS NULL AND a.title_a IS NOT NULL
+
+      ORDER BY 
+        ida,
+        id_a,
+        id_e,
+        id_s,
+        id_r,
+        id_b;
+      `;
     }
     const rows = await this.db.query<LawResult>(query);
     return rows;
   }
 
 
-  async getLawByIds(dbContext: DbContext, step:number, lawIds: string[]): Promise<LawResult[]> {
+  async getLawByIds(dbContext: DbContext, step: number, lawIds: string[]): Promise<LawResult[]> {
 
     this.setDbContext(dbContext); // DbContext 설정    
     if (!lawIds.length) return [];
 
-    const placeholders = new Array(lawIds.length).fill('?').join(',');    
+    const placeholders = new Array(lawIds.length).fill('?').join(',');
 
     let query = '';
-    if (step ===4) {
-      // Debug : 250702
-      query =  `
-
-      SELECT
-        t.id_aa,
-        t.id_a,
-        t.law_content,
-        t.id_e,
-        t.decree_content,
-        t.id_s,
-        t.regulation_content,
-        t.id_r,
-        t.rule_content
-      FROM (
-        SELECT
-          a.id_aa AS id_aa,
+    if (step === 4) {
+      query = `
+      WITH RECURSIVE paths AS (
+        SELECT 
+          a.id_aa,
           a.id AS ida,
           a.id_a,
           a.content_a AS law_content,
-          ae.id_e,
-          e.id AS ide,
-          ae.id AS id_ae, -- 추가
-          e.content_e AS decree_content,
-          es.id_s,
-          s.id AS ids,
-          es.id AS id_es, -- 추가
-          s.content_s AS regulation_content,
-          sr.id_r,
-          r.id AS idr,
-          sr.id AS id_sr, -- 추가
-          r.content_r AS rule_content,
-          COUNT(*) OVER (PARTITION BY a.id_a) AS a_count
+          a.id_a AS current_node,
+          CAST(NULL AS CHAR(100)) AS id_e,
+          CAST(NULL AS CHAR(100)) AS id_s,
+          CAST(NULL AS CHAR(100)) AS id_r,
+          0 AS depth
         FROM db_a a
-        LEFT JOIN rdb_ae ae ON ae.id_a = a.id_a
-        LEFT JOIN rdb_es es ON es.id_e = ae.id_e
-        LEFT JOIN rdb_sr sr ON sr.id_s = es.id_s
-        LEFT JOIN db_e e ON e.id_e = ae.id_e
-        LEFT JOIN db_s s ON s.id_s = es.id_s
-        LEFT JOIN db_r r ON r.id_r = sr.id_r
+        WHERE a.id_a IS NOT NULL AND a.id_aa IN (${placeholders})
 
         UNION ALL
 
-        SELECT
-          a.id_aa AS id_aa,
-          a.id AS ida,
-          NULL AS id_a,
-          a.content_a AS law_content,
-          NULL AS id_e,
-          NULL AS ide,
-          NULL AS id_ae, -- 추가
-          NULL AS decree_content,
-          NULL AS id_s,
-          NULL AS ids,
-          NULL AS id_es, -- 추가
-          NULL AS regulation_content,
-          NULL AS id_r,
-          NULL AS idr,
-          NULL AS id_sr, -- 추가
-          NULL AS rule_content,
-          1 AS a_count
-        FROM db_a a
-        WHERE a.id_a IS NULL AND a.title_a IS NOT NULL
+        SELECT 
+          p.id_aa, p.ida, p.id_a, p.law_content,
+          rdb.id_end,
+          CASE WHEN rdb.id_end LIKE 'E%' THEN rdb.id_end ELSE p.id_e END,
+          CASE WHEN rdb.id_end LIKE 'S%' THEN rdb.id_end ELSE p.id_s END,
+          CASE WHEN rdb.id_end LIKE 'R%' THEN rdb.id_end ELSE p.id_r END,
+          p.depth + 1
+        FROM paths p
+        JOIN rdb ON rdb.id_start = p.current_node
+        WHERE p.depth < 3
+          AND (
+            (p.current_node LIKE 'A%' AND (rdb.id_end LIKE 'E%' OR rdb.id_end LIKE 'S%' OR rdb.id_end LIKE 'R%'))
+            OR (p.current_node LIKE 'E%' AND (rdb.id_end LIKE 'S%' OR rdb.id_end LIKE 'R%'))
+            OR (p.current_node LIKE 'S%' AND rdb.id_end LIKE 'R%')
+          )
+      )
+      SELECT * FROM (
+        SELECT 
+          p.id_aa, p.id_a, p.law_content,
+          p.id_e, e.content_e AS decree_content,
+          p.id_s, s.content_s AS regulation_content,
+          p.id_r, r.content_r AS rule_content,
+          p.ida,
+          COUNT(*) OVER (PARTITION BY p.id_a) AS a_count
+        FROM paths p
+        LEFT JOIN db_e e ON e.id_e = p.id_e
+        LEFT JOIN db_s s ON s.id_s = p.id_s
+        LEFT JOIN db_r r ON r.id_r = p.id_r
+        WHERE NOT EXISTS (
+          SELECT 1 FROM rdb 
+          WHERE id_start = p.current_node
+            AND (
+              (p.current_node LIKE 'A%' AND (id_end LIKE 'E%' OR id_end LIKE 'S%' OR id_end LIKE 'R%'))
+              OR (p.current_node LIKE 'E%' AND (id_end LIKE 'S%' OR id_end LIKE 'R%'))
+              OR (p.current_node LIKE 'S%' AND id_end LIKE 'R%')
+            )
+        )
       ) t
       WHERE
         NOT (
@@ -296,110 +270,85 @@ export class LawModel extends LawBaseModel {
           AND t.rule_content IS NULL
           AND t.a_count > 1
         )
-      AND t.id_aa IN (${placeholders}) -- 검색자를 id_aa로 변경
-      -- ORDER BY t.ida, t.ide, t.ids, t.idr;  
+
+      UNION ALL
+
+      SELECT 
+        a.id_aa, NULL, a.content_a,
+        NULL, NULL, NULL, NULL, NULL, NULL,
+        a.id AS ida,
+        1 AS a_count
+      FROM db_a a
+      WHERE a.id_a IS NULL AND a.title_a IS NOT NULL AND a.id_aa IN (${placeholders})
+
       ORDER BY 
-        t.ida,
-        t.id_ae,
-        t.id_es,
-        t.id_sr;  
+        ida,
+        id_a,
+        id_e,
+        id_s,
+        id_r;
       `;
     } else if (step === 5) {
       query = `
-
-      SELECT
-        t.id_aa,
-        t.id_a,
-        t.law_content,
-        t.id_e,
-        t.decree_content,
-        t.id_s,
-        t.regulation_content,
-        t.id_r,
-        t.rule_content,
-        t.id_b,            -- 📌 추가
-        t.book_content     -- 📌 추가
-      FROM (
-        SELECT
-          a.id_aa AS id_aa,
+      WITH RECURSIVE paths AS (
+        SELECT 
+          a.id_aa,
           a.id AS ida,
           a.id_a,
           a.content_a AS law_content,
-
-          ae.id_e,
-          e.id AS ide,
-          ae.id AS id_ae, -- 추가
-
-          e.content_e AS decree_content,
-
-          es.id_s,
-          s.id AS ids,
-          es.id AS id_es, -- 추가
-
-          s.content_s AS regulation_content,
-
-          sr.id_r,
-          r.id AS idr,
-          sr.id AS id_sr, -- 추가
-
-          r.content_r AS rule_content,
-
-          rb.id_b,             -- 📌 추가
-          b.id AS idb,         -- 📌 추가
-          rb.id AS id_rb,      -- 📌 추가
-
-          b.content_b AS book_content,  -- 📌 추가
-
-          COUNT(*) OVER (PARTITION BY a.id_a) AS a_count
-
+          a.id_a AS current_node,
+          CAST(NULL AS CHAR(100)) AS id_e,
+          CAST(NULL AS CHAR(100)) AS id_s,
+          CAST(NULL AS CHAR(100)) AS id_r,
+          CAST(NULL AS CHAR(100)) AS id_b,
+          0 AS depth
         FROM db_a a
-        LEFT JOIN rdb_ae ae ON ae.id_a = a.id_a
-        LEFT JOIN db_e e ON e.id_e = ae.id_e
-
-        LEFT JOIN rdb_es es ON es.id_e = ae.id_e
-        LEFT JOIN db_s s ON s.id_s = es.id_s
-
-        LEFT JOIN rdb_sr sr ON sr.id_s = es.id_s
-        LEFT JOIN db_r r ON r.id_r = sr.id_r
-
-        LEFT JOIN rdb_rb rb ON rb.id_r = sr.id_r    -- 📌 추가: 5단계 릴레이션 테이블
-        LEFT JOIN db_b b ON b.id_b = rb.id_b        -- 📌 추가: 5단계 실제 데이터 테이블
+        WHERE a.id_a IS NOT NULL AND a.id_aa IN (${placeholders})
 
         UNION ALL
 
-        SELECT
-          a.id_aa AS id_aa,
-          a.id AS ida,
-          NULL AS id_a,
-          a.content_a AS law_content,
-
-          NULL AS id_e,
-          NULL AS ide,
-          NULL AS id_ae, -- 추가
-
-          NULL AS decree_content,
-
-          NULL AS id_s,
-          NULL AS ids,
-          NULL AS id_es, -- 추가
-
-          NULL AS regulation_content,
-
-          NULL AS id_r,
-          NULL AS idr,
-          NULL AS id_sr, -- 추가
-
-          NULL AS rule_content,
-
-          NULL AS id_b,            -- 📌 추가
-          NULL AS idb,             -- 📌 추가
-          NULL AS id_rb,           -- 📌 추가
-
-          NULL AS book_content,    -- 📌 추가
-
-          1 AS a_count
-        FROM db_a a
-        WHERE a.id_a IS NULL AND a.title_a IS NOT NULL
+        SELECT 
+          p.id_aa, p.ida, p.id_a, p.law_content,
+          rdb.id_end,
+          CASE WHEN rdb.id_end LIKE 'E%' THEN rdb.id_end ELSE p.id_e END,
+          CASE WHEN rdb.id_end LIKE 'S%' THEN rdb.id_end ELSE p.id_s END,
+          CASE WHEN rdb.id_end LIKE 'R%' THEN rdb.id_end ELSE p.id_r END,
+          CASE WHEN rdb.id_end LIKE 'B%' THEN rdb.id_end ELSE p.id_b END,
+          p.depth + 1
+        FROM paths p
+        JOIN rdb ON rdb.id_start = p.current_node
+        WHERE p.depth < 4
+          AND (
+            (p.current_node LIKE 'A%' AND (rdb.id_end LIKE 'E%' OR rdb.id_end LIKE 'S%' OR rdb.id_end LIKE 'R%'))
+            OR (p.current_node LIKE 'E%' AND (rdb.id_end LIKE 'S%' OR rdb.id_end LIKE 'R%'))
+            OR (p.current_node LIKE 'S%' AND (rdb.id_end LIKE 'R%' OR rdb.id_end LIKE 'B%'))
+            OR (p.current_node LIKE 'R%' AND id_end LIKE 'B%')
+          )
+      )
+      SELECT * FROM (
+        SELECT 
+          p.id_aa, p.id_a, p.law_content,
+          p.id_e, e.content_e AS decree_content,
+          p.id_s, s.content_s AS regulation_content,
+          p.id_r, r.content_r AS rule_content,
+          p.id_b, b.content_b AS book_content,
+          p.ida,
+          COUNT(*) OVER (PARTITION BY p.id_a) AS a_count 
+        FROM paths p
+        LEFT JOIN db_e e ON e.id_e = p.id_e
+        LEFT JOIN db_s s ON s.id_s = p.id_s
+        LEFT JOIN db_r r ON r.id_r = p.id_r
+        LEFT JOIN db_b b ON b.id_b = p.id_b
+        WHERE NOT EXISTS (
+          SELECT 1 FROM rdb 
+          WHERE id_start = p.current_node
+            AND (
+              (p.current_node LIKE 'A%' AND (id_end LIKE 'E%' OR id_end LIKE 'S%' OR id_end LIKE 'R%'))
+              OR (p.current_node LIKE 'E%' AND (id_end LIKE 'S%' OR id_end LIKE 'R%'))
+              OR (p.current_node LIKE 'S%' AND (id_end LIKE 'R%' OR id_end LIKE 'B%'))
+              OR (p.current_node LIKE 'R%' AND id_end LIKE 'B%')
+            )
+        )
       ) t
       WHERE
         NOT (
@@ -407,19 +356,29 @@ export class LawModel extends LawBaseModel {
           AND t.decree_content IS NULL
           AND t.regulation_content IS NULL
           AND t.rule_content IS NULL
-          AND t.book_content IS NULL    -- 📌 추가: 필터링 조건에 b단계 추가
+          AND t.book_content IS NULL
           AND t.a_count > 1
         )
-      AND t.id_aa IN (${placeholders}) -- 검색자 조건 (유지)
-      ORDER BY 
-        t.ida,
-        t.id_ae,
-        t.id_es,
-        t.id_sr,
-        t.id_rb;      -- 📌 추가: 정렬 기준에 5단계 릴레이션 id 추가
 
-      `
-    };
+      UNION ALL
+
+      SELECT 
+        a.id_aa, NULL, a.content_a,
+        NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
+        a.id AS ida,
+        1 AS a_count
+      FROM db_a a
+      WHERE a.id_a IS NULL AND a.title_a IS NOT NULL AND a.id_aa IN (${placeholders})
+
+      ORDER BY 
+        ida,
+        id_a,
+        id_e,
+        id_s,
+        id_r,
+        id_b;
+      `;
+    }
 
     const rows = await this.db.query<LawResult>(query, [...lawIds]); // id정보는 여기 쿼리단에서 조합해서 던짐
     return rows;
