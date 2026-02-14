@@ -19,12 +19,15 @@ class DbContext {
             port: parseInt(process.env.MYSQL_PORT || '3306'),
             waitForConnections: true,
             connectionLimit: 10,
+            charset: 'utf8mb4',
             timezone: '+09:00', // 한국 시간대(KST) 설정
             dateStrings: true, // datetime을 문자열로 반환하여 timezone 변환 방지 (UTC 문제 해결)
         });
 
-        // 🔥 새 커넥션이 열릴 때마다 group_concat_max_len 세팅
+        // 🔥 새 커넥션이 열릴 때마다 group_concat_max_len 세팅 
         this.pool.on('connection', (connection) => {
+            connection.query("SET NAMES utf8mb4 COLLATE utf8mb4_uca1400_ai_ci;");
+            connection.query("SET SESSION collation_connection = 'utf8mb4_uca1400_ai_ci';");
             connection.query('SET SESSION group_concat_max_len = 1000000;');
         });
     }
