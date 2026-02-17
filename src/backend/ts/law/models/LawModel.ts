@@ -58,6 +58,9 @@ export class LawModel extends LawBaseModel {
           p.id_e, e.content_e AS decree_content,
           p.id_s, s.content_s AS regulation_content,
           p.id_r, r.content_r AS rule_content,
+          e.id AS ide,
+          s.id AS ids,
+          r.id AS idr,
           p.ida,
           COUNT(*) OVER (PARTITION BY p.id_a) AS a_count
         FROM paths p
@@ -88,6 +91,7 @@ export class LawModel extends LawBaseModel {
       SELECT 
         a.id_aa, NULL, a.content_a,
         NULL, NULL, NULL, NULL, NULL, NULL,
+        NULL, NULL, NULL,
         a.id AS ida,
         1 AS a_count
       FROM db_a a
@@ -95,10 +99,9 @@ export class LawModel extends LawBaseModel {
 
       ORDER BY 
         ida,
-        id_a,
-        id_e,
-        id_s,
-        id_r;  
+        ide,
+        ids,
+        idr;  
       `;
     };
 
@@ -146,6 +149,10 @@ export class LawModel extends LawBaseModel {
           p.id_s, s.content_s AS regulation_content,
           p.id_r, r.content_r AS rule_content,
           p.id_b, b.content_b AS book_content,
+          e.id AS ide,
+          s.id AS ids,
+          r.id AS idr,
+          b.id AS idb,
           p.ida,
           COUNT(*) OVER (PARTITION BY p.id_a) AS a_count 
         FROM paths p
@@ -179,6 +186,7 @@ export class LawModel extends LawBaseModel {
       SELECT 
         a.id_aa, NULL, a.content_a,
         NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
+        NULL, NULL, NULL, NULL,
         a.id AS ida,
         1 AS a_count
       FROM db_a a
@@ -186,11 +194,10 @@ export class LawModel extends LawBaseModel {
 
       ORDER BY 
         ida,
-        id_a,
-        id_e,
-        id_s,
-        id_r,
-        id_b;
+        ide,
+        ids,
+        idr,
+        idb;
       `;
     }
     const rows = await this.db.query<LawResult>(query);
@@ -246,6 +253,9 @@ export class LawModel extends LawBaseModel {
           p.id_e, e.content_e AS decree_content,
           p.id_s, s.content_s AS regulation_content,
           p.id_r, r.content_r AS rule_content,
+          e.id AS ide,
+          s.id AS ids,
+          r.id AS idr,
           p.ida,
           COUNT(*) OVER (PARTITION BY p.id_a) AS a_count
         FROM paths p
@@ -276,6 +286,7 @@ export class LawModel extends LawBaseModel {
       SELECT 
         a.id_aa, NULL, a.content_a,
         NULL, NULL, NULL, NULL, NULL, NULL,
+        NULL, NULL, NULL,
         a.id AS ida,
         1 AS a_count
       FROM db_a a
@@ -283,10 +294,9 @@ export class LawModel extends LawBaseModel {
 
       ORDER BY 
         ida,
-        id_a,
-        id_e,
-        id_s,
-        id_r;
+        ide,
+        ids,
+        idr;
       `;
     } else if (step === 5) {
       query = `
@@ -332,6 +342,10 @@ export class LawModel extends LawBaseModel {
           p.id_s, s.content_s AS regulation_content,
           p.id_r, r.content_r AS rule_content,
           p.id_b, b.content_b AS book_content,
+          e.id AS ide,
+          s.id AS ids,
+          r.id AS idr,
+          b.id AS idb,
           p.ida,
           COUNT(*) OVER (PARTITION BY p.id_a) AS a_count 
         FROM paths p
@@ -365,6 +379,7 @@ export class LawModel extends LawBaseModel {
       SELECT 
         a.id_aa, NULL, a.content_a,
         NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
+        NULL, NULL, NULL, NULL,
         a.id AS ida,
         1 AS a_count
       FROM db_a a
@@ -372,11 +387,10 @@ export class LawModel extends LawBaseModel {
 
       ORDER BY 
         ida,
-        id_a,
-        id_e,
-        id_s,
-        id_r,
-        id_b;
+        ide,
+        ids,
+        idr,
+        idb;
       `;
     }
 

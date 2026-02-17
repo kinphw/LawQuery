@@ -14,4 +14,10 @@ export interface LawResult extends RowDataPacket {
 
     id_b?: string | null;
     book_content?: string | null;
+
+    // Sorting fields
+    ide?: number;
+    ids?: number;
+    idr?: number;
+    idb?: number;
 }
