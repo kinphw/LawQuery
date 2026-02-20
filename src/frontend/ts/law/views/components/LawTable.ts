@@ -203,11 +203,33 @@ export class LawTable {
 
     // 참조 버튼 렌더링 유틸
     private renderReferenceButton(id: string | null): string {
-        if (!id || !this.lawView.getReferenceIds().has(id)) return '';
-        return `
+        if (!id) return '';
+        const data = this.lawView.getReferenceData().get(id);
+        if (!data) return '';
+
+        let html = '';
+
+        // 1. 텍스트 참조가 있는 경우 [참조] 버튼
+        if (data.hasText) {
+            html += `
             <button type="button" class="btn btn-outline-info btn-sm ms-2 law-ref-btn" data-id="${id}">참조</button>
             <div class="law-ref-popup d-none"></div>
-        `;
+            `;
+        }
+
+        // 2. 별표 링크가 있는 경우 [별표] 버튼들
+        if (data.annexes && data.annexes.length > 0) {
+            data.annexes.forEach((annexUrl, index) => {
+                // 별표 이름 추출 로직이 필요할 수 있음. URL에서 추출하거나, 그냥 순번으로.
+                // URL 예: https://www.law.go.kr/...
+                // 간단히 [별표] 또는 [별표1] 등으로 표시.
+                // 링크는 새 창으로 열리도록.
+                html += `<a href="${annexUrl}" target="_blank" class="btn btn-outline-success btn-sm ms-1 law-annex-btn" style="text-decoration:none;">
+                    <i class="fas fa-file-alt"></i> 별표${data.annexes.length > 1 ? index + 1 : ''}
+                 </a>`;
+            });
+        }
+        return html;
     }
 
     // Setters

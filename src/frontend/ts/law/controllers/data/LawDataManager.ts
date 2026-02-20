@@ -13,7 +13,7 @@ export class LawDataManager {
 
     private penaltyIds: string[] = []; // Store penalty IDs // 캡슐화
 
-    private referenceIds: Set<string> = new Set();
+    private referenceData: Map<string, { hasText: boolean, annexes: string[] }> = new Map();
 
 
     // constructor(ILawController: ILawController) {
@@ -51,10 +51,11 @@ export class LawDataManager {
         return this.penaltyIds;
     }
 
-    public setReferenceIds(ids: string[]) {
-        this.referenceIds = new Set(ids);
+    public setReferenceData(data: { [key: string]: { hasText: boolean, annexes: string[] } }): void {
+        this.referenceData = new Map(Object.entries(data));
     }
-    public getReferenceIds(): string[] {
-        return Array.from(this.referenceIds);
-    }  
+
+    public getReferenceData(): Map<string, { hasText: boolean, annexes: string[] }> {
+        return this.referenceData;
+    }
 }

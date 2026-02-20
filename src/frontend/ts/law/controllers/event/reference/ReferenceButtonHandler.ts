@@ -26,7 +26,7 @@ export class ReferenceButtonHandler {
 
                 // fetch 참조규정
                 const res = await fetch(url);
-                const { data }: {data:string[]} = await res.json();
+                const { data }: { data: { texts: string[], annexes: string[] } } = await res.json();
 
                 // console.log('참조 fetch 결과', data); // ← fetch 결과 확인
 
@@ -36,9 +36,11 @@ export class ReferenceButtonHandler {
                 // const content = data.length > 0
                 //     ? data.map(item => `<div>${item.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>`).join('')
                 //     : '<span class="text-muted">참조규정 없음</span>';
-                const content = data.length > 0
-                ? `<ul class="list-group">${data.map(item => `<li class="list-group-item bg-light text-dark mb-2">${item.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</li>`).join('')}</ul>`
-                : '<span class="text-muted">참조규정 없음</span>';                
+
+                // 250624 수정: data.texts 사용
+                const content = data.texts && data.texts.length > 0
+                    ? `<ul class="list-group">${data.texts.map(item => `<li class="list-group-item bg-light text-dark mb-2">${item.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</li>`).join('')}</ul>`
+                    : '<span class="text-muted">참조규정 없음</span>';
 
 
                 // 마우스 위치 기준으로 팝업 띄우기

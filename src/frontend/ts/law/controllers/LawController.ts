@@ -70,13 +70,13 @@ export class LawController implements ILawController {
 
     modelFetchReference!: LawFetchReferenceModel;           // 추가
     modelFetchReferenceIds!: LawFetchReferenceIdsModel;     // 추가
-  
+
 
 
     view!: LawView;
     viewPenalty!: LawPenaltyView; // 250504
     // currentResults: LawResult[] = []; // Store current results
-    private eventManagers: ILawEventManager[];    
+    private eventManagers: ILawEventManager[];
     private penaltyEventManager: LawPenaltyEventManager;
     private referenceEventManager: LawReferenceEventManager; // 250515
 
@@ -95,9 +95,9 @@ export class LawController implements ILawController {
 
         this.modelFetchReference = new LawFetchReferenceModel();           // 추가
         this.modelFetchReferenceIds = new LawFetchReferenceIdsModel();     // 추가
-  
 
-        this.dataManager = new LawDataManager();        
+
+        this.dataManager = new LawDataManager();
 
         this.penaltyEventManager = new LawPenaltyEventManager(this);
         this.referenceEventManager = new LawReferenceEventManager(); // 250515
@@ -113,9 +113,9 @@ export class LawController implements ILawController {
             this.penaltyEventManager, // ← 바로 등록
             // new LawReferenceEventManager(), // ← 추가      
             this.referenceEventManager // ← 바로 등록      
-            
 
-        ];        
+
+        ];
 
         this.view = new LawView();
         this.viewPenalty = new LawPenaltyView(); // 250504
@@ -136,8 +136,9 @@ export class LawController implements ILawController {
         this.view.setPenaltyIds(this.dataManager.getPenaltyIds());
 
         // 참조 id 세팅 (모델 사용)
-        this.dataManager.setReferenceIds(await this.modelFetchReferenceIds.getReferenceIds());
-        this.view.setReferenceIds(this.dataManager.getReferenceIds());
+        // 참조 id 세팅 (모델 사용)
+        this.dataManager.setReferenceData(await this.modelFetchReferenceIds.getReferenceIds());
+        this.view.setReferenceData(this.dataManager.getReferenceData());
 
         // 초기 데이터 로드 및 렌더링
         // const results = await this.model.getAllLaws();        
@@ -154,11 +155,11 @@ export class LawController implements ILawController {
         // await this.dataManager.setLawTitles();
 
         // document.getElementById('lawCheckboxes')!.innerHTML = 
-            // this.view.lawTable.renderLawCheckboxes(this.dataManager.lawTitles);
-            // this.view.lawTable.renderLawCheckboxes(this.dataManager.getLawTitles());
+        // this.view.lawTable.renderLawCheckboxes(this.dataManager.lawTitles);
+        // this.view.lawTable.renderLawCheckboxes(this.dataManager.getLawTitles());
 
         this.view.renderLawCheckboxes(this.dataManager.getLawTitles());
-            // 이벤트 바인딩을 컨트롤러에서 일괄 처리
+        // 이벤트 바인딩을 컨트롤러에서 일괄 처리
         // this.eventManager.bindEvents();
         // 모든 이벤트매니저의 이벤트 바인딩 실행
         // this.eventManagers.forEach(em => em.bindEvents());
@@ -169,7 +170,7 @@ export class LawController implements ILawController {
     // 이벤트매니저에서 호출하기 위한 public 메서드
     public bindAllEvents(): void {
         this.eventManagers.forEach(em => em.bindEvents());
-    }    
+    }
 
     /**
      * 렌더링 후 동적으로 생성된 버튼에만 이벤트를 바인딩하는 메서드
@@ -181,10 +182,10 @@ export class LawController implements ILawController {
 
         // 2. 조문별 벌칙 버튼 바인딩
         // this.penaltyEventManager.bindArticlePenaltyButtons();
-        this.penaltyEventManager.bindArticleEvents();        
+        this.penaltyEventManager.bindArticleEvents();
         this.referenceEventManager.bindEvents();
-        
-    }    
+
+    }
 
     // 이하는 이벤트바인딩 함수
 
@@ -220,7 +221,7 @@ export class LawController implements ILawController {
     //         searchContent.addEventListener('show.bs.collapse', () => {
     //             document.querySelector('.floating-search-btn')?.classList.remove('d-none');
     //         });
-            
+
     //         searchContent.addEventListener('hide.bs.collapse', () => this.handleCollapseHide());
     //     }
     // } 
@@ -228,17 +229,17 @@ export class LawController implements ILawController {
     // private bindTextSearchEvents(): void {
     //     const searchInput = document.getElementById('lawTextSearch') as HTMLInputElement;
     //     const searchBtn = document.getElementById('lawTextSearchBtn');
-        
+
     //     const performTextSearch = () => {
     //         const searchText = searchInput.value;
     //         const filteredResults = this.model.filterByText(searchText, this.dataManager.currentResults);
     //         this.view.render(filteredResults, searchText);
     //         this.view.showToast('검색결과를 재조회하였습니다.');
     //     };
-    
+
     //     // 검색 버튼 클릭 이벤트
     //     searchBtn?.addEventListener('click', performTextSearch);
-        
+
     //     // 엔터키 이벤트
     //     searchInput?.addEventListener('keypress', (e: KeyboardEvent) => {
     //         if (e.key === 'Enter') {
@@ -257,7 +258,7 @@ export class LawController implements ILawController {
     //     const selectedLaws = Array.from(document.querySelectorAll('input[type="checkbox"]:checked'))
     //         .map(cb => (cb as HTMLInputElement).value)
     //         .filter(id => id); // Filter out null values
-    
+
     //     if (selectedLaws.length) {
     //         const results = await this.model.getLawsByIds(selectedLaws);
     //         this.dataManager.currentResults = results;
