@@ -14,10 +14,10 @@ export class LawView {
     private lawCheckbox: LawCheckbox;
     private toastManager: ToastManager;
 
-    // 벌칙정보 저장 //이건 최초 컨트롤러가 initialize할 때 세팅해주고, 이후에는 자체 사용
     // private penaltyIds: string[] = []; // 벌칙 ID 목록 저장
     private penaltyIds: Set<string> = new Set();
     private referenceData: Map<string, { hasText: boolean, annexes: string[] }> = new Map();
+    private annexIds: Set<string> = new Set();
 
 
     setPenaltyIds(penaltyIds: string[]): void {
@@ -27,6 +27,15 @@ export class LawView {
 
     getPenaltyIds(): Set<string> {
         return this.penaltyIds;
+    }
+    ////////////////////////////
+
+    setAnnexIds(annexIds: Set<string>): void {
+        this.annexIds = annexIds;
+    }
+
+    getAnnexIds(): Set<string> {
+        return this.annexIds;
     }
     ////////////////////////////
 

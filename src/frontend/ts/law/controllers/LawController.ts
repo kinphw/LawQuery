@@ -22,9 +22,13 @@ import { LawFetchPenaltyModel } from "../models/LawFetchPenaltyModel";
 import { LawFetchPenaltyIdsModel } from "../models/LawFetchPenaltyIdsModel";
 import { LawFetchReferenceModel } from "../models/LawFetchReferenceModel";
 import { LawFetchReferenceIdsModel } from "../models/LawFetchReferenceIdsModel";
+import { LawFetchAnnexModel } from "../models/LawFetchAnnexModel";
+import { LawFetchAnnexIdsModel } from "../models/LawFetchAnnexIdsModel";
+import { LawFetchArticleModel } from "../models/LawFetchArticleModel";
 
 import { LawView } from "../views/LawView";
 import { LawPenaltyView } from "../views/components/LawPenaltyView";
+import { LawAnnexView } from "../views/components/LawAnnexView";
 // import { LawResult } from "../types/LawResult";
 
 import { CurrentLawBox } from "../views/components/CurrentLawBox";
@@ -44,10 +48,13 @@ export interface ILawController extends IController {
 
     modelFetchReference: LawFetchReferenceModel;           // 추가
     modelFetchReferenceIds: LawFetchReferenceIdsModel;     // 추가
-
+    modelFetchAnnex: LawFetchAnnexModel;
+    modelFetchAnnexIds: LawFetchAnnexIdsModel;
+    modelFetchArticle: LawFetchArticleModel;
 
     view: LawView;
     viewPenalty: LawPenaltyView; // 250504
+    viewAnnex: LawAnnexView;
     // currentResults: LawResult[]; // Store current results
 
     bindPostRenderEvents(): void; // 동적으로 생성된 버튼에만 이벤트를 바인딩하는 메서드
@@ -70,15 +77,18 @@ export class LawController implements ILawController {
 
     modelFetchReference!: LawFetchReferenceModel;           // 추가
     modelFetchReferenceIds!: LawFetchReferenceIdsModel;     // 추가
-
-
+    modelFetchAnnex!: LawFetchAnnexModel;
+    modelFetchAnnexIds!: LawFetchAnnexIdsModel;
+    modelFetchArticle!: LawFetchArticleModel;
 
     view!: LawView;
     viewPenalty!: LawPenaltyView; // 250504
+    viewAnnex!: LawAnnexView;
     // currentResults: LawResult[] = []; // Store current results
     private eventManagers: ILawEventManager[];
     private penaltyEventManager: LawPenaltyEventManager;
     private referenceEventManager: LawReferenceEventManager; // 250515
+    private annexEventManager: import("./event/annex/LawAnnexEventManager").LawAnnexEventManager;
 
     constructor() {
 
@@ -95,13 +105,18 @@ export class LawController implements ILawController {
 
         this.modelFetchReference = new LawFetchReferenceModel();           // 추가
         this.modelFetchReferenceIds = new LawFetchReferenceIdsModel();     // 추가
-
+        this.modelFetchAnnex = new LawFetchAnnexModel();
+        this.modelFetchAnnexIds = new LawFetchAnnexIdsModel();
+        this.modelFetchArticle = new LawFetchArticleModel();
 
         this.dataManager = new LawDataManager();
 
         this.penaltyEventManager = new LawPenaltyEventManager(this);
         this.referenceEventManager = new LawReferenceEventManager(); // 250515
 
+        // Dynamic import workaround for now unless we import at top
+        const { LawAnnexEventManager } = require('./event/annex/LawAnnexEventManager');
+        this.annexEventManager = new LawAnnexEventManager(this);
 
         // 이벤트매니저들을 배열로 관리
         this.eventManagers = [
@@ -112,13 +127,13 @@ export class LawController implements ILawController {
             // new LawPenaltyEventManager(this) // ← 추가            
             this.penaltyEventManager, // ← 바로 등록
             // new LawReferenceEventManager(), // ← 추가      
-            this.referenceEventManager // ← 바로 등록      
-
-
+            this.referenceEventManager, // ← 바로 등록      
+            this.annexEventManager
         ];
 
         this.view = new LawView();
         this.viewPenalty = new LawPenaltyView(); // 250504
+        this.viewAnnex = new LawAnnexView();
 
 
         // this.eventManager = new LawEventManager(this);
@@ -136,9 +151,11 @@ export class LawController implements ILawController {
         this.view.setPenaltyIds(this.dataManager.getPenaltyIds());
 
         // 참조 id 세팅 (모델 사용)
-        // 참조 id 세팅 (모델 사용)
         this.dataManager.setReferenceData(await this.modelFetchReferenceIds.getReferenceIds());
         this.view.setReferenceData(this.dataManager.getReferenceData());
+
+        // 별표 id 세팅
+        this.view.setAnnexIds(await this.modelFetchAnnexIds.getAnnexIds());
 
         // 초기 데이터 로드 및 렌더링
         // const results = await this.model.getAllLaws();        
@@ -184,6 +201,7 @@ export class LawController implements ILawController {
         // this.penaltyEventManager.bindArticlePenaltyButtons();
         this.penaltyEventManager.bindArticleEvents();
         this.referenceEventManager.bindEvents();
+        this.annexEventManager.bindArticleEvents();
 
     }
 

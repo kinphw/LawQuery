@@ -416,5 +416,28 @@ export class LawModel extends LawBaseModel {
     return TreeConverter.toLawTree(rows);
   }
 
+  // 단일 조문 조회 API용 메서드 추가
+  async getArticle(dbContext: DbContext, origin: string, id: string): Promise<{ content: string } | null> {
+    this.setDbContext(dbContext);
 
+    const validOrigins = ['a', 'e', 's', 'r', 'b'];
+    if (!origin || !validOrigins.includes(origin)) return null;
+
+    const tableName = `db_${origin}`;
+    const idField = `id_${origin}`;
+    const contentField = `content_${origin}`;
+
+    const query = `
+      SELECT ${contentField} as content
+      FROM ${tableName}
+      WHERE ${idField} = ?
+      LIMIT 1
+    `;
+
+    const rows = await this.db.query<{ content: string }>(query, [id]);
+    if (rows && rows.length > 0) {
+      return rows[0];
+    }
+    return null;
+  }
 }

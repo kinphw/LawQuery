@@ -26,7 +26,8 @@ export class ReferenceButtonHandler {
 
                 // fetch 참조규정
                 const res = await fetch(url);
-                const { data }: { data: { texts: string[], annexes: string[] } } = await res.json();
+                // const { data }: { data: { texts: string[] , annexes: string[] } } = await res.json();
+                const { data }: { data: { texts: string[] } } = await res.json();
 
                 // console.log('참조 fetch 결과', data); // ← fetch 결과 확인
 

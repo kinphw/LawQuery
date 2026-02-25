@@ -123,6 +123,8 @@ export class LawTable {
                 if (c === 0) {
                     extra += this.renderPenaltyButton(node.id);
                 }
+                extra += this.renderAnnexButton(node.id); // Add newly decoupled Annex button
+
                 return this.td(
                     `${LawTable.COL_CLASS[c]} ${LawTable.INDENT_CLASS[c]}`,
                     node.title, search,
@@ -217,19 +219,17 @@ export class LawTable {
             `;
         }
 
-        // 2. 별표 링크가 있는 경우 [별표] 버튼들
-        if (data.annexes && data.annexes.length > 0) {
-            data.annexes.forEach((annexUrl, index) => {
-                // 별표 이름 추출 로직이 필요할 수 있음. URL에서 추출하거나, 그냥 순번으로.
-                // URL 예: https://www.law.go.kr/...
-                // 간단히 [별표] 또는 [별표1] 등으로 표시.
-                // 링크는 새 창으로 열리도록.
-                html += `<a href="${annexUrl}" target="_blank" class="btn btn-outline-success btn-sm ms-1 law-annex-btn" style="text-decoration:none;">
-                    <i class="fas fa-file-alt"></i> 별표${data.annexes.length > 1 ? index + 1 : ''}
-                 </a>`;
-            });
-        }
         return html;
+    }
+
+    // 새로 추가할 별표 버튼 렌더링 유틸
+    private renderAnnexButton(id_src: string | null): string {
+        if (id_src && this.lawView.getAnnexIds().has(id_src)) {
+            return `<button type="button" class="btn btn-outline-success btn-sm ms-2 law-annex-btn" data-id_src="${id_src}">
+                <i class="fas fa-file-alt"></i> 별표
+            </button>`;
+        }
+        return '';
     }
 
     // Setters
