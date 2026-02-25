@@ -4,7 +4,8 @@ import { LawHandler } from './handlers/LawHandler';
 import { InterpretationHandler } from './handlers/InterpretationHandler';
 
 const app = express();
-const PORT = 3000;
+// const PORT = 3000;
+const PORT = 4000;
 
 // 미들웨어 설정
 app.use(cors());

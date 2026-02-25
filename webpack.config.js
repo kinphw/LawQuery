@@ -19,16 +19,34 @@ module.exports = {
     rules: [
       {
         test: /\.ts$/,
-        use: 'ts-loader',
+        use: {
+          loader: 'ts-loader',
+          options: { transpileOnly: true }
+        },
         exclude: /node_modules/,
         type: 'javascript/auto' // ← 중요!
       }
     ]
   },
-  devtool: 'source-map',
+  devtool: 'eval-source-map',
+  // devServer: {
+  //   static: './',      // index.html, law.html이 루트에 있으니까
+  //   port: 4000,
+  //   open: true
+  // }
   devServer: {
-    static: './',      // index.html, law.html이 루트에 있으니까
+    static: './',
     port: 3000,
-    open: true
+    open: false,
+    proxy: [
+      {
+        context: ['/api'],
+        target: 'http://localhost:4000',
+        changeOrigin: true
+      }
+    ]
+  },
+  cache: {
+    type: 'filesystem'
   }
 };
