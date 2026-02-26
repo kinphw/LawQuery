@@ -4,24 +4,60 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Debug Backend (npm run dev:backend)",
+      "name": "Run dev:full (serve+backend+typecheck)",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev:backend", "--"],
+      "runtimeArgs": [
+        "run",
+        "dev:full"
+      ],
       "console": "integratedTerminal",
-      "skipFiles": ["<node_internals>/**"],
-      "env": { "NODE_ENV": "development" }
+      "skipFiles": [
+        "<node_internals>/**"
+      ],
+      "env": {
+        "NODE_ENV": "development"
+      }
+    },
+    {
+      "type": "pwa-chrome",
+      "request": "launch",
+      "name": "Frontend Debug (VSCode Chrome @3000)",
+      "url": "http://localhost:3000",
+      "webRoot": "${workspaceFolder}"
     },
     {
       "type": "node",
       "request": "launch",
-      "name": "Debug Backend with Frontend Watch",
+      "name": "Run dev:fast (watch+backend)",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev:full"],
+      "runtimeArgs": [
+        "run",
+        "dev:fast"
+      ],
       "console": "integratedTerminal",
-      "skipFiles": ["<node_internals>/**"],
+      "skipFiles": [
+        "<node_internals>/**"
+      ],
       "env": {
         "NODE_ENV": "development"
       }
-    }    
+    }
+  ],
+  "compounds": [
+    {
+      "name": "1) Debug Full (VSCode Front+Back)",
+      "configurations": [
+        "Run dev:full (serve+backend+typecheck)",
+        "Frontend Debug (VSCode Chrome @3000)"
+      ],
+      "stopAll": true
+    },
+    {
+      "name": "2) Fast Dev (Back debug + Front watch, browser F12)",
+      "configurations": [
+        "Run dev:fast (watch+backend)"
+      ],
+      "stopAll": true
+    }
   ]
 }

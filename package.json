@@ -14,9 +14,11 @@
   "scripts": {
     "build": "webpack --config webpack.config.js",
     "watch": "webpack --watch --config webpack.config.js",
-    "dev": "webpack serve --config webpack.config.js --open",
+    "typecheck:watch": "tsc --noEmit --watch",
+    "dev": "webpack serve --config webpack.config.js",
     "dev:backend": "ts-node-dev --respawn --transpile-only src/backend/ts/index.ts",
-    "dev:full": "concurrently \"npm:watch\" \"npm run dev:backend\""
+    "dev:full": "concurrently \"npm run dev\" \"npm run dev:backend\" \"npm run typecheck:watch\"",
+    "dev:fast": "concurrently \"npm:watch\" \"npm run dev:backend\""
   },
   "dependencies": {
     "@types/cors": "^2.8.17",
