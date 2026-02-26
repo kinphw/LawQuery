@@ -123,6 +123,8 @@ export class LawTable {
                 if (c === 0) {
                     extra += this.renderPenaltyButton(node.id);
                 }
+                extra += this.renderAnnexButton(node.id); // Add newly decoupled Annex button
+
                 return this.td(
                     `${LawTable.COL_CLASS[c]} ${LawTable.INDENT_CLASS[c]}`,
                     node.title, search,
@@ -203,11 +205,31 @@ export class LawTable {
 
     // 참조 버튼 렌더링 유틸
     private renderReferenceButton(id: string | null): string {
-        if (!id || !this.lawView.getReferenceIds().has(id)) return '';
-        return `
+        if (!id) return '';
+        const data = this.lawView.getReferenceData().get(id);
+        if (!data) return '';
+
+        let html = '';
+
+        // 1. 텍스트 참조가 있는 경우 [참조] 버튼
+        if (data.hasText) {
+            html += `
             <button type="button" class="btn btn-outline-info btn-sm ms-2 law-ref-btn" data-id="${id}">참조</button>
             <div class="law-ref-popup d-none"></div>
-        `;
+            `;
+        }
+
+        return html;
+    }
+
+    // 새로 추가할 별표 버튼 렌더링 유틸
+    private renderAnnexButton(id_src: string | null): string {
+        if (id_src && this.lawView.getAnnexIds().has(id_src)) {
+            return `<button type="button" class="btn btn-outline-success btn-sm ms-2 law-annex-btn" data-id_src="${id_src}">
+                <i class="fas fa-file-alt"></i> 별표
+            </button>`;
+        }
+        return '';
     }
 
     // Setters

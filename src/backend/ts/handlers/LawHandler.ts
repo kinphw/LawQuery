@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { LawController } from '../law/controllers/LawController';
 import { PenaltyController } from '../law/controllers/PenaltyController';
 import { ReferenceController } from '../law/controllers/ReferenceController';
+import { AnnexController } from '../law/controllers/AnnexController';
 // import { LawMiddleware } from '../law/middleware/LawMiddleware';
 
 export class LawHandler {
@@ -9,13 +10,15 @@ export class LawHandler {
   private controller: LawController;
   private penaltyController: PenaltyController;
   private referenceController: ReferenceController;
+  private annexController: AnnexController;
 
 
   constructor() {
     this.router = Router();
     this.controller = new LawController();
     this.penaltyController = new PenaltyController();
-    this.referenceController = new ReferenceController(); 
+    this.referenceController = new ReferenceController();
+    this.annexController = new AnnexController();
     this.initializeRoutes();
   }
 
@@ -27,9 +30,12 @@ export class LawHandler {
     this.router.get('/all', this.controller.getAll.bind(this.controller));
     this.router.get('/get', this.controller.getByIds.bind(this.controller)); // 파라미터 처리를 컨트롤러로 위임
     this.router.get('/getTitles', this.controller.getTitles.bind(this.controller));
+    this.router.get('/article', this.controller.getArticle.bind(this.controller));
     this.router.get('/penalty', this.penaltyController.getPenalty.bind(this.penaltyController)); // 250504
     this.router.get('/penaltyIds', this.penaltyController.getPenaltyIds.bind(this.penaltyController)); // 250505
     this.router.get('/reference', this.referenceController.getReference.bind(this.referenceController)); // 참조규정
-    this.router.get('/referenceIds', this.referenceController.getReferenceIds.bind(this.referenceController)); 
+    this.router.get('/referenceIds', this.referenceController.getReferenceIds.bind(this.referenceController));
+    this.router.get('/annex', this.annexController.getAnnex.bind(this.annexController));
+    this.router.get('/annexIds', this.annexController.getAnnexIds.bind(this.annexController));
   }
 }

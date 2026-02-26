@@ -1,111 +1,119 @@
 <!DOCTYPE html>
 <html lang="ko">
+
 <head>
-    <meta charset="UTF-8">
-    <title>법령조회 - LawQuery</title>
-    <link rel="stylesheet" href="assets/vendor/bootstrap.min.css" />
-    <link rel="stylesheet" href="assets/vendor/fontawesome/css/fontawesome.min.css" />
-    <link rel="stylesheet" href="assets/vendor/fontawesome/css/all.min.css" />
-    <link rel="stylesheet" href="assets/css/style.css" />
+  <meta charset="UTF-8">
+  <title>법령조회 - LawQuery</title>
+  <link rel="stylesheet" href="assets/vendor/bootstrap.min.css" />
+  <link rel="stylesheet" href="assets/vendor/fontawesome/css/fontawesome.min.css" />
+  <link rel="stylesheet" href="assets/vendor/fontawesome/css/all.min.css" />
+  <link rel="stylesheet" href="assets/css/style.css" />
 </head>
+
 <body>
-    <div id="header"></div>
-    <!-- 법령 선택 드롭다운 -->
-    <div class="d-flex justify-content-center align-items-center my-3">
+  <div id="header"></div>
+  <!-- 법령 선택 드롭다운 -->
+  <div class="d-flex justify-content-center align-items-center my-3">
 
-        <!-- 현재 선택된 법령 표시 -->
-        <div id="currentLawBox" class="badge bg-dark text-white me-3 px-3 py-2 fs-6">선택된 법령</div>
+    <!-- 현재 선택된 법령 표시 -->
+    <div id="currentLawBox" class="badge bg-dark text-white me-3 px-3 py-2 fs-6">선택된 법령</div>
 
 
-        <div class="dropdown">
-            <button class="btn btn-dark dropdown-toggle" type="button" id="lawDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                법령 선택
-            </button>
-            <ul class="dropdown-menu" aria-labelledby="lawDropdown">
-                <li><a class="dropdown-item" href="?law=j&step=4">전자금융거래법</a></li>
-                <li><a class="dropdown-item" href="?law=y&step=5">여신전문금융업법</a></li>
-            </ul>
-        </div>
+    <div class="dropdown">
+      <button class="btn btn-dark dropdown-toggle" type="button" id="lawDropdown" data-bs-toggle="dropdown"
+        aria-expanded="false">
+        법령 선택
+      </button>
+      <ul class="dropdown-menu" aria-labelledby="lawDropdown">
+        <li><a class="dropdown-item" href="?law=j&step=4">전자금융거래법</a></li>
+        <li><a class="dropdown-item" href="?law=y&step=5">여신전문금융업법</a></li>
+      </ul>
     </div>
+  </div>
 
-    <!-- 텍스트 검색 영역 -->
-    <div class="container mb-3">
-        <div class="card">
-          <div class="card-body p-2">
-            <div class="d-flex align-items-center">
-                <div class="input-group" style="flex: 1 1 0; max-width: 90%;">
-                <input type="text" id="lawTextSearch" class="form-control" placeholder="법령 내용 검색...">
-                <button class="btn btn-outline-secondary" type="button" id="lawTextSearchBtn">
-                  <i class="fas fa-search"></i>
-                </button>
-              </div>
+  <!-- 텍스트 검색 영역 -->
+  <div class="container mb-3">
+    <div class="card">
+      <div class="card-body p-2">
+        <div class="d-flex align-items-center">
+          <div class="input-group" style="flex: 1 1 0; max-width: 90%;">
+            <input type="text" id="lawTextSearch" class="form-control" placeholder="법령 내용 검색...">
+            <button class="btn btn-outline-secondary" type="button" id="lawTextSearchBtn">
+              <i class="fas fa-search"></i>
+            </button>
+          </div>
 
-              <button class="btn btn-warning ms-2 ms-auto" id="penaltyBtn">
-                <i class="fas fa-gavel"></i> 벌칙
-              </button>
+          <button class="btn btn-warning ms-2 ms-auto" id="penaltyBtn">
+            <i class="fas fa-gavel"></i> 벌칙
+          </button>
 
-            </div>
+          <button class="btn btn-success ms-2" id="annexBtn">
+            <i class="fas fa-file-alt"></i> 별표
+          </button>
+
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 조문 검색 영역 추가 -->
+  <div class="container mb-3">
+    <div class="card">
+      <div class="card-header p-0" id="lawSearchHeader">
+        <button class="btn btn-link collapsed" type="button" data-bs-toggle="collapse"
+          data-bs-target="#lawSearchContent">
+          조문별 선택조회 ▼
+        </button>
+      </div>
+      <div id="lawSearchContent" class="collapse">
+        <div class="card-body p-0">
+          <div id="lawCheckboxes" class="d-flex flex-wrap">
+            <!-- 체크박스들이 여기에 동적으로 삽입됨 -->
           </div>
         </div>
       </div>
-
-    <!-- 조문 검색 영역 추가 -->
-    <div class="container mb-3">
-        <div class="card">
-            <div class="card-header p-0" id="lawSearchHeader">
-                <button class="btn btn-link collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#lawSearchContent">
-                    조문별 선택조회 ▼
-                </button>
-            </div>
-            <div id="lawSearchContent" class="collapse">
-                <div class="card-body p-0">
-                    <div id="lawCheckboxes" class="d-flex flex-wrap">
-                        <!-- 체크박스들이 여기에 동적으로 삽입됨 -->
-                    </div>
-                </div>
-            </div>
-        </div>
     </div>
+  </div>
 
-    <!-- Update floating search button div to be hidden by default -->
-    <div class="floating-search-btn d-none">
-        <button type="button" id="lawSearchBtn" class="btn btn-primary">검색</button>
-    </div>   
+  <!-- Update floating search button div to be hidden by default -->
+  <div class="floating-search-btn d-none">
+    <button type="button" id="lawSearchBtn" class="btn btn-primary">검색</button>
+  </div>
 
-    <!-- Text size control - floating style -->
-    <div class="floating-controls p-0">
-        <div class="btn-group" role="group" aria-label="Text size options">
-            <input type="radio" class="visually-hidden" name="textSize" id="sizeDefault" value="fs-5">
-            <label class="btn btn-outline-secondary btn-sm" for="sizeDefault">크게</label>
-    
-            <input type="radio" class="visually-hidden" name="textSize" id="sizeSmall" value="" checked>
-            <label class="btn btn-outline-secondary btn-sm" for="sizeSmall">보통</label>
-    
-            <input type="radio" class="visually-hidden" name="textSize" id="sizeXS" value="small">
-            <label class="btn btn-outline-secondary btn-sm" for="sizeXS">작게</label>
-        </div>
+  <!-- Text size control - floating style -->
+  <div class="floating-controls p-0">
+    <div class="btn-group" role="group" aria-label="Text size options">
+      <input type="radio" class="visually-hidden" name="textSize" id="sizeDefault" value="fs-5">
+      <label class="btn btn-outline-secondary btn-sm" for="sizeDefault">크게</label>
+
+      <input type="radio" class="visually-hidden" name="textSize" id="sizeSmall" value="" checked>
+      <label class="btn btn-outline-secondary btn-sm" for="sizeSmall">보통</label>
+
+      <input type="radio" class="visually-hidden" name="textSize" id="sizeXS" value="small">
+      <label class="btn btn-outline-secondary btn-sm" for="sizeXS">작게</label>
     </div>
+  </div>
 
-    <!-- 벌칙 버튼만 별도 행(컨테이너)으로 -->
-    <!-- <div class="container mb-3 text-end">
+  <!-- 벌칙 버튼만 별도 행(컨테이너)으로 -->
+  <!-- <div class="container mb-3 text-end">
         <button class="btn btn-warning" id="penaltyBtn">
         <i class="fas fa-gavel"></i> 벌칙
         </button>
     </div> -->
 
 
-    <div id="results"></div>
+  <div id="results"></div>
 
-    <!-- 기본 라이브러리 -->
-    <script src="assets/vendor/bootstrap.bundle.min.js"></script>
-    <!-- <script src="assets/vendor/sql-wasm-b64.js"></script> -->
-    <script src="assets/vendor/sql-wasm.js"></script>
-    
-    <!-- 데이터베이스 -->
-    <!-- <script src="data/db_aesr.js"></script> db에서 직접 로드 --> 
+  <!-- 기본 라이브러리 -->
+  <script src="assets/vendor/bootstrap.bundle.min.js"></script>
+  <!-- <script src="assets/vendor/sql-wasm-b64.js"></script> -->
+  <script src="assets/vendor/sql-wasm.js"></script>
 
-    <!-- MVC 컴포넌트 -->
-    <!-- <script src="src/frontend/js/law/models/LawDatabase.js"></script>
+  <!-- 데이터베이스 -->
+  <!-- <script src="data/db_aesr.js"></script> db에서 직접 로드 -->
+
+  <!-- MVC 컴포넌트 -->
+  <!-- <script src="src/frontend/js/law/models/LawDatabase.js"></script>
     <script src="src/frontend/js/law/models/LawModel.js"></script>
     <script src="src/frontend/js/common/components/Header.js"></script>
     <script src="src/frontend/js/law/views/components/LawTable.js"></script>
@@ -114,51 +122,80 @@
     <script src="src/frontend/js/law/controllers/LawController.js"></script>
     <script src="src/frontend/js/app.js"></script> -->
 
-    <!-- <script type="module" src="src/frontend/js/entry/law.js"></script> -->
-    <script src="dist/law.bundle.js" type="module"></script>
+  <!-- <script type="module" src="src/frontend/js/entry/law.js"></script> -->
+  <script src="dist/law.bundle.js" type="module"></script>
 
 
-    <!-- 공통 모달 (body 하단) -->
-    <div class="modal fade" id="commonModal" tabindex="-1" aria-labelledby="commonModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg">
-          <div class="modal-content">
-            <div class="modal-header">
-              <h5 class="modal-title" id="commonModalLabel">알림</h5>
-              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="닫기"></button>
-            </div>
-            <div class="modal-body">
-              <!-- 내용이 JS로 삽입됨 -->
-            </div>
-          </div>
+  <!-- 공통 모달 (body 하단) -->
+  <div class="modal fade" id="commonModal" tabindex="-1" aria-labelledby="commonModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="commonModalLabel">알림</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="닫기"></button>
         </div>
-      </div>
-
-    <!-- 벌칙 모달 -->
-    <div class="modal fade" id="penaltyModal" tabindex="-1">
-      <div class="modal-dialog modal-fullscreen">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title">벌칙 정보</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-          </div>
-          <div class="modal-body"></div>
+        <div class="modal-body">
+          <!-- 내용이 JS로 삽입됨 -->
         </div>
       </div>
     </div>
+  </div>
 
-    <!-- 원조문(법) 모달 -->
-    <div class="modal fade" id="originLawModal" tabindex="-1">
-      <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title">원조문(법) 전체 보기</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-          </div>
-          <div class="modal-body"></div>
+  <!-- 벌칙 모달 -->
+  <div class="modal fade" id="penaltyModal" tabindex="-1">
+    <div class="modal-dialog modal-fullscreen">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">벌칙 정보</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 별표(Annex) 모달 -->
+  <div class="modal fade" id="annexModal" tabindex="-1">
+    <div class="modal-dialog modal-fullscreen">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">별표 목록</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 별표 문서 뷰어 모달 -->
+  <div class="modal fade" id="annexViewerModal" tabindex="-1">
+    <div class="modal-dialog modal-fullscreen">
+      <div class="modal-content">
+        <div class="modal-header bg-success text-white">
+          <h5 class="modal-title">별표 문서 보기</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body p-0">
+          <!-- Iframe dynamically inserted here -->
         </div>
       </div>
-    </div>      
+    </div>
+  </div>
+
+  <!-- 원조문(법) 모달 -->
+  <div class="modal fade" id="originLawModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">원조문(법) 전체 보기</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body"></div>
+      </div>
+    </div>
+  </div>
 
 
 </body>
+
 </html>
