@@ -1,13 +1,13 @@
 import { LawAnnex } from "../../types/LawAnnex";
+import { getLawConfig } from "../../config/LawConfig";
 
 export class LawAnnexView {
-    private originMap: Record<string, string> = {
-        'a': '법률',
-        'e': '시행령',
-        's': '시행규칙',
-        'r': '행정규칙/규정',
-        'b': '자치법규/세칙'
-    };
+    private originMap: Record<string, string>;
+
+    constructor() {
+        const law = new URLSearchParams(window.location.search).get('law') || 'j';
+        this.originMap = getLawConfig(law).originMap;
+    }
 
     renderTable(annexes: LawAnnex[], isFullView: boolean = true): string {
         return `
@@ -16,10 +16,10 @@ export class LawAnnexView {
                 <thead class="table-dark">
                     <tr>
                         <th class="text-center align-middle" style="width:10%;">원규정타입</th>
-                        <th class="text-center align-middle" style="width:15%;">별표 포함조문</th>
-                        <th class="text-center align-middle" style="width:20%;">별표번호</th>
-                        <th class="text-center align-middle" style="width:40%;">별표명</th>
-                        <th class="text-center align-middle" style="width:15%;">보기</th>
+                        <th class="text-center align-middle" style="width:10%;">별표 포함조문</th>
+                        <th class="text-center align-middle" style="width:10%;">별표번호</th>
+                        <th class="text-center align-middle" style="width:60%;">별표명</th>
+                        <th class="text-center align-middle" style="width:10%;">보기</th>
                     </tr>
                 </thead>
                 <tbody>

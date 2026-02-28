@@ -1,0 +1,39 @@
+export type LawConfigEntry = {
+    label: string;                      // CurrentLawBox 표시명
+    names: string[];                    // LawTable thead 법령 전체명
+    originMap: Record<string, string>;  // LawAnnexView 원규정타입 표시명
+};
+
+export const LAW_CONFIG: Record<string, LawConfigEntry> = {
+    j: {
+        label: '전자금융거래법',
+        names: [
+            '전자금융거래법\n[시행 2024. 9. 15.]\n[법률 제19734호, 2023. 9. 14., 일부개정]',
+            '전자금융거래법 시행령\n[시행 2024. 12. 27.]\n[대통령령 제35038호, 2024. 12. 3., 타법개정]',
+            '전자금융감독규정\n[시행 2025. 2. 5.]\n[금융위원회고시 제2025-4호, 2025. 2. 5., 일부개정]',
+            '전자금융감독규정시행세칙\n[시행 2025. 2. 5.]\n[금융감독원세칙 , 2025. 2. 3., 일부개정]',
+        ],
+        originMap: { a: '법률', e: '시행령', s: '감독규정', r: '시행세칙', b: 'N/A' },
+    },
+    y: {
+        label: '여신전문금융업법',
+        names: [
+            '여신전문금융업법\n[시행 2025. 4. 22.]\n[법률 제20716호, 2025. 1. 21., 일부개정]',
+            '여신전문금융업법 시행령\n[시행 2024. 12. 10.]\n[대통령령 제35064호, 2024. 12. 10., 일부개정]',
+            '여신전문금융업법 시행규칙\n[시행 2020. 8. 5.]\n[총리령 제1635호, 2020. 8. 5., 타법개정]',
+            '여신전문금융업감독규정\n[시행 2025. 2. 14.]\n[금융위원회고시 제2025-3호, 2025. 2. 5., 일부개정]',
+            '여신전문금융업감독업무시행세칙\n[시행 2024. 6. 28.]\n[금융감독원세칙 , 2024. 6. 28., 일부개정]',
+        ],
+        originMap: { a: '법률', e: '시행령', s: '시행규칙', r: '감독규정', b: '시행세칙' },
+    },
+};
+
+const DEFAULT_CONFIG: LawConfigEntry = {
+    label: '알 수 없는 법령',
+    names: [],
+    originMap: { a: '법률', e: '시행령', s: '시행규칙', r: '행정규칙/규정', b: '자치법규/세칙' },
+};
+
+export function getLawConfig(law: string): LawConfigEntry {
+    return LAW_CONFIG[law] ?? DEFAULT_CONFIG;
+}

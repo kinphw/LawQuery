@@ -2,6 +2,7 @@
 import { LawTitle } from '../../types/LawTitle';
 import { LawTreeNode } from '../../types/LawTreeNode';
 import { LawView } from '../LawView';
+import { getLawConfig } from '../../config/LawConfig';
 
 type Path = [
     LawTreeNode | null, LawTreeNode | null,
@@ -32,29 +33,11 @@ export class LawTable {
     constructor(lawView: LawView) {
         this.lawView = lawView; // Dependency injection
 
-        // URL에서 law 파라미터 읽기
+        // URL에서 law, step 파라미터 읽기
         const urlParams = new URLSearchParams(window.location.search);
-        const law = urlParams.get('law') || 'j'; // 기본값: 'j'
-
-        // law 값에 따라 names 초기화
-        if (law === 'j') {
-            this.names = [
-                '전자금융거래법\n[시행 2024. 9. 15.]\n[법률 제19734호, 2023. 9. 14., 일부개정]',
-                '전자금융거래법 시행령\n[시행 2024. 12. 27.]\n[대통령령 제35038호, 2024. 12. 3., 타법개정]',
-                '전자금융감독규정\n[시행 2025. 2. 5.]\n[금융위원회고시 제2025-4호, 2025. 2. 5., 일부개정]',
-                '전자금융감독규정시행세칙\n[시행 2025. 2. 5.]\n[금융감독원세칙 , 2025. 2. 3., 일부개정]'
-            ];
-        } else if (law === 'y') {
-            this.names = [
-                '여신전문금융업법\n[시행 2025. 4. 22.]\n[법률 제20716호, 2025. 1. 21., 일부개정]',
-                '여신전문금융업법 시행령\n[시행 2024. 12. 10.]\n[대통령령 제35064호, 2024. 12. 10., 일부개정]',
-                '여신전문금융업법 시행규칙\n[시행 2020. 8. 5.]\n[총리령 제1635호, 2020. 8. 5., 타법개정]',
-                '여신전문금융업감독규정\n[시행 2025. 2. 14.]\n[금융위원회고시 제2025-3호, 2025. 2. 5., 일부개정]',
-                '여신전문금융업감독업무시행세칙\n[시행 2024. 6. 28.]\n[금융감독원세칙 , 2024. 6. 28., 일부개정]'
-            ]
-        }
-
-        this.step = parseInt(urlParams.get('step') || '4', 10); // 기본값: 4단계
+        const law = urlParams.get('law') || 'j';
+        this.names = getLawConfig(law).names;
+        this.step = parseInt(urlParams.get('step') || '4', 10);
 
         // this.names = law === 'y'
         //     ? [
