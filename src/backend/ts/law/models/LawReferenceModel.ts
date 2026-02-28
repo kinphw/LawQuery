@@ -8,17 +8,17 @@ export class LawReferenceModel extends LawBaseModel {
     //     this.db = DbContext.getInstance('ldb_j'); // 'ldb_j'는 법률 데이터베이스의 이름
     // }
 
-    async getReferenceContent(dbContext: DbContext, id: string): Promise<{ texts: string[] }> {
+    async getReferenceContent(dbContext: DbContext, id: string): Promise<{ items: { type: string, content: string }[] }> {
         this.setDbContext(dbContext); // DbContext 설정
         const rows = await this.db.query<{ ref_type: string, ref_content: string }>(
-            `SELECT 
+            `SELECT
                 ref_type,
-                CASE 
+                CASE
                     WHEN ref_type = 'text' THEN ref_content
-                    WHEN ref_type = 'db_a' THEN CONCAT('[법]\n', (SELECT content_a FROM db_a WHERE id_a = ref_target))
-                    WHEN ref_type = 'db_e' THEN CONCAT('[시행령]\n', (SELECT content_e FROM db_e WHERE id_e = ref_target))
-                    WHEN ref_type = 'db_s' THEN CONCAT('[규정]\n', (SELECT content_s FROM db_s WHERE id_s = ref_target))
-                    WHEN ref_type = 'db_r' THEN CONCAT('[시행세칙]\n', (SELECT content_r FROM db_r WHERE id_r = ref_target))
+                    WHEN ref_type = 'db_a' THEN (SELECT content_a FROM db_a WHERE id_a = ref_target)
+                    WHEN ref_type = 'db_e' THEN (SELECT content_e FROM db_e WHERE id_e = ref_target)
+                    WHEN ref_type = 'db_s' THEN (SELECT content_s FROM db_s WHERE id_s = ref_target)
+                    WHEN ref_type = 'db_r' THEN (SELECT content_r FROM db_r WHERE id_r = ref_target)
                     ELSE NULL
                 END AS ref_content
             FROM db_ref
@@ -28,9 +28,10 @@ export class LawReferenceModel extends LawBaseModel {
             [id]
         );
 
-        const texts: string[] = [];
-        rows.forEach(row => { if (row.ref_content) texts.push(row.ref_content); });
-        return { texts };
+        const items = rows
+            .filter(row => row.ref_content)
+            .map(row => ({ type: row.ref_type, content: row.ref_content }));
+        return { items };
     }
 
     async getReferenceIds(dbContext: DbContext): Promise<{ [key: string]: { hasText: boolean } }> {

@@ -10,16 +10,8 @@ export abstract class BaseLawController<T extends LawBaseModel = LawBaseModel> {
   }
 
   // DbContext를 동적으로 설정하는 메서드
-  protected getDbContext(dbName: string): DbContext {
-
-    if (dbName == 'j') {
-      dbName = 'ldb_j'; // 기본값으로 설정
-    } else if (dbName == 'y') {
-      dbName = 'ldb_y'; // 기본값으로 설정  
-    }
-
-    const dbContext: DbContextType = DbContext.getInstance(dbName);
-    // this.model.setDbContext(dbContext);
+  protected getDbContext(law: string): DbContext {
+    const dbContext: DbContextType = DbContext.getInstance(`ldb_${law}`);
     return dbContext;
   }
 }
