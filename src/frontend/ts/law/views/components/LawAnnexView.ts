@@ -50,14 +50,15 @@ export class LawAnnexView {
         }
 
         return `<ul class="list-group list-group-flush small">
-            ${annexes.map(a => `
+            ${annexes.map(a => {
+            const annexName = a.annex_name ?? '';
+            const annexLabel = a.annex_no ? `${a.annex_no} ${annexName}` : annexName;
+            return `
                 <li class="list-group-item d-flex justify-content-between align-items-center px-1 py-1">
-                    <span class="text-truncate me-2" style="max-width: 300px;" title="${a.annex_name ?? ''}">
-                        ${a.annex_name ?? ''}
-                    </span>
-                    ${a.annex_url ? `<button type="button" data-url="${a.annex_url}" data-title="${a.annex_name ?? '별표 문서'}" class="btn btn-outline-success btn-sm p-1 law-annex-viewer-btn" style="font-size: 0.75rem;"><i class="fas fa-external-link-alt"></i> 보기</button>` : ''}
+                    <span class="me-2" style="max-width: 300px;" title="${annexLabel}">${annexLabel}</span>
+                    ${a.annex_url ? `<button type="button" data-url="${a.annex_url}" data-title="${annexLabel || '별표 문서'}" class="btn btn-outline-success btn-sm p-1 law-annex-viewer-btn" style="font-size: 0.75rem;"><i class="fas fa-external-link-alt"></i> 보기</button>` : ''}
                 </li>
-            `).join('')}
+            `}).join('')}
         </ul>`;
     }
 }
