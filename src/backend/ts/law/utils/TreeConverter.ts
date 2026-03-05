@@ -25,6 +25,7 @@ export class TreeConverter {
           id: row.id_a,
           id_aa: row.id_aa,
           title: row.law_content,
+          scheduledTitle: row.law_content_sched ?? null,
           children: []
         };
         lawMap.set(row.id_a, node);
@@ -41,6 +42,7 @@ export class TreeConverter {
           decreeNode = {
             id: row.id_e,
             title: row.decree_content,
+            scheduledTitle: row.decree_content_sched ?? null,
             children: []
           };
           law.children.push(decreeNode);
@@ -73,6 +75,7 @@ export class TreeConverter {
           regulationNode = {
             id: row.id_s,
             title: row.regulation_content,
+            scheduledTitle: row.regulation_content_sched ?? null,
             children: []
           };
           decreeNode.children.push(regulationNode);
@@ -105,6 +108,7 @@ export class TreeConverter {
           ruleNode = {
             id: row.id_r,
             title: row.rule_content,
+            scheduledTitle: row.rule_content_sched ?? null,
             children: []
           };
           regulationNode.children.push(ruleNode);
@@ -134,6 +138,7 @@ export class TreeConverter {
           ruleNode.children.push({
             id: row.id_b,
             title: row.book_content,
+            scheduledTitle: row.book_content_sched ?? null,
             children: []
           });
         }

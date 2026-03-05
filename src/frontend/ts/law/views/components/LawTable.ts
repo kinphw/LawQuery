@@ -110,7 +110,9 @@ export class LawTable {
 
                 return this.td(
                     `${LawTable.COL_CLASS[c]} ${LawTable.INDENT_CLASS[c]}`,
-                    node.title, search,
+                    node.title,
+                    node.scheduledTitle,
+                    search,
                     rowspans[r][c],
                     extra,
                     node.id ?? undefined, // id를 data-id 속성으로 추가
@@ -123,14 +125,14 @@ export class LawTable {
     }
 
     // 헬퍼 함수들 // id를 <td>의 data-id 속성으로 추가
-    private td(className: string, text: string | null, searchText: string, rowspan?: number, extraHtml: string = '', id?: string, isVirtual?: boolean): string {
+    private td(className: string, text: string | null, scheduledText: string | null | undefined, searchText: string, rowspan?: number, extraHtml: string = '', id?: string, isVirtual?: boolean): string {
         const rowAttr = rowspan && rowspan > 1 ? ` rowspan="${rowspan}"` : '';
         const idAttr = id ? ` data-id="${id}"` : ''; // id를 data-id로 추가
 
         // 가상 노드인 경우 virtual-cell 클래스 추가
         const finalClass = isVirtual ? `${className} law-box ${this.currentTextSize} virtual-cell` : `${className} law-box ${this.currentTextSize}`;
 
-        return `<td class="${finalClass}"${rowAttr}${idAttr}>${this.formatContent(text, searchText)}${extraHtml}</td>`;
+        return `<td class="${finalClass}"${rowAttr}${idAttr}>${this.formatContent(text, scheduledText ?? null, searchText)}${extraHtml}</td>`;
     }
     private emptyTd(className: string): string {
         return `<td class="${className} law-box ${this.currentTextSize}"></td>`;
@@ -221,14 +223,23 @@ export class LawTable {
         this.currentTextSize = size;
     }
 
-    // formatContent는 box-item만 남기고 단일 텍스트만 감싸도록
-    private formatContent(text: string | null, searchText: string): string {
-        if (!text) return '';
-        let content = text;
-        if (searchText) {
-            content = content.replace(new RegExp(searchText, 'gi'),
-                match => `<span class="text-danger fw-bold">${match}</span>`);
-        }
-        return `<div class="box-item small p-2 m-0">${content.replace(/\n/g, '<br>')}</div>`;
+    private formatContent(text: string | null, scheduledText: string | null, searchText: string): string {
+        const renderBox = (raw: string, isScheduled: boolean): string => {
+            let c = raw;
+            if (searchText) {
+                c = c.replace(new RegExp(searchText, 'gi'),
+                    match => `<span class="text-danger fw-bold">${match}</span>`);
+            }
+            c = c.replace(/\n/g, '<br>');
+            const cls = isScheduled
+                ? 'box-item small p-2 m-0 box-item--scheduled'
+                : 'box-item small p-2 m-0';
+            return `<div class="${cls}">${c}</div>`;
+        };
+
+        const parts: string[] = [];
+        if (text) parts.push(renderBox(text, false));
+        if (scheduledText) parts.push(renderBox(scheduledText, true));
+        return parts.join('');
     }
 }

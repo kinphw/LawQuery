@@ -16,3 +16,24 @@
     white-space: normal;
     text-align: left;
   }
+
+  // 시행예정 박스
+  .box-item--scheduled {
+    background-color: #fff8e1;
+    border-color: #f9a825;
+    position: relative;
+    padding-bottom: 1.4rem;
+
+    &::before {
+      content: '시행예정';
+      position: absolute;
+      bottom: 3px;
+      right: 5px;
+      font-size: 0.65rem;
+      color: #e65100;
+      font-weight: bold;
+      background-color: #ffe0b2;
+      padding: 1px 5px;
+      border-radius: 3px;
+    }
+  }

@@ -21,11 +21,12 @@ export class LawModel extends LawBaseModel {
     if (step === 4) {
       query = `
       WITH RECURSIVE paths AS (
-        SELECT 
+        SELECT
           a.id_aa,
           a.id AS ida,
           a.id_a,
           a.content_a AS law_content,
+          a.content_a_sched AS law_content_sched,
           a.id_a AS current_node,
           CAST(NULL AS CHAR(100)) AS id_e,
           CAST(NULL AS CHAR(100)) AS id_s,
@@ -36,8 +37,9 @@ export class LawModel extends LawBaseModel {
 
         UNION ALL
 
-        SELECT 
+        SELECT
           p.id_aa, p.ida, p.id_a, p.law_content,
+          p.law_content_sched,
           rdb.id_end,
           CASE WHEN rdb.id_end LIKE 'E%' THEN rdb.id_end ELSE p.id_e END,
           CASE WHEN rdb.id_end LIKE 'S%' THEN rdb.id_end ELSE p.id_s END,
@@ -53,11 +55,15 @@ export class LawModel extends LawBaseModel {
           )
       )
       SELECT * FROM (
-        SELECT 
+        SELECT
           p.id_aa, p.id_a, p.law_content,
+          p.law_content_sched,
           p.id_e, e.content_e AS decree_content,
+          e.content_e_sched AS decree_content_sched,
           p.id_s, s.content_s AS regulation_content,
+          s.content_s_sched AS regulation_content_sched,
           p.id_r, r.content_r AS rule_content,
+          r.content_r_sched AS rule_content_sched,
           e.id AS ide,
           s.id AS ids,
           r.id AS idr,
@@ -68,7 +74,7 @@ export class LawModel extends LawBaseModel {
         LEFT JOIN db_s s ON s.id_s = p.id_s
         LEFT JOIN db_r r ON r.id_r = p.id_r
         WHERE NOT EXISTS (
-          SELECT 1 FROM rdb 
+          SELECT 1 FROM rdb
           WHERE id_start = p.current_node
             AND (
               (p.current_node LIKE 'A%' AND (id_end LIKE 'E%' OR id_end LIKE 'S%' OR id_end LIKE 'R%'))
@@ -88,31 +94,35 @@ export class LawModel extends LawBaseModel {
 
       UNION ALL
 
-      SELECT 
+      SELECT
         a.id_aa, NULL, a.content_a,
-        NULL, NULL, NULL, NULL, NULL, NULL,
+        NULL,
+        NULL, NULL, NULL,
+        NULL, NULL, NULL,
+        NULL, NULL, NULL,
         NULL, NULL, NULL,
         a.id AS ida,
         1 AS a_count
       FROM db_a a
       WHERE a.id_a IS NULL AND a.title_a IS NOT NULL
 
-      ORDER BY 
+      ORDER BY
         ida,
         ide,
         ids,
-        idr;  
+        idr;
       `;
     };
 
     if (step === 5) {
       query = `
       WITH RECURSIVE paths AS (
-        SELECT 
+        SELECT
           a.id_aa,
           a.id AS ida,
           a.id_a,
           a.content_a AS law_content,
+          a.content_a_sched AS law_content_sched,
           a.id_a AS current_node,
           CAST(NULL AS CHAR(100)) AS id_e,
           CAST(NULL AS CHAR(100)) AS id_s,
@@ -124,8 +134,9 @@ export class LawModel extends LawBaseModel {
 
         UNION ALL
 
-        SELECT 
+        SELECT
           p.id_aa, p.ida, p.id_a, p.law_content,
+          p.law_content_sched,
           rdb.id_end,
           CASE WHEN rdb.id_end LIKE 'E%' THEN rdb.id_end ELSE p.id_e END,
           CASE WHEN rdb.id_end LIKE 'S%' THEN rdb.id_end ELSE p.id_s END,
@@ -143,25 +154,30 @@ export class LawModel extends LawBaseModel {
           )
       )
       SELECT * FROM (
-        SELECT 
+        SELECT
           p.id_aa, p.id_a, p.law_content,
+          p.law_content_sched,
           p.id_e, e.content_e AS decree_content,
+          e.content_e_sched AS decree_content_sched,
           p.id_s, s.content_s AS regulation_content,
+          s.content_s_sched AS regulation_content_sched,
           p.id_r, r.content_r AS rule_content,
+          r.content_r_sched AS rule_content_sched,
           p.id_b, b.content_b AS book_content,
+          b.content_b_sched AS book_content_sched,
           e.id AS ide,
           s.id AS ids,
           r.id AS idr,
           b.id AS idb,
           p.ida,
-          COUNT(*) OVER (PARTITION BY p.id_a) AS a_count 
+          COUNT(*) OVER (PARTITION BY p.id_a) AS a_count
         FROM paths p
         LEFT JOIN db_e e ON e.id_e = p.id_e
         LEFT JOIN db_s s ON s.id_s = p.id_s
         LEFT JOIN db_r r ON r.id_r = p.id_r
         LEFT JOIN db_b b ON b.id_b = p.id_b
         WHERE NOT EXISTS (
-          SELECT 1 FROM rdb 
+          SELECT 1 FROM rdb
           WHERE id_start = p.current_node
             AND (
               (p.current_node LIKE 'A%' AND (id_end LIKE 'E%' OR id_end LIKE 'S%' OR id_end LIKE 'R%' OR id_end LIKE 'B%'))
@@ -183,16 +199,20 @@ export class LawModel extends LawBaseModel {
 
       UNION ALL
 
-      SELECT 
+      SELECT
         a.id_aa, NULL, a.content_a,
-        NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
+        NULL,
+        NULL, NULL, NULL,
+        NULL, NULL, NULL,
+        NULL, NULL, NULL,
+        NULL, NULL, NULL,
         NULL, NULL, NULL, NULL,
         a.id AS ida,
         1 AS a_count
       FROM db_a a
       WHERE a.id_a IS NULL AND a.title_a IS NOT NULL
 
-      ORDER BY 
+      ORDER BY
         ida,
         ide,
         ids,
@@ -216,11 +236,12 @@ export class LawModel extends LawBaseModel {
     if (step === 4) {
       query = `
       WITH RECURSIVE paths AS (
-        SELECT 
+        SELECT
           a.id_aa,
           a.id AS ida,
           a.id_a,
           a.content_a AS law_content,
+          a.content_a_sched AS law_content_sched,
           a.id_a AS current_node,
           CAST(NULL AS CHAR(100)) AS id_e,
           CAST(NULL AS CHAR(100)) AS id_s,
@@ -231,8 +252,9 @@ export class LawModel extends LawBaseModel {
 
         UNION ALL
 
-        SELECT 
+        SELECT
           p.id_aa, p.ida, p.id_a, p.law_content,
+          p.law_content_sched,
           rdb.id_end,
           CASE WHEN rdb.id_end LIKE 'E%' THEN rdb.id_end ELSE p.id_e END,
           CASE WHEN rdb.id_end LIKE 'S%' THEN rdb.id_end ELSE p.id_s END,
@@ -248,11 +270,15 @@ export class LawModel extends LawBaseModel {
           )
       )
       SELECT * FROM (
-        SELECT 
+        SELECT
           p.id_aa, p.id_a, p.law_content,
+          p.law_content_sched,
           p.id_e, e.content_e AS decree_content,
+          e.content_e_sched AS decree_content_sched,
           p.id_s, s.content_s AS regulation_content,
+          s.content_s_sched AS regulation_content_sched,
           p.id_r, r.content_r AS rule_content,
+          r.content_r_sched AS rule_content_sched,
           e.id AS ide,
           s.id AS ids,
           r.id AS idr,
@@ -263,7 +289,7 @@ export class LawModel extends LawBaseModel {
         LEFT JOIN db_s s ON s.id_s = p.id_s
         LEFT JOIN db_r r ON r.id_r = p.id_r
         WHERE NOT EXISTS (
-          SELECT 1 FROM rdb 
+          SELECT 1 FROM rdb
           WHERE id_start = p.current_node
             AND (
               (p.current_node LIKE 'A%' AND (id_end LIKE 'E%' OR id_end LIKE 'S%' OR id_end LIKE 'R%'))
@@ -283,16 +309,19 @@ export class LawModel extends LawBaseModel {
 
       UNION ALL
 
-      SELECT 
+      SELECT
         a.id_aa, NULL, a.content_a,
-        NULL, NULL, NULL, NULL, NULL, NULL,
+        NULL,
+        NULL, NULL, NULL,
+        NULL, NULL, NULL,
+        NULL, NULL, NULL,
         NULL, NULL, NULL,
         a.id AS ida,
         1 AS a_count
       FROM db_a a
       WHERE a.id_a IS NULL AND a.title_a IS NOT NULL AND a.id_aa IN (${placeholders})
 
-      ORDER BY 
+      ORDER BY
         ida,
         ide,
         ids,
@@ -301,11 +330,12 @@ export class LawModel extends LawBaseModel {
     } else if (step === 5) {
       query = `
       WITH RECURSIVE paths AS (
-        SELECT 
+        SELECT
           a.id_aa,
           a.id AS ida,
           a.id_a,
           a.content_a AS law_content,
+          a.content_a_sched AS law_content_sched,
           a.id_a AS current_node,
           CAST(NULL AS CHAR(100)) AS id_e,
           CAST(NULL AS CHAR(100)) AS id_s,
@@ -317,8 +347,9 @@ export class LawModel extends LawBaseModel {
 
         UNION ALL
 
-        SELECT 
+        SELECT
           p.id_aa, p.ida, p.id_a, p.law_content,
+          p.law_content_sched,
           rdb.id_end,
           CASE WHEN rdb.id_end LIKE 'E%' THEN rdb.id_end ELSE p.id_e END,
           CASE WHEN rdb.id_end LIKE 'S%' THEN rdb.id_end ELSE p.id_s END,
@@ -329,36 +360,41 @@ export class LawModel extends LawBaseModel {
         JOIN rdb ON rdb.id_start = p.current_node
         WHERE p.depth < 4
           AND (
-            (p.current_node LIKE 'A%' AND (rdb.id_end LIKE 'E%' OR rdb.id_end LIKE 'S%' OR rdb.id_end LIKE 'R%'))
-            OR (p.current_node LIKE 'E%' AND (rdb.id_end LIKE 'S%' OR rdb.id_end LIKE 'R%'))
+            (p.current_node LIKE 'A%' AND (rdb.id_end LIKE 'E%' OR rdb.id_end LIKE 'S%' OR rdb.id_end LIKE 'R%' OR rdb.id_end LIKE 'B%'))
+            OR (p.current_node LIKE 'E%' AND (rdb.id_end LIKE 'S%' OR rdb.id_end LIKE 'R%' OR rdb.id_end LIKE 'B%'))
             OR (p.current_node LIKE 'S%' AND (rdb.id_end LIKE 'R%' OR rdb.id_end LIKE 'B%'))
             OR (p.current_node LIKE 'R%' AND id_end LIKE 'B%')
           )
       )
       SELECT * FROM (
-        SELECT 
+        SELECT
           p.id_aa, p.id_a, p.law_content,
+          p.law_content_sched,
           p.id_e, e.content_e AS decree_content,
+          e.content_e_sched AS decree_content_sched,
           p.id_s, s.content_s AS regulation_content,
+          s.content_s_sched AS regulation_content_sched,
           p.id_r, r.content_r AS rule_content,
+          r.content_r_sched AS rule_content_sched,
           p.id_b, b.content_b AS book_content,
+          b.content_b_sched AS book_content_sched,
           e.id AS ide,
           s.id AS ids,
           r.id AS idr,
           b.id AS idb,
           p.ida,
-          COUNT(*) OVER (PARTITION BY p.id_a) AS a_count 
+          COUNT(*) OVER (PARTITION BY p.id_a) AS a_count
         FROM paths p
         LEFT JOIN db_e e ON e.id_e = p.id_e
         LEFT JOIN db_s s ON s.id_s = p.id_s
         LEFT JOIN db_r r ON r.id_r = p.id_r
         LEFT JOIN db_b b ON b.id_b = p.id_b
         WHERE NOT EXISTS (
-          SELECT 1 FROM rdb 
+          SELECT 1 FROM rdb
           WHERE id_start = p.current_node
             AND (
-              (p.current_node LIKE 'A%' AND (id_end LIKE 'E%' OR id_end LIKE 'S%' OR id_end LIKE 'R%'))
-              OR (p.current_node LIKE 'E%' AND (id_end LIKE 'S%' OR id_end LIKE 'R%'))
+              (p.current_node LIKE 'A%' AND (id_end LIKE 'E%' OR id_end LIKE 'S%' OR id_end LIKE 'R%' OR id_end LIKE 'B%'))
+              OR (p.current_node LIKE 'E%' AND (id_end LIKE 'S%' OR id_end LIKE 'R%' OR id_end LIKE 'B%'))
               OR (p.current_node LIKE 'S%' AND (id_end LIKE 'R%' OR id_end LIKE 'B%'))
               OR (p.current_node LIKE 'R%' AND id_end LIKE 'B%')
             )
@@ -376,16 +412,20 @@ export class LawModel extends LawBaseModel {
 
       UNION ALL
 
-      SELECT 
+      SELECT
         a.id_aa, NULL, a.content_a,
-        NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
+        NULL,
+        NULL, NULL, NULL,
+        NULL, NULL, NULL,
+        NULL, NULL, NULL,
+        NULL, NULL, NULL,
         NULL, NULL, NULL, NULL,
         a.id AS ida,
         1 AS a_count
       FROM db_a a
       WHERE a.id_a IS NULL AND a.title_a IS NOT NULL AND a.id_aa IN (${placeholders})
 
-      ORDER BY 
+      ORDER BY
         ida,
         ide,
         ids,
