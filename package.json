@@ -17,8 +17,9 @@
     "typecheck:watch": "tsc --noEmit --watch",
     "dev": "webpack serve --config webpack.config.js",
     "dev:backend": "ts-node-dev --respawn --transpile-only src/backend/ts/index.ts",
-    "dev:full": "concurrently \"npm run dev\" \"npm run dev:backend\" \"npm run typecheck:watch\"",
-    "dev:fast": "concurrently \"npm:watch\" \"npm run dev:backend\""
+    "scss:watch": "sass --watch assets/scss/style.scss:assets/css/style.css",
+    "dev:full": "concurrently \"npm run dev\" \"npm run dev:backend\" \"npm run typecheck:watch\" \"npm run scss:watch\"",
+    "dev:fast": "concurrently \"npm:watch\" \"npm run dev:backend\" \"npm run scss:watch\""
   },
   "dependencies": {
     "@types/cors": "^2.8.17",
