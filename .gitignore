@@ -36,3 +36,5 @@ assets/css/style.css
 
 # Claude Code
 .claude/settings.local.json
+
+.mcp.json
