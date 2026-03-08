@@ -23,7 +23,7 @@ export class LawModel extends LawBaseModel {
       WITH RECURSIVE paths AS (
         SELECT
           a.id_aa,
-          a.id AS ida,
+          a.seq AS ida,
           a.id_a,
           a.content_a AS law_content,
           a.content_a_sched AS law_content_sched,
@@ -64,9 +64,9 @@ export class LawModel extends LawBaseModel {
           s.content_s_sched AS regulation_content_sched,
           p.id_r, r.content_r AS rule_content,
           r.content_r_sched AS rule_content_sched,
-          e.id AS ide,
-          s.id AS ids,
-          r.id AS idr,
+          e.seq AS ide,
+          s.seq AS ids,
+          r.seq AS idr,
           p.ida,
           COUNT(*) OVER (PARTITION BY p.id_a) AS a_count
         FROM paths p
@@ -101,7 +101,7 @@ export class LawModel extends LawBaseModel {
         NULL, NULL, NULL,
         NULL, NULL, NULL,
         NULL, NULL, NULL,
-        a.id AS ida,
+        a.seq AS ida,
         1 AS a_count
       FROM db_a a
       WHERE a.id_a IS NULL AND a.title_a IS NOT NULL
@@ -119,7 +119,7 @@ export class LawModel extends LawBaseModel {
       WITH RECURSIVE paths AS (
         SELECT
           a.id_aa,
-          a.id AS ida,
+          a.seq AS ida,
           a.id_a,
           a.content_a AS law_content,
           a.content_a_sched AS law_content_sched,
@@ -165,10 +165,10 @@ export class LawModel extends LawBaseModel {
           r.content_r_sched AS rule_content_sched,
           p.id_b, b.content_b AS book_content,
           b.content_b_sched AS book_content_sched,
-          e.id AS ide,
-          s.id AS ids,
-          r.id AS idr,
-          b.id AS idb,
+          e.seq AS ide,
+          s.seq AS ids,
+          r.seq AS idr,
+          b.seq AS idb,
           p.ida,
           COUNT(*) OVER (PARTITION BY p.id_a) AS a_count
         FROM paths p
@@ -207,7 +207,7 @@ export class LawModel extends LawBaseModel {
         NULL, NULL, NULL,
         NULL, NULL, NULL,
         NULL, NULL, NULL, NULL,
-        a.id AS ida,
+        a.seq AS ida,
         1 AS a_count
       FROM db_a a
       WHERE a.id_a IS NULL AND a.title_a IS NOT NULL
@@ -238,7 +238,7 @@ export class LawModel extends LawBaseModel {
       WITH RECURSIVE paths AS (
         SELECT
           a.id_aa,
-          a.id AS ida,
+          a.seq AS ida,
           a.id_a,
           a.content_a AS law_content,
           a.content_a_sched AS law_content_sched,
@@ -279,9 +279,9 @@ export class LawModel extends LawBaseModel {
           s.content_s_sched AS regulation_content_sched,
           p.id_r, r.content_r AS rule_content,
           r.content_r_sched AS rule_content_sched,
-          e.id AS ide,
-          s.id AS ids,
-          r.id AS idr,
+          e.seq AS ide,
+          s.seq AS ids,
+          r.seq AS idr,
           p.ida,
           COUNT(*) OVER (PARTITION BY p.id_a) AS a_count
         FROM paths p
@@ -316,7 +316,7 @@ export class LawModel extends LawBaseModel {
         NULL, NULL, NULL,
         NULL, NULL, NULL,
         NULL, NULL, NULL,
-        a.id AS ida,
+        a.seq AS ida,
         1 AS a_count
       FROM db_a a
       WHERE a.id_a IS NULL AND a.title_a IS NOT NULL AND a.id_aa IN (${placeholders})
@@ -332,7 +332,7 @@ export class LawModel extends LawBaseModel {
       WITH RECURSIVE paths AS (
         SELECT
           a.id_aa,
-          a.id AS ida,
+          a.seq AS ida,
           a.id_a,
           a.content_a AS law_content,
           a.content_a_sched AS law_content_sched,
@@ -378,10 +378,10 @@ export class LawModel extends LawBaseModel {
           r.content_r_sched AS rule_content_sched,
           p.id_b, b.content_b AS book_content,
           b.content_b_sched AS book_content_sched,
-          e.id AS ide,
-          s.id AS ids,
-          r.id AS idr,
-          b.id AS idb,
+          e.seq AS ide,
+          s.seq AS ids,
+          r.seq AS idr,
+          b.seq AS idb,
           p.ida,
           COUNT(*) OVER (PARTITION BY p.id_a) AS a_count
         FROM paths p
@@ -420,7 +420,7 @@ export class LawModel extends LawBaseModel {
         NULL, NULL, NULL,
         NULL, NULL, NULL,
         NULL, NULL, NULL, NULL,
-        a.id AS ida,
+        a.seq AS ida,
         1 AS a_count
       FROM db_a a
       WHERE a.id_a IS NULL AND a.title_a IS NOT NULL AND a.id_aa IN (${placeholders})
@@ -447,7 +447,7 @@ export class LawModel extends LawBaseModel {
         title_a,
         CASE WHEN id_a IS NULL THEN 1 ELSE 0 END as isTitle 
     FROM db_a    
-    ORDER BY id
+    ORDER BY seq
     `;
     return await this.db.query<LawTitle>(query);
   }

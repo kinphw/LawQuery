@@ -65,7 +65,7 @@ export class LawPenaltyModel extends LawBaseModel {
           query += ` ORDER BY pe.id, pa.id`;
         } else {
           // 원인순 정렬 (법조문 기준)
-          query += ` ORDER BY a.id, pe.id, pa.id`;
+          query += ` ORDER BY a.seq, pe.id, pa.id`;
         }    
     
         const result = await this.db.query<LawPenalty>(query, params);
