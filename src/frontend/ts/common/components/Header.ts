@@ -65,6 +65,11 @@ export class Header {
                     <i class="fab fa-github"></i> github.com/kinphw/LawQuery
                 </a>
             </div>
+            <div class="mb-1">
+                <a href="https://github.com/kinphw/LawQuery/releases" target="_blank" rel="noopener">
+                    <i class="fas fa-history"></i> 업데이트 내역 (Releases)
+                </a>
+            </div>
             <div class="text-muted small">Apache license 2.0</div>
         `);
     }    
