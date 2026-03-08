@@ -482,6 +482,12 @@ export class LawModel extends LawBaseModel {
     return await this.db.query<LawTitle>(query);
   }
 
+  async getMeta(dbContext: DbContext): Promise<{ origin: string; full_name: string; short_name: string }[]> {
+    this.setDbContext(dbContext);
+    const query = `SELECT origin, full_name, short_name FROM db_meta ORDER BY _pk`;
+    return await this.db.query(query);
+  }
+
   toLawTree(rows: LawResult[]): LawTreeNode[] {
     return TreeConverter.toLawTree(rows);
   }

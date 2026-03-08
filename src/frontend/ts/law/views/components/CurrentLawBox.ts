@@ -8,4 +8,11 @@ export class CurrentLawBox {
             currentLawBox.textContent = getLawConfig(law).label;
         }
     }
+
+    static updateWithLabel(label: string): void {
+        const currentLawBox = document.getElementById('currentLawBox');
+        if (currentLawBox) {
+            currentLawBox.textContent = label;
+        }
+    }
 }

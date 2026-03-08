@@ -78,6 +78,14 @@ export class LawController extends BaseLawController<LawModel> {
 
   }
 
+  // 법령명 메타 조회 (/api/law/meta)
+  async getMeta(req: Request, res: Response): Promise<void> {
+    const dbName: string = req.query.law as string;
+    const dbContext = this.getDbContext(dbName);
+    const data = await this.model.getMeta(dbContext);
+    res.status(200).json({ success: true, data });
+  }
+
   // 단일 조문 내용 조회 (/api/law/article)
   async getArticle(req: Request, res: Response): Promise<void> {
     const dbName: string = req.query.law as string;

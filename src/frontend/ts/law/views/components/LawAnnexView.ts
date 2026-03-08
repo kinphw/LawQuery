@@ -9,6 +9,10 @@ export class LawAnnexView {
         this.originMap = getLawConfig(law).originMap;
     }
 
+    setOriginMap(map: Record<string, string>): void {
+        this.originMap = map;
+    }
+
     renderTable(annexes: LawAnnex[], isFullView: boolean = true): string {
         return `
             <div class="table-responsive small" style="height:100%;">

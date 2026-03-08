@@ -25,6 +25,7 @@ import { LawFetchReferenceIdsModel } from "../models/LawFetchReferenceIdsModel";
 import { LawFetchAnnexModel } from "../models/LawFetchAnnexModel";
 import { LawFetchAnnexIdsModel } from "../models/LawFetchAnnexIdsModel";
 import { LawFetchArticleModel } from "../models/LawFetchArticleModel";
+import { LawFetchMetaModel } from "../models/LawFetchMetaModel";
 
 import { LawView } from "../views/LawView";
 import { LawPenaltyView } from "../views/components/LawPenaltyView";
@@ -51,6 +52,7 @@ export interface ILawController extends IController {
     modelFetchAnnex: LawFetchAnnexModel;
     modelFetchAnnexIds: LawFetchAnnexIdsModel;
     modelFetchArticle: LawFetchArticleModel;
+    modelFetchMeta: LawFetchMetaModel;
 
     view: LawView;
     viewPenalty: LawPenaltyView; // 250504
@@ -80,6 +82,7 @@ export class LawController implements ILawController {
     modelFetchAnnex!: LawFetchAnnexModel;
     modelFetchAnnexIds!: LawFetchAnnexIdsModel;
     modelFetchArticle!: LawFetchArticleModel;
+    modelFetchMeta!: LawFetchMetaModel;
 
     view!: LawView;
     viewPenalty!: LawPenaltyView; // 250504
@@ -108,6 +111,7 @@ export class LawController implements ILawController {
         this.modelFetchAnnex = new LawFetchAnnexModel();
         this.modelFetchAnnexIds = new LawFetchAnnexIdsModel();
         this.modelFetchArticle = new LawFetchArticleModel();
+        this.modelFetchMeta = new LawFetchMetaModel();
 
         this.dataManager = new LawDataManager();
 
@@ -144,7 +148,18 @@ export class LawController implements ILawController {
 
     async initialize(): Promise<void> {
 
-        CurrentLawBox.update();
+        // DB에서 법령명 메타 로드 → LawConfig 하드코딩 대체
+        const meta = await this.modelFetchMeta.getMeta();
+        if (meta.length > 0) {
+            this.view.setLawNames(meta.map(m => m.full_name));
+            const label = meta.find(m => m.origin === 'a')?.full_name.split('\n')[0] ?? '';
+            CurrentLawBox.updateWithLabel(label);
+            const originMap: Record<string, string> = {};
+            meta.forEach(m => { originMap[m.origin] = m.short_name; });
+            this.viewAnnex.setOriginMap(originMap);
+        } else {
+            CurrentLawBox.update(); // fallback
+        }
 
         // 초기 벌칙 id_a 로드 : 250505
         this.dataManager.setPenaltyIds(await this.modelFetchPenaltyIds.getPenaltyIds());

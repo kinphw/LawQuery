@@ -72,6 +72,10 @@ export class LawView {
         document.getElementById('lawCheckboxes')!.innerHTML = this.lawCheckbox.renderLawCheckboxes(laws);
     }
 
+    setLawNames(names: string[]): void {
+        this.lawTable.names = names;
+    }
+
     setTextSize(size: string): void {
         this.lawTable.setTextSize(size);
     }

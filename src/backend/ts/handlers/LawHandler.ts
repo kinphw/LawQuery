@@ -37,5 +37,6 @@ export class LawHandler {
     this.router.get('/referenceIds', this.referenceController.getReferenceIds.bind(this.referenceController));
     this.router.get('/annex', this.annexController.getAnnex.bind(this.annexController));
     this.router.get('/annexIds', this.annexController.getAnnexIds.bind(this.annexController));
+    this.router.get('/meta', this.controller.getMeta.bind(this.controller));
   }
 }
