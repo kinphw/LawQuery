@@ -34,18 +34,19 @@
     background-color: #fff8e1;
     border-color: #f9a825;
     position: relative;
-    padding-bottom: 1.4rem;
+    padding-bottom: 1.6rem;
 
     &::before {
-      content: '시행예정';
+      content: attr(data-sched-label);
       position: absolute;
-      bottom: 3px;
-      right: 5px;
+      bottom: 4px;
+      right: 6px;
       font-size: 0.65rem;
       color: #e65100;
       font-weight: bold;
       background-color: #ffe0b2;
       padding: 1px 5px;
       border-radius: 3px;
+      white-space: nowrap;
     }
   }

@@ -112,6 +112,7 @@ export class LawTable {
                     `${LawTable.COL_CLASS[c]} ${LawTable.INDENT_CLASS[c]}`,
                     node.title,
                     node.scheduledTitle,
+                    node.scheduledDate,
                     search,
                     rowspans[r][c],
                     extra,
@@ -125,14 +126,14 @@ export class LawTable {
     }
 
     // 헬퍼 함수들 // id를 <td>의 data-id 속성으로 추가
-    private td(className: string, text: string | null, scheduledText: string | null | undefined, searchText: string, rowspan?: number, extraHtml: string = '', id?: string, isVirtual?: boolean): string {
+    private td(className: string, text: string | null, scheduledText: string | null | undefined, scheduledDate: string | null | undefined, searchText: string, rowspan?: number, extraHtml: string = '', id?: string, isVirtual?: boolean): string {
         const rowAttr = rowspan && rowspan > 1 ? ` rowspan="${rowspan}"` : '';
         const idAttr = id ? ` data-id="${id}"` : ''; // id를 data-id로 추가
 
         // 가상 노드인 경우 virtual-cell 클래스 추가
         const finalClass = isVirtual ? `${className} law-box ${this.currentTextSize} virtual-cell` : `${className} law-box ${this.currentTextSize}`;
 
-        return `<td class="${finalClass}"${rowAttr}${idAttr}>${this.formatContent(text, scheduledText ?? null, searchText)}${extraHtml}</td>`;
+        return `<td class="${finalClass}"${rowAttr}${idAttr}>${this.formatContent(text, scheduledText ?? null, scheduledDate ?? null, searchText)}${extraHtml}</td>`;
     }
     private emptyTd(className: string): string {
         return `<td class="${className} law-box ${this.currentTextSize}"></td>`;
@@ -223,7 +224,7 @@ export class LawTable {
         this.currentTextSize = size;
     }
 
-    private formatContent(text: string | null, scheduledText: string | null, searchText: string): string {
+    private formatContent(text: string | null, scheduledText: string | null, scheduledDate: string | null, searchText: string): string {
         const highlight = (s: string): string => {
             if (!searchText) return s;
             return s.replace(new RegExp(searchText, 'gi'),
@@ -260,7 +261,8 @@ export class LawTable {
             } else {
                 inner = highlight(scheduledText).replace(/\n/g, '<br>');
             }
-            parts.push(`<div class="box-item small p-2 m-0 box-item--scheduled">${inner}</div>`);
+            const schedLabel = scheduledDate ? `시행예정 ${scheduledDate}` : '시행예정';
+            parts.push(`<div class="box-item small p-2 m-0 box-item--scheduled" data-sched-label="${schedLabel}">${inner}</div>`);
         }
 
         return parts.join('');

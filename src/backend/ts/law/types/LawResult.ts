@@ -20,6 +20,13 @@ export interface LawResult extends RowDataPacket {
     book_content?: string | null;
     book_content_sched?: string | null;
 
+    // Scheduled dates
+    law_sched_date?: string | null;
+    decree_sched_date?: string | null;
+    regulation_sched_date?: string | null;
+    rule_sched_date?: string | null;
+    book_sched_date?: string | null;
+
     // Sorting fields
     ide?: number;
     ids?: number;
