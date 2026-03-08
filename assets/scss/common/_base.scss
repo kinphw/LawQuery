@@ -17,6 +17,18 @@
     text-align: left;
   }
 
+  // 시행예정 인라인 diff
+  del.law-del {
+    text-decoration: line-through;
+    color: #aaa;
+    font-style: normal;
+  }
+  ins.law-ins {
+    text-decoration: underline;
+    color: #c62828;
+    font-style: normal;
+  }
+
   // 시행예정 박스
   .box-item--scheduled {
     background-color: #fff8e1;

@@ -224,22 +224,45 @@ export class LawTable {
     }
 
     private formatContent(text: string | null, scheduledText: string | null, searchText: string): string {
-        const renderBox = (raw: string, isScheduled: boolean): string => {
-            let c = raw;
-            if (searchText) {
-                c = c.replace(new RegExp(searchText, 'gi'),
-                    match => `<span class="text-danger fw-bold">${match}</span>`);
-            }
-            c = c.replace(/\n/g, '<br>');
-            const cls = isScheduled
-                ? 'box-item small p-2 m-0 box-item--scheduled'
-                : 'box-item small p-2 m-0';
-            return `<div class="${cls}">${c}</div>`;
+        const highlight = (s: string): string => {
+            if (!searchText) return s;
+            return s.replace(new RegExp(searchText, 'gi'),
+                match => `<span class="text-danger fw-bold">${match}</span>`);
         };
 
         const parts: string[] = [];
-        if (text) parts.push(renderBox(text, false));
-        if (scheduledText) parts.push(renderBox(scheduledText, true));
+
+        if (text) {
+            const c = highlight(text).replace(/\n/g, '<br>');
+            parts.push(`<div class="box-item small p-2 m-0">${c}</div>`);
+        }
+
+        if (scheduledText) {
+            let inner: string;
+            if (text) {
+                // 현행과 비교해 시행예정 박스 안에서 diff 표시
+                const { diff_match_patch, DIFF_DELETE, DIFF_INSERT } = require('diff-match-patch');
+                const dmp = new diff_match_patch();
+                const diffs = dmp.diff_main(text, scheduledText);
+                dmp.diff_cleanupSemantic(diffs);
+
+                inner = '';
+                for (const [op, data] of diffs as [number, string][]) {
+                    const seg = highlight(data).replace(/\n/g, '<br>');
+                    if (op === DIFF_DELETE) {
+                        inner += `<del class="law-del">${seg}</del>`;
+                    } else if (op === DIFF_INSERT) {
+                        inner += `<ins class="law-ins">${seg}</ins>`;
+                    } else {
+                        inner += seg;
+                    }
+                }
+            } else {
+                inner = highlight(scheduledText).replace(/\n/g, '<br>');
+            }
+            parts.push(`<div class="box-item small p-2 m-0 box-item--scheduled">${inner}</div>`);
+        }
+
         return parts.join('');
     }
 }
