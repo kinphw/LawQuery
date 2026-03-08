@@ -11,16 +11,7 @@ import { ModalManager } from './ModalManager';
 
 export class Header {
 
-    strVer:string = "";
-
-    // 비동기 초기화
-    async init(): Promise<void> {
-        const res = await fetch('assets/changelog.json');
-        const changelog = await res.json();
-        this.strVer = changelog.version;
-    }
-
-    render(currentPage: 'law' | 'interpretation'): string {        
+    render(currentPage: 'law' | 'interpretation'): string {
 
         const html = `
         <header class="text-center p-3 border bg-light">
@@ -28,10 +19,6 @@ export class Header {
                 <img src="assets/img/penguin.PNG" alt="Penguin" style="height: 40px;">
                 <h2 class="mb-0 position-absolute start-50 translate-middle-x">Law Query</h2>
                 <div class="d-flex gap-2">
-
-                    <a class="btn btn-link text-danger p-1" href="https://github.com/kinphw/LawQuery/releases" target="_blank" rel="noopener">
-                        <small class="fw-bold">v${this.strVer}</small>
-                    </a>
 
                     <button class="btn btn-link" id="infoButton">
                         <i class="fas fa-question-circle fs-4"></i>
@@ -77,9 +64,6 @@ export class Header {
                 <a href="https://github.com/kinphw/LawQuery" target="_blank" rel="noopener">
                     <i class="fab fa-github"></i> github.com/kinphw/LawQuery
                 </a>
-            </div>
-            <div class="mb-1">
-                <span class="badge bg-primary">v${this.strVer}</span>
             </div>
             <div class="text-muted small">Apache license 2.0</div>
         `);

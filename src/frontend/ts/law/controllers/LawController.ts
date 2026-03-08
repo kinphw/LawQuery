@@ -177,7 +177,6 @@ export class LawController implements ILawController {
         // Store initial results
         // await this.dataManager.setAllLaws(); // 결합도 제거! 위임없이 컨트롤러 본연의 역할 수행        
         this.dataManager.setCurrentResults(await this.modelFetchAll.getAllLaws());
-        // this.view.render(this.dataManager.currentResults);
         this.view.render(this.dataManager.getCurrentResults());
 
 

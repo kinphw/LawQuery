@@ -65,11 +65,9 @@ export class SearchView {
     }
   }  
 
-  async renderHeader(): Promise<void> {
-    await this.header.init();
+  renderHeader(): void {
     const headerContainer = document.getElementById('header');
     if (headerContainer) {
-      // 'interpretation' 페이지를 현재 페이지로 지정
       headerContainer.innerHTML = this.header.render('interpretation');
     }
   }
