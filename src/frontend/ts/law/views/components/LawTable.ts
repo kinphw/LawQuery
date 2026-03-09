@@ -6,7 +6,7 @@ import { getLawConfig } from '../../config/LawConfig';
 
 type Path = [
     LawTreeNode | null, LawTreeNode | null,
-    LawTreeNode | null, LawTreeNode | null];
+    LawTreeNode | null, LawTreeNode | null, LawTreeNode | null];
 
 export class LawTable {
 
@@ -17,12 +17,12 @@ export class LawTable {
     // 법령명 thead 설정을 위한 클래스변수 // 250623
     public names: string[] = [];
 
-    // 0: 법 / 1: 시행령 / 2: 감독규정 / 3: 세칙
+    // 0: 법 / 1: 시행령 / 2: 감독규정 / 3: 세칙 / 4: 별표
     private static readonly COL_CLASS = [
-        'law-title', 'decree-title', 'regulation-title', 'rule-title'
+        'law-title', 'decree-title', 'regulation-title', 'rule-title', 'book-title'
     ] as const;
     private static readonly INDENT_CLASS = [
-        '', 'tree-indent-1', 'tree-indent-2', 'tree-indent-3'
+        '', 'tree-indent-1', 'tree-indent-2', 'tree-indent-3', 'tree-indent-4'
     ] as const;
 
     // constructor(lawView: LawView) {
