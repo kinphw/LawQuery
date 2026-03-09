@@ -33,7 +33,16 @@
     margin-top: 0.5rem;
   }
 
-  #lawSearchHeader {
+#lawSearchContent {
+  opacity: 0;
+  transition: opacity 0.2s ease;
+
+  &.is-open {
+    opacity: 1;
+  }
+}
+
+#lawSearchHeader {
     position: sticky;
     top: 0;
     z-index: 999;

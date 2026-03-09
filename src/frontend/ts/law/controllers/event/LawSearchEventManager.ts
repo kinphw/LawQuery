@@ -17,12 +17,21 @@ export class LawSearchEventManager implements ILawEventManager {
     }
 
     private bindToggleButtonEvents(): void {
+        const toggleBtn = document.getElementById('lawSearchToggle');
         const searchContent = document.getElementById('lawSearchContent');
-        if (searchContent) {
-            searchContent.addEventListener('show.bs.collapse', () => {
-                document.querySelector('.floating-search-btn')?.classList.remove('d-none');
+        if (toggleBtn && searchContent) {
+            toggleBtn.addEventListener('click', () => {
+                const isHidden = searchContent.classList.contains('d-none');
+                if (isHidden) {
+                    searchContent.classList.remove('d-none');
+                    requestAnimationFrame(() => searchContent.classList.add('is-open'));
+                    document.querySelector('.floating-search-btn')?.classList.remove('d-none');
+                } else {
+                    searchContent.classList.remove('is-open');
+                    setTimeout(() => searchContent.classList.add('d-none'), 200);
+                    this.handleCollapseHide();
+                }
             });
-            searchContent.addEventListener('hide.bs.collapse', () => this.handleCollapseHide());
         }
     }
 
@@ -41,8 +50,8 @@ export class LawSearchEventManager implements ILawEventManager {
 
             const searchContent = document.getElementById('lawSearchContent');
             if (searchContent) {
-                searchContent.classList.remove('show');
-                searchContent.classList.add('collapse');
+                searchContent.classList.remove('is-open');
+                setTimeout(() => searchContent.classList.add('d-none'), 200);
                 this.handleCollapseHide();
             }
 
