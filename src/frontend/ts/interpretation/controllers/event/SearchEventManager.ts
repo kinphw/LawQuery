@@ -18,8 +18,9 @@ export class SearchEventManager {
         this.bindHeaderEvents();
         this.bindTextSizeEvents();
         this.bindSearchEvents();
+        this.bindCopyAllEvents();
         // 스크롤 이벤트를 여기로 이동
-        // window.addEventListener('scroll', this.handleScroll.bind(this));    
+        // window.addEventListener('scroll', this.handleScroll.bind(this));
         this.bindScrollEvents();
     }
     
@@ -44,7 +45,75 @@ export class SearchEventManager {
 
     private bindScrollEvents(): void {
         window.addEventListener('scroll', this.handleScroll.bind(this));
-    }    
+    }
+
+    private bindCopyAllEvents(): void {
+        this.controller.view.searchForm.setCopyAllHandler(() => this.copyAllResults());
+    }
+
+    private async copyAllResults(): Promise<void> {
+        const data = this.controller.dataManager.currentResults;
+        if (!data.length) {
+            this.controller.view.showToast('복사할 결과가 없습니다.');
+            return;
+        }
+
+        const btn = document.getElementById('copyAllBtn') as HTMLButtonElement | null;
+        const originalText = btn?.textContent || '전체 복사';
+        if (btn) {
+            btn.disabled = true;
+            btn.textContent = `복사 중... 0/${data.length}`;
+        }
+
+        const details: Array<{ 질의요지: string; 회답: string; 이유: string; } | null> = new Array(data.length);
+        let cursor = 0;
+        const worker = async () => {
+            while (cursor < data.length) {
+                const i = cursor++;
+                details[i] = await this.controller.model.getDetail(data[i].id);
+                if (btn && (i + 1) % 5 === 0) {
+                    btn.textContent = `복사 중... ${i + 1}/${data.length}`;
+                }
+            }
+        };
+        await Promise.all(Array.from({ length: 5 }, worker));
+
+        const sep = '\n' + '='.repeat(80) + '\n';
+        const text = data.map((item, i) => {
+            const d = details[i] || { 질의요지: '', 회답: '', 이유: '' };
+            const date = (item.회신일자 || '').toString().slice(0, 10);
+            return [
+                `[${i + 1}/${data.length}] ${item.구분 || ''} | ${item.분야 || ''} | ${item.일련번호 || ''} | ${date}`,
+                `제목: ${item.제목 || ''}`,
+                ``,
+                `■ 질의요지`, d.질의요지 || '',
+                ``,
+                `■ 회답`, d.회답 || '',
+                ``,
+                `■ 이유`, d.이유 || '',
+            ].join('\n');
+        }).join(sep);
+
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0';
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        const ok = document.execCommand('copy');
+        ta.remove();
+
+        if (btn) {
+            btn.disabled = false;
+            btn.textContent = originalText;
+        }
+
+        this.controller.view.showToast(
+            ok
+                ? `클립보드 복사 완료 (${data.length}건, ${text.length.toLocaleString()}자)`
+                : '복사 실패'
+        );
+    }
     // 
     private bindRowClickEvents(startIndex: number = 0): void {//  
     

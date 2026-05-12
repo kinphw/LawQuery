@@ -1,4 +1,12 @@
 export class SearchForm {
+    // 전체 복사 버튼 핸들러
+    setCopyAllHandler(handler: () => void): void {
+        const btn = document.getElementById('copyAllBtn');
+        if (btn) {
+            btn.addEventListener('click', handler);
+        }
+    }
+
     // 메서드를 매개변수로 전달받아서 그 메서드를 이벤트바인딩
     setSearchHandler(handler: () => void): void {
 
