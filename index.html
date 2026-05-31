@@ -2,7 +2,11 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#212529" />
   <title>법령해석조회 - LawQuery</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="apple-touch-icon" href="assets/icons/icon-192.png" />
   <!-- 부트스트랩(로컬)을 사용한다면 -->
   <link rel="stylesheet" href="assets/vendor/bootstrap.min.css" />
 
@@ -121,6 +125,17 @@
     <script src="src/frontend/js/app.js"></script> -->
     <!-- <script type="module" src="src/frontend/js/entry/interpretation.js"> </script> -->
     <script src="dist/interpretation.bundle.js" type="module"></script>
+
+    <!-- PWA: Service Worker 등록 -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function () {
+          navigator.serviceWorker.register('service-worker.js').catch(function (e) {
+            console.error('SW 등록 실패:', e);
+          });
+        });
+      }
+    </script>
 
     
 

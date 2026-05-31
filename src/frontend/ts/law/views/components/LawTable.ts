@@ -71,7 +71,7 @@ export class LawTable {
             return '<div class="alert alert-warning">표시할 법령이 없습니다.</div>';
         }
 
-        let html = '<div><table class="table table-bordered law-table">';
+        let html = '<div class="table-responsive"><table class="table table-bordered law-table">';
         html += `
             <thead class="table-dark sticky-top">
                 <tr>

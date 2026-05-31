@@ -35,11 +35,11 @@ export class SearchView {
             <table id="searchResultTable" class="table table-bordered table-hover" style="table-layout: fixed; width: 100%;">
                 <thead class="table-light sticky-top">
                     <tr>
-                        <th class="text-center align-middle text-nowrap w-10">구분</th>
-                        <th class="text-center align-middle w-10">분야</th>
+                        <th class="text-center align-middle text-nowrap w-10 type-cell">구분</th>
+                        <th class="text-center align-middle w-10 field-cell">분야</th>
                         <th class="text-center align-middle text-nowrap w-50">제목</th>
-                        <th class="text-center align-middle text-nowrap w-10">일련번호</th>
-                        <th class="text-center align-middle text-nowrap w-10">회신일자</th>
+                        <th class="text-center align-middle text-nowrap w-10 serial-cell">일련번호</th>
+                        <th class="text-center align-middle text-nowrap w-10 date-cell">회신일자</th>
                     </tr>
                 </thead>
                 <tbody>
