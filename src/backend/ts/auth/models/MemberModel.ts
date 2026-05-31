@@ -1,0 +1,106 @@
+import DbContext from '../../common/DbContext';
+
+export type SignupSource = 'web' | 'app';
+export type MemberStatus = 'pending' | 'approved' | 'rejected' | 'revoked';
+export type MemberRole = 'user' | 'admin';
+
+export interface Member {
+  id: number;
+  email: string;
+  password_hash: string | null;
+  display_name: string | null;
+  signup_source: SignupSource;
+  status: MemberStatus;
+  role: MemberRole;
+  device_key: string | null;
+  created_at: string;
+  approved_at: string | null;
+  approved_by: number | null;
+  last_login_at: string | null;
+}
+
+/**
+ * 회원 데이터 접근 계층. 인증 전용 DB(ldb_auth)만 사용한다.
+ * 법령 데이터(ldb_i/j/s/y)와 완전히 분리.
+ */
+export class MemberModel {
+  private db;
+
+  constructor() {
+    this.db = DbContext.getInstance(process.env.AUTH_DB || 'ldb_auth');
+  }
+
+  async findByEmail(email: string): Promise<Member | null> {
+    const rows = await this.db.query<Member>(
+      'SELECT * FROM member WHERE email = ? LIMIT 1',
+      [email]
+    );
+    return rows[0] ?? null;
+  }
+
+  async findById(id: number): Promise<Member | null> {
+    const rows = await this.db.query<Member>(
+      'SELECT * FROM member WHERE id = ? LIMIT 1',
+      [id]
+    );
+    return rows[0] ?? null;
+  }
+
+  async findByDeviceKey(deviceKey: string): Promise<Member | null> {
+    const rows = await this.db.query<Member>(
+      'SELECT * FROM member WHERE device_key = ? LIMIT 1',
+      [deviceKey]
+    );
+    return rows[0] ?? null;
+  }
+
+  /** 웹 가입: status=pending(관리자 승인 대기) */
+  async createWebMember(
+    email: string,
+    passwordHash: string,
+    displayName: string | null,
+    role: MemberRole = 'user',
+    status: MemberStatus = 'pending'
+  ): Promise<number> {
+    const result: any = await this.db.query(
+      `INSERT INTO member (email, password_hash, display_name, signup_source, status, role)
+       VALUES (?, ?, ?, 'web', ?, ?)`,
+      [email, passwordHash, displayName, status, role]
+    );
+    // mysql2: insertId는 ResultSetHeader에 있음
+    return (result as any).insertId ?? (result as any)[0]?.insertId;
+  }
+
+  /** 앱 자동가입: 익명, status=approved 즉시 */
+  async createAppMember(email: string, deviceKey: string): Promise<number> {
+    const result: any = await this.db.query(
+      `INSERT INTO member (email, password_hash, display_name, signup_source, status, role, device_key, approved_at)
+       VALUES (?, NULL, NULL, 'app', 'approved', 'user', ?, NOW())`,
+      [email, deviceKey]
+    );
+    return (result as any).insertId ?? (result as any)[0]?.insertId;
+  }
+
+  async updateStatus(id: number, status: MemberStatus, approvedBy: number | null): Promise<void> {
+    await this.db.query(
+      `UPDATE member
+       SET status = ?, approved_at = IF(? = 'approved', NOW(), approved_at), approved_by = ?
+       WHERE id = ?`,
+      [status, status, approvedBy, id]
+    );
+  }
+
+  async touchLogin(id: number): Promise<void> {
+    await this.db.query('UPDATE member SET last_login_at = NOW() WHERE id = ?', [id]);
+  }
+
+  async listByStatus(status?: MemberStatus): Promise<Member[]> {
+    if (status) {
+      return this.db.query<Member>(
+        'SELECT * FROM member WHERE status = ? ORDER BY created_at DESC',
+        [status]
+      );
+    }
+    return this.db.query<Member>('SELECT * FROM member ORDER BY created_at DESC');
+  }
+}

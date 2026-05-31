@@ -5,7 +5,7 @@
 //   - 정적 자원/페이지는 network-first: 온라인이면 항상 최신, 오프라인이면 캐시로 폴백.
 // 캐시 버전을 올리면(예: v1 → v2) 이전 캐시는 activate 단계에서 정리된다.
 
-const CACHE_VERSION = 'lawquery-v1';
+const CACHE_VERSION = 'lawquery-v2';
 
 // 설치 시 미리 받아둘 핵심 정적 자원(앱 셸).
 // 상대경로로 작성해 .test / .kro.kr 양쪽 도메인에서 동일하게 동작하게 한다.
@@ -13,6 +13,8 @@ const PRECACHE_URLS = [
   './',
   './index.html',
   './law.html',
+  './login.html',
+  './auth-gate.js',
   './manifest.json',
   './assets/css/style.css',
   './assets/vendor/bootstrap.min.css',

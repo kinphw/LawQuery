@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#212529" />
+  <title>회원 관리 - LawQuery 관리자</title>
+  <link rel="stylesheet" href="assets/vendor/bootstrap.min.css" />
+  <link rel="stylesheet" href="assets/css/style.css" />
+</head>
+
+<body>
+  <nav class="navbar navbar-dark bg-dark">
+    <div class="container-fluid">
+      <span class="navbar-brand mb-0 h1">LawQuery 관리자</span>
+      <button class="btn btn-outline-light btn-sm" id="logoutBtn">로그아웃</button>
+    </div>
+  </nav>
+
+  <div class="container py-4">
+    <div id="gateMsg" class="alert alert-warning d-none"></div>
+
+    <div id="adminContent" class="d-none">
+      <div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
+        <div class="btn-group" role="group">
+          <button class="btn btn-outline-dark filter-btn active" data-status="pending">승인대기</button>
+          <button class="btn btn-outline-dark filter-btn" data-status="approved">승인됨</button>
+          <button class="btn btn-outline-dark filter-btn" data-status="">전체</button>
+        </div>
+        <button class="btn btn-outline-secondary ms-auto" id="refreshBtn">새로고침</button>
+      </div>
+
+      <div class="table-responsive">
+        <table class="table table-bordered table-hover align-middle">
+          <thead class="table-dark">
+            <tr>
+              <th>ID</th><th>이메일</th><th>이름</th><th>가입경로</th>
+              <th>상태</th><th>권한</th><th>가입일</th><th>최근로그인</th><th>처리</th>
+            </tr>
+          </thead>
+          <tbody id="memberTbody">
+            <tr><td colspan="9" class="text-center text-muted">불러오는 중...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      const $ = (id) => document.getElementById(id);
+      let currentStatus = 'pending';
+
+      const STATUS_BADGE = {
+        pending: '<span class="badge bg-warning text-dark">대기</span>',
+        approved: '<span class="badge bg-success">승인</span>',
+        rejected: '<span class="badge bg-secondary">거부</span>',
+        revoked: '<span class="badge bg-danger">정지</span>',
+      };
+
+      async function ensureAdmin() {
+        try {
+          const r = await fetch('/api/auth/me');
+          const me = await r.json();
+          if (!me.authenticated || me.role !== 'admin') {
+            $('gateMsg').className = 'alert alert-warning';
+            $('gateMsg').innerHTML = '관리자 권한이 필요합니다. <a href="login.html?next=admin.html">로그인</a>';
+            return false;
+          }
+          $('adminContent').classList.remove('d-none');
+          return true;
+        } catch {
+          $('gateMsg').className = 'alert alert-danger';
+          $('gateMsg').textContent = '서버 연결에 실패했습니다.';
+          return false;
+        }
+      }
+
+      async function load() {
+        const tbody = $('memberTbody');
+        tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted">불러오는 중...</td></tr>';
+        const qs = currentStatus ? `?status=${currentStatus}` : '';
+        const r = await fetch(`/api/admin/members${qs}`);
+        const data = await r.json();
+        if (!data.success) { tbody.innerHTML = `<tr><td colspan="9" class="text-danger text-center">${data.error || '오류'}</td></tr>`; return; }
+        if (!data.members.length) { tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted">없음</td></tr>'; return; }
+
+        tbody.innerHTML = data.members.map((m) => {
+          const actions = [];
+          if (m.role !== 'admin') {
+            if (m.status !== 'approved') actions.push(`<button class="btn btn-success btn-sm act" data-id="${m.id}" data-act="approve">승인</button>`);
+            if (m.status === 'pending') actions.push(`<button class="btn btn-outline-secondary btn-sm act" data-id="${m.id}" data-act="reject">거부</button>`);
+            if (m.status === 'approved') actions.push(`<button class="btn btn-outline-danger btn-sm act" data-id="${m.id}" data-act="revoke">정지</button>`);
+          }
+          return `<tr>
+            <td>${m.id}</td>
+            <td class="small">${m.email}</td>
+            <td>${m.display_name || '-'}</td>
+            <td><span class="badge bg-${m.signup_source === 'app' ? 'info' : 'light text-dark'}">${m.signup_source}</span></td>
+            <td>${STATUS_BADGE[m.status] || m.status}</td>
+            <td>${m.role}</td>
+            <td class="small">${(m.created_at || '').slice(0, 10)}</td>
+            <td class="small">${(m.last_login_at || '').slice(0, 10) || '-'}</td>
+            <td class="text-nowrap">${actions.join(' ') || '-'}</td>
+          </tr>`;
+        }).join('');
+
+        tbody.querySelectorAll('.act').forEach((btn) => {
+          btn.addEventListener('click', async () => {
+            const id = btn.dataset.id, act = btn.dataset.act;
+            btn.disabled = true;
+            const r = await fetch(`/api/admin/members/${id}/${act}`, { method: 'POST' });
+            const data = await r.json();
+            if (data.success) load();
+            else { alert(data.error || '처리 실패'); btn.disabled = false; }
+          });
+        });
+      }
+
+      document.querySelectorAll('.filter-btn').forEach((b) => {
+        b.addEventListener('click', () => {
+          document.querySelectorAll('.filter-btn').forEach((x) => x.classList.remove('active'));
+          b.classList.add('active');
+          currentStatus = b.dataset.status;
+          load();
+        });
+      });
+      $('refreshBtn').addEventListener('click', load);
+      $('logoutBtn').addEventListener('click', async () => {
+        await fetch('/api/auth/logout', { method: 'POST' });
+        location.href = 'login.html';
+      });
+
+      (async () => { if (await ensureAdmin()) load(); })();
+    })();
+  </script>
+</body>
+
+</html>
