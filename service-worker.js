@@ -5,22 +5,22 @@
 //   - 정적 자원/페이지는 network-first: 온라인이면 항상 최신, 오프라인이면 캐시로 폴백.
 // 캐시 버전을 올리면(예: v1 → v2) 이전 캐시는 activate 단계에서 정리된다.
 
-const CACHE_VERSION = 'lawquery-v2';
+const CACHE_VERSION = 'lawquery-v3';
 
-// 설치 시 미리 받아둘 핵심 정적 자원(앱 셸).
-// 상대경로로 작성해 .test / .kro.kr 양쪽 도메인에서 동일하게 동작하게 한다.
+// 로그인 필요한 "보호 페이지"는 절대 캐시하지 않는다.
+// (캐시되면 미로그인 상태에서 빈 껍데기 화면이 노출될 수 있음)
+const PROTECTED_PAGES = ['/index.html', '/law.html', '/'];
+
+// 설치 시 미리 받아둘 자원: 로그인 화면 + 공용 정적 자원만.
+// 보호 페이지(index/law)는 제외 → 항상 네트워크 + 게이트를 거치게 한다.
+// 상대경로로 작성해 .test / .kro.kr 양쪽 도메인에서 동일하게 동작.
 const PRECACHE_URLS = [
-  './',
-  './index.html',
-  './law.html',
   './login.html',
   './auth-gate.js',
   './manifest.json',
   './assets/css/style.css',
   './assets/vendor/bootstrap.min.css',
   './assets/vendor/bootstrap.bundle.min.js',
-  './dist/interpretation.bundle.js',
-  './dist/law.bundle.js',
   './assets/icons/icon-192.png',
 ];
 
@@ -59,11 +59,20 @@ self.addEventListener('fetch', (event) => {
     return; // 기본 네트워크 처리에 위임
   }
 
-  // 그 외 정적 자원/페이지: network-first → 실패 시 캐시 폴백
+  // 보호 페이지: 캐시 절대 사용 안 함(network-only).
+  // 오프라인이면 캐시된 로그인 화면으로 폴백 → 미로그인 화면 노출 차단.
+  const isProtected = PROTECTED_PAGES.some((p) => url.pathname === p || url.pathname.endsWith(p));
+  if (isProtected) {
+    event.respondWith(
+      fetch(request).catch(() => caches.match('./login.html'))
+    );
+    return;
+  }
+
+  // 그 외 정적 자원: network-first → 실패 시 캐시 폴백 (페이지가 아니므로 login으로 폴백)
   event.respondWith(
     fetch(request)
       .then((response) => {
-        // 정상 응답이면 캐시에 갱신(동일 출처만)
         if (response && response.status === 200 && url.origin === self.location.origin) {
           const copy = response.clone();
           caches.open(CACHE_VERSION).then((cache) => cache.put(request, copy));
@@ -71,7 +80,7 @@ self.addEventListener('fetch', (event) => {
         return response;
       })
       .catch(() =>
-        caches.match(request).then((cached) => cached || caches.match('./index.html'))
+        caches.match(request).then((cached) => cached || caches.match('./login.html'))
       )
   );
 });
