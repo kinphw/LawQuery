@@ -1,13 +1,28 @@
 import { Request, Response } from 'express';
 import { MemberModel, MemberStatus } from '../models/MemberModel';
+import { AccessLogModel } from '../models/AccessLogModel';
 
 /** 관리자용 회원 관리. 모든 라우트는 adminGuard로 보호된다. */
 export class AdminController {
   private model: MemberModel;
+  private logModel: AccessLogModel;
 
   constructor() {
     this.model = new MemberModel();
+    this.logModel = new AccessLogModel();
   }
+
+  /** 접속(로그인/앱진입) 기록 조회. */
+  listLogs = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const limit = parseInt((req.query.limit as string) || '200', 10);
+      const logs = await this.logModel.list(limit);
+      res.json({ success: true, logs });
+    } catch (e) {
+      console.error('listLogs 오류:', e);
+      res.status(500).json({ success: false, error: '접속 기록 조회 중 오류가 발생했습니다.' });
+    }
+  };
 
   /** 회원 목록. ?status=pending 등으로 필터. 비번 해시는 제외. */
   listMembers = async (req: Request, res: Response): Promise<void> => {

@@ -1,15 +1,25 @@
 import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import { MemberModel } from '../models/MemberModel';
+import { AccessLogModel } from '../models/AccessLogModel';
 import { signToken, verifyToken, AUTH_COOKIE, cookieOptions } from '../utils/jwt';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+/** 아파치 리버스 프록시 뒤이므로 실제 IP는 X-Forwarded-For 우선. */
+function clientIp(req: Request): string | null {
+  const xff = (req.headers['x-forwarded-for'] as string) || '';
+  const first = xff.split(',')[0].trim();
+  return first || req.socket?.remoteAddress || null;
+}
+
 export class AuthController {
   private model: MemberModel;
+  private logModel: AccessLogModel;
 
   constructor() {
     this.model = new MemberModel();
+    this.logModel = new AccessLogModel();
   }
 
   /** 웹 회원가입: status=pending. 단, ADMIN_EMAIL과 일치하면 admin+approved 자동. */
@@ -91,6 +101,7 @@ export class AuthController {
       }
 
       await this.model.touchLogin(member.id);
+      await this.logModel.record(member.id, member.email, 'login', clientIp(req), req.headers['user-agent'] as string || null);
       const token = signToken({ uid: member.id, role: member.role });
       res.cookie(AUTH_COOKIE, token, cookieOptions());
       res.json({ success: true, role: member.role, displayName: member.display_name });
@@ -124,6 +135,7 @@ export class AuthController {
         authenticated: member.status === 'approved',
         status: member.status,
         role: member.role,
+        email: member.email,
         displayName: member.display_name,
         source: member.signup_source,
       });
@@ -169,6 +181,7 @@ export class AuthController {
       }
 
       await this.model.touchLogin(member.id);
+      await this.logModel.record(member.id, member.email, 'app_enter', clientIp(req), req.headers['user-agent'] as string || null);
       const token = signToken({ uid: member.id, role: member.role });
       res.cookie(AUTH_COOKIE, token, cookieOptions());
       res.json({ success: true, role: member.role });

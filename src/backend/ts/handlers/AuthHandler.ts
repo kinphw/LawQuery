@@ -32,5 +32,6 @@ export class AuthHandler {
     this.router.post('/admin/members/:id/approve', adminGuard, this.admin.approve);
     this.router.post('/admin/members/:id/reject', adminGuard, this.admin.reject);
     this.router.post('/admin/members/:id/revoke', adminGuard, this.admin.revoke);
+    this.router.get('/admin/logs', adminGuard, this.admin.listLogs);
   }
 }

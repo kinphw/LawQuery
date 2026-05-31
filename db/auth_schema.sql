@@ -37,3 +37,17 @@ CREATE TABLE IF NOT EXISTS member (
   KEY idx_member_status (status),
   KEY idx_member_source (signup_source)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
+
+-- 4) 접속 기록 (로그인/앱진입 시 1행). 회원이 실제로 쓰는지 파악용.
+CREATE TABLE IF NOT EXISTS access_log (
+  id         BIGINT       NOT NULL AUTO_INCREMENT,
+  member_id  BIGINT       NOT NULL,
+  email      VARCHAR(255) NULL,
+  event      ENUM('login','app_enter') NOT NULL DEFAULT 'login',
+  ip         VARCHAR(64)  NULL,
+  user_agent VARCHAR(512) NULL,
+  created_at DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_log_member (member_id),
+  KEY idx_log_created (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;

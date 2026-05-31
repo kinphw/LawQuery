@@ -14,7 +14,10 @@
   <nav class="navbar navbar-dark bg-dark">
     <div class="container-fluid">
       <span class="navbar-brand mb-0 h1">LawQuery 관리자</span>
-      <button class="btn btn-outline-light btn-sm" id="logoutBtn">로그아웃</button>
+      <div class="d-flex gap-2">
+        <a class="btn btn-outline-light btn-sm" href="index.html">← 본 페이지</a>
+        <button class="btn btn-outline-light btn-sm" id="logoutBtn">로그아웃</button>
+      </div>
     </div>
   </nav>
 
@@ -22,28 +25,57 @@
     <div id="gateMsg" class="alert alert-warning d-none"></div>
 
     <div id="adminContent" class="d-none">
-      <div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
-        <div class="btn-group" role="group">
-          <button class="btn btn-outline-dark filter-btn active" data-status="pending">승인대기</button>
-          <button class="btn btn-outline-dark filter-btn" data-status="approved">승인됨</button>
-          <button class="btn btn-outline-dark filter-btn" data-status="">전체</button>
-        </div>
-        <button class="btn btn-outline-secondary ms-auto" id="refreshBtn">새로고침</button>
-      </div>
+      <!-- 상단 섹션 탭 -->
+      <ul class="nav nav-tabs mb-3">
+        <li class="nav-item"><button class="nav-link active" id="navMembers">회원 관리</button></li>
+        <li class="nav-item"><button class="nav-link" id="navLogs">접속 기록</button></li>
+      </ul>
 
-      <div class="table-responsive">
-        <table class="table table-bordered table-hover align-middle">
-          <thead class="table-dark">
-            <tr>
-              <th>ID</th><th>이메일</th><th>이름</th><th>가입경로</th>
-              <th>상태</th><th>권한</th><th>가입일</th><th>최근로그인</th><th>처리</th>
-            </tr>
-          </thead>
-          <tbody id="memberTbody">
-            <tr><td colspan="9" class="text-center text-muted">불러오는 중...</td></tr>
-          </tbody>
-        </table>
-      </div>
+      <!-- 회원 관리 -->
+      <section id="sectionMembers">
+        <div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
+          <div class="btn-group" role="group">
+            <button class="btn btn-outline-dark filter-btn active" data-status="pending">승인대기</button>
+            <button class="btn btn-outline-dark filter-btn" data-status="approved">승인됨</button>
+            <button class="btn btn-outline-dark filter-btn" data-status="">전체</button>
+          </div>
+          <button class="btn btn-outline-secondary ms-auto" id="refreshBtn">새로고침</button>
+        </div>
+
+        <div class="table-responsive">
+          <table class="table table-bordered table-hover align-middle">
+            <thead class="table-dark">
+              <tr>
+                <th>ID</th><th>이메일</th><th>이름</th><th>가입경로</th>
+                <th>상태</th><th>권한</th><th>가입일</th><th>최근로그인</th><th>처리</th>
+              </tr>
+            </thead>
+            <tbody id="memberTbody">
+              <tr><td colspan="9" class="text-center text-muted">불러오는 중...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- 접속 기록 -->
+      <section id="sectionLogs" class="d-none">
+        <div class="d-flex align-items-center mb-3">
+          <span class="text-muted small">최근 접속(로그인·앱진입) 기록 200건</span>
+          <button class="btn btn-outline-secondary ms-auto" id="refreshLogsBtn">새로고침</button>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-bordered table-hover align-middle">
+            <thead class="table-dark">
+              <tr>
+                <th>일시</th><th>이메일</th><th>이벤트</th><th>IP</th><th>기기/브라우저</th>
+              </tr>
+            </thead>
+            <tbody id="logTbody">
+              <tr><td colspan="5" class="text-center text-muted">불러오는 중...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
     </div>
   </div>
 
@@ -131,6 +163,38 @@
         await fetch('/api/auth/logout', { method: 'POST' });
         location.href = 'login.html';
       });
+
+      // ── 접속 기록 ──
+      const EVENT_LABEL = { login: '웹 로그인', app_enter: '앱 진입' };
+      let logsLoaded = false;
+
+      async function loadLogs() {
+        const tbody = $('logTbody');
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">불러오는 중...</td></tr>';
+        const r = await fetch('/api/admin/logs');
+        const data = await r.json();
+        if (!data.success) { tbody.innerHTML = `<tr><td colspan="5" class="text-danger text-center">${data.error || '오류'}</td></tr>`; return; }
+        if (!data.logs.length) { tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">기록 없음</td></tr>'; return; }
+        tbody.innerHTML = data.logs.map((l) => `<tr>
+          <td class="small text-nowrap">${(l.created_at || '').replace('T', ' ').slice(0, 19)}</td>
+          <td class="small">${l.email || '-'}</td>
+          <td><span class="badge bg-${l.event === 'app_enter' ? 'info' : 'secondary'}">${EVENT_LABEL[l.event] || l.event}</span></td>
+          <td class="small">${l.ip || '-'}</td>
+          <td class="small text-truncate" style="max-width:280px;" title="${(l.user_agent || '').replace(/"/g, '&quot;')}">${l.user_agent || '-'}</td>
+        </tr>`).join('');
+      }
+
+      // 탭 전환
+      $('navMembers').addEventListener('click', () => {
+        $('navMembers').classList.add('active'); $('navLogs').classList.remove('active');
+        $('sectionMembers').classList.remove('d-none'); $('sectionLogs').classList.add('d-none');
+      });
+      $('navLogs').addEventListener('click', () => {
+        $('navLogs').classList.add('active'); $('navMembers').classList.remove('active');
+        $('sectionLogs').classList.remove('d-none'); $('sectionMembers').classList.add('d-none');
+        if (!logsLoaded) { logsLoaded = true; loadLogs(); }
+      });
+      $('refreshLogsBtn').addEventListener('click', loadLogs);
 
       (async () => { if (await ensureAdmin()) load(); })();
     })();
