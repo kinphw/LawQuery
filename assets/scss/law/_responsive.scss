@@ -1,0 +1,148 @@
+// 모바일/태블릿 반응형 (법령조회)
+// 데스크탑 전용으로 하드코딩된 레이아웃을 좁은 화면에서 정리한다.
+
+// ── 태블릿 이하 (≤991.98px) ────────────────────────────────
+@media (max-width: 991.98px) {
+  .container {
+    width: 100% !important;
+    max-width: none !important;
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+  }
+}
+
+// ── 모바일 (≤767.98px) ─────────────────────────────────────
+@media (max-width: 767.98px) {
+
+  // 글자크기 조절 컨트롤: 데스크탑은 left:300px 고정 → 모바일에선 우상단으로
+  .floating-controls {
+    left: auto !important;
+    right: 0.5rem;
+    top: 0.5rem;
+
+    .btn {
+      padding: 0.2rem 0.5rem;
+      font-size: 0.8rem;
+    }
+  }
+
+  // 텍스트 검색바: 입력창은 한 줄 전체, 벌칙/별표 버튼은 아래로 줄바꿈
+  .law-search-input {
+    flex: 1 1 100% !important;
+    max-width: 100% !important;
+  }
+
+  // 벌칙/별표 버튼이 ms-auto로 한쪽에 몰리지 않고 자연스럽게 배치되도록
+  #penaltyBtn,
+  #annexBtn {
+    margin-left: 0 !important;
+    flex: 1 1 auto;
+  }
+
+  // 법령 본문 들여쓰기(depth*16px 인라인)가 좁은 화면을 잡아먹지 않도록 완충
+  .law-node {
+    word-break: break-word;
+  }
+
+  // 조문별 선택조회 체크박스 좌우 패딩 축소
+  #lawCheckboxes {
+    padding: 0 0.75rem;
+  }
+
+  // 벌칙/별표 모달 내부 테이블은 가로 스크롤 허용 (.table-responsive가 처리하지만 안전망)
+  .penalty-table,
+  .annex-table {
+    font-size: 0.75rem;
+  }
+
+  // 참조규정 팝업이 화면을 넘지 않도록
+  .law-ref-modal-popup {
+    width: 90vw !important;
+    max-width: 90vw !important;
+  }
+}
+
+// ── 모바일 세로(portrait): 4~5단을 한 칸에 못 넣으므로
+//    스택 대신 최소폭을 줘서 횡스크롤로 전체 단을 그대로 보여준다. ──
+@media (max-width: 767.98px) and (orientation: portrait) {
+
+  // 가로 스크롤 허용 (.table-responsive가 처리하지만 명시)
+  .table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;   // iOS 관성 스크롤
+  }
+
+  // 단 수만큼 최소폭을 확보해 각 단이 짓눌리지 않고 스크롤로 읽히게
+  .law-table {
+    min-width: 720px;
+    font-size: 0.8rem;
+  }
+
+  .law-table .box-item {
+    padding: 0.35rem !important;
+  }
+
+  // ── 첫 열(법) 고정(sticky) ──
+  // 횡스크롤로 시행령·감독규정·세칙을 훑어도 기준이 되는 "법" 조문은
+  // 항상 왼쪽에 남아 비교 맥락을 잃지 않게 한다. (NN/g 권장 패턴)
+  .law-table td.law-title {
+    position: sticky;
+    left: 0;
+    z-index: 2;
+    background: #fff;                 // 스크롤되는 다른 셀이 비치지 않게 불투명 배경
+    box-shadow: 2px 0 4px rgba(0, 0, 0, 0.08);   // 고정열 경계 음영
+  }
+
+  // 제목행(title-row)의 첫 셀은 해당 행 배경색과 맞춤
+  .law-table tr.title-row td.law-title {
+    background: #e9ecef;
+  }
+
+  // 헤더의 첫 칸은 세로(thead sticky-top) + 가로 동시 고정 → 더 높은 z-index
+  .law-table thead.sticky-top th:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 1000;
+  }
+}
+
+// ── 모바일 가로(landscape): 4~5단을 한눈에 비교하는 표 유지 ──
+// 폰을 눕혀 "여러 단을 동시에 비교"하는 상황에 최적화.
+// 좁은 가로폭에 단을 욱여넣어도 읽히도록 글자/여백을 압축한다.
+@media (max-height: 600px) and (orientation: landscape) {
+
+  .table-responsive {
+    overflow-x: auto;      // 정 넘치면 스크롤 (안전망)
+  }
+
+  .law-table {
+    table-layout: fixed;
+    width: 100%;
+    min-width: 0;
+    font-size: 0.72rem;    // 단이 많아 글자 압축
+  }
+
+  .law-table th,
+  .law-table td {
+    padding: 0.15rem 0.2rem;
+    word-break: break-word;
+  }
+
+  .law-table .box-item {
+    padding: 0.25rem !important;
+    font-size: 0.72rem;
+  }
+
+  // 셀 안 버튼(참조/벌칙/별표)도 작게
+  .law-table .btn-sm {
+    padding: 0.1rem 0.3rem;
+    font-size: 0.65rem;
+  }
+
+  // 글자크기 컨트롤은 가로에서도 우상단 유지
+  .floating-controls {
+    left: auto !important;
+    right: 0.5rem;
+    top: 0.5rem;
+  }
+}

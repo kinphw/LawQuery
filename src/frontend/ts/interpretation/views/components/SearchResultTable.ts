@@ -76,11 +76,11 @@ export class SearchResultTable {
 
       html += `
       <tr class="search-result-row ${this.currentTextSize}" data-row-index="${rowIndex}" data-id="${item.id}">
-        <td class="text-center align-middle text-nowrap w-10">${item.구분 || ''}</td>
-        <td class="text-center align-middle w-10" style="word-break: break-word">${item.분야 || ''}</td>
+        <td class="text-center align-middle text-nowrap w-10 type-cell">${item.구분 || ''}</td>
+        <td class="text-center align-middle w-10 field-cell" style="word-break: break-word">${item.분야 || ''}</td>
         <td class="align-middle w-50">${item.제목 || ''}</td>
-        <td class="align-middle text-center w-10">${item.일련번호 || ''}</td>
-        <td class="align-middle text-center w-10">${DateUtil.formatDate(item.회신일자)}</td>
+        <td class="align-middle text-center w-10 serial-cell">${item.일련번호 || ''}</td>
+        <td class="align-middle text-center w-10 date-cell"><span class="date-full">${DateUtil.formatDate(item.회신일자)}</span><span class="date-short">${DateUtil.formatDateShort(item.회신일자)}</span></td>
       </tr>
       <tr class="detail-row d-none ${this.currentTextSize}" id="detail-${rowIndex}">
         <!-- 상세 정보가 동적으로 로드됩니다 -->

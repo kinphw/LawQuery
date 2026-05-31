@@ -3,6 +3,8 @@
 
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#212529">
   <title>법령조회 - LawQuery</title>
   <link rel="stylesheet" href="assets/vendor/bootstrap.min.css" />
   <link rel="stylesheet" href="assets/vendor/fontawesome/css/fontawesome.min.css" />
@@ -36,8 +38,8 @@
   <div class="container mb-3">
     <div class="card">
       <div class="card-body p-2">
-        <div class="d-flex align-items-center">
-          <div class="input-group" style="flex: 1 1 0; max-width: 90%;">
+        <div class="d-flex align-items-center flex-wrap gap-2">
+          <div class="input-group law-search-input" style="flex: 1 1 0; max-width: 90%;">
             <input type="text" id="lawTextSearch" class="form-control" placeholder="법령 내용 검색...">
             <button class="btn btn-outline-secondary" type="button" id="lawTextSearchBtn">
               <i class="fas fa-search"></i>

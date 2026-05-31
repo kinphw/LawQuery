@@ -7,6 +7,12 @@
   }
 }
 
+// 회신일자 표시 기본값(데스크탑): 전체 날짜 표시 / 축약형 숨김
+// ※ 미디어쿼리는 특수성을 올리지 않으므로, 모바일 규칙이 덮어쓰려면
+//   이 기본 규칙이 반드시 미디어쿼리보다 "앞"에 와야 한다.
+#results .date-cell .date-short { display: none; }
+#results .date-cell .date-full { display: inline; }
+
 // 태블릿에서도 적용하고 싶다면
 @media (max-width: 991.98px) {
   .container {
@@ -14,5 +20,81 @@
     max-width: none !important;
     padding-left: 1rem !important;
     padding-right: 1rem !important;
+  }
+}
+
+// 모바일: 검색폼(구분/일련번호/검색항목/내용/날짜)을 세로 스택으로
+@media (max-width: 767.98px) {
+  #searchForm {
+    // col-auto 항목들이 한 줄에 끼지 않고 적절히 넓어지도록
+    .col-auto {
+      flex: 1 1 100%;
+      text-align: left !important;
+    }
+
+    .form-select,
+    .form-control {
+      width: 100%;
+    }
+
+    // 시작/종료 날짜는 좁은 화면에서 2열 유지
+    #startDateInput,
+    #endDateInput {
+      min-width: 0;
+    }
+
+    // 검색/전체복사 버튼은 가로로 꽉 차게
+    #searchBtn,
+    #copyAllBtn {
+      width: 100%;
+    }
+  }
+
+  // 글자크기 조절 컨트롤(유권해석에도 존재): 우상단으로
+  .floating-controls {
+    left: auto !important;
+    right: 0.5rem;
+    top: 0.5rem;
+
+    .btn {
+      padding: 0.2rem 0.5rem;
+      font-size: 0.8rem;
+    }
+  }
+
+  // 검색결과 요약 테이블: 제목이 폭을 독점하고 날짜/일련번호가 깨지는 문제 해결
+  // 인라인 table-layout:fixed 를 모바일에선 auto 로 덮어써 컬럼이 내용폭에 맞게
+  #results .table {
+    font-size: 0.8rem;
+    table-layout: auto !important;
+    width: 100%;
+  }
+
+  // 날짜·일련번호·구분은 줄바꿈 금지 + 내용폭만 차지(width:1%)
+  // → 확보된 폭은 자동으로 제목 셀이 가져간다.
+  #results .date-cell,
+  #results .serial-cell,
+  #results .type-cell {
+    white-space: nowrap;
+    width: 1%;
+    text-align: center;
+    padding-left: 0.25rem;
+    padding-right: 0.25rem;
+    font-size: 0.72rem;   // 보조 정보라 한 단계 더 축소해 폭 절감
+  }
+
+  // 회신일자: 모바일에선 축약형(yy.m.d)만 표시
+  #results .date-cell .date-full { display: none; }
+  #results .date-cell .date-short { display: inline; }
+
+  // 분야는 좁은 화면에서 숨겨 제목 공간 확보
+  #results .field-cell {
+    display: none;
+  }
+
+  // 제목은 남는 공간을 모두 사용
+  #results td.fw-semibold,
+  #results td.align-middle.w-50 {
+    word-break: break-word;
   }
 }

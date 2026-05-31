@@ -16,4 +16,14 @@ export class DateUtil {
     if (!item) return '';
     return item.split(' ')[0]; // YYYY-MM-DD 부분만 반환
   }
+
+  // 좁은 화면 표시용 축약 포맷: yy.m.d (앞자리 0 제거) — 예) "2026-04-16 00:00:00" → "26.4.16"
+  // formatDate와 동일하게 문자열을 직접 파싱한다(new Date 사용 시 UTC 파싱으로 KST 하루 밀림 방지).
+  static formatDateShort(item: string): string {
+    if (!item) return '';
+    const datePart = item.split(' ')[0]; // YYYY-MM-DD
+    const [y, m, d] = datePart.split('-');
+    if (!y || !m || !d) return datePart; // 형식이 다르면 원본 날짜부 반환
+    return `${y.slice(2)}.${parseInt(m, 10)}.${parseInt(d, 10)}`;
+  }
 }
