@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#212529" />
+  <title>로그인 - LawQuery</title>
+  <link rel="stylesheet" href="assets/vendor/bootstrap.min.css" />
+  <link rel="stylesheet" href="assets/css/style.css" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="apple-touch-icon" href="assets/icons/icon-192.png" />
+  <style>
+    body { background: #f8f9fa; }
+    .auth-wrap { max-width: 420px; margin: 0 auto; padding: 2rem 1rem; }
+    .auth-card { border: 0; box-shadow: 0 2px 12px rgba(0,0,0,.08); }
+    .brand { text-align: center; margin-bottom: 1.5rem; }
+    .brand img { width: 72px; height: 72px; }
+    .tab-btn.active { background: #212529; color: #fff; }
+  </style>
+</head>
+
+<body>
+  <div class="auth-wrap">
+    <div class="brand">
+      <img src="assets/icons/icon-192.png" alt="LawQuery" />
+      <h4 class="mt-2 mb-0">LawQuery</h4>
+      <div class="text-muted small">금융법령·유권해석 검색</div>
+    </div>
+
+    <div class="card auth-card">
+      <div class="card-body p-4">
+        <div class="btn-group w-100 mb-3" role="group">
+          <button type="button" class="btn btn-outline-dark tab-btn active" id="tabLogin">로그인</button>
+          <button type="button" class="btn btn-outline-dark tab-btn" id="tabRegister">회원가입</button>
+        </div>
+
+        <div id="alertBox" class="alert d-none" role="alert"></div>
+
+        <form id="loginForm">
+          <div class="mb-3">
+            <label class="form-label">이메일</label>
+            <input type="email" class="form-control" id="loginEmail" autocomplete="username" required />
+          </div>
+          <div class="mb-3">
+            <label class="form-label">비밀번호</label>
+            <input type="password" class="form-control" id="loginPassword" autocomplete="current-password" required />
+          </div>
+          <button type="submit" class="btn btn-dark w-100">로그인</button>
+        </form>
+
+        <form id="registerForm" class="d-none">
+          <div class="mb-3">
+            <label class="form-label">이메일</label>
+            <input type="email" class="form-control" id="regEmail" autocomplete="username" required />
+          </div>
+          <div class="mb-3">
+            <label class="form-label">비밀번호 <span class="text-muted small">(6자 이상)</span></label>
+            <input type="password" class="form-control" id="regPassword" autocomplete="new-password" required />
+          </div>
+          <div class="mb-3">
+            <label class="form-label">이름 <span class="text-muted small">(선택)</span></label>
+            <input type="text" class="form-control" id="regName" autocomplete="name" />
+          </div>
+          <button type="submit" class="btn btn-dark w-100">가입 신청</button>
+          <p class="text-muted small mt-3 mb-0">
+            가입 신청 후 관리자 승인을 거쳐 이용하실 수 있습니다.
+          </p>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      const $ = (id) => document.getElementById(id);
+      const alertBox = $('alertBox');
+
+      function showAlert(msg, type = 'danger') {
+        alertBox.className = `alert alert-${type}`;
+        alertBox.textContent = msg;
+      }
+      function clearAlert() { alertBox.className = 'alert d-none'; alertBox.textContent = ''; }
+
+      $('tabLogin').addEventListener('click', () => {
+        $('tabLogin').classList.add('active'); $('tabRegister').classList.remove('active');
+        $('loginForm').classList.remove('d-none'); $('registerForm').classList.add('d-none');
+        clearAlert();
+      });
+      $('tabRegister').addEventListener('click', () => {
+        $('tabRegister').classList.add('active'); $('tabLogin').classList.remove('active');
+        $('registerForm').classList.remove('d-none'); $('loginForm').classList.add('d-none');
+        clearAlert();
+      });
+
+      function go() {
+        const params = new URLSearchParams(location.search);
+        const next = params.get('next');
+        location.href = next || 'index.html';
+      }
+
+      $('loginForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        clearAlert();
+        try {
+          const r = await fetch('/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: $('loginEmail').value, password: $('loginPassword').value }),
+          });
+          const data = await r.json();
+          if (data.success) { go(); }
+          else { showAlert(data.error || '로그인에 실패했습니다.'); }
+        } catch { showAlert('서버 연결에 실패했습니다.'); }
+      });
+
+      $('registerForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        clearAlert();
+        try {
+          const r = await fetch('/api/auth/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              email: $('regEmail').value,
+              password: $('regPassword').value,
+              displayName: $('regName').value,
+            }),
+          });
+          const data = await r.json();
+          if (data.success && data.status === 'approved') {
+            go();
+          } else if (data.success) {
+            showAlert(data.message || '가입 신청이 완료되었습니다. 승인을 기다려 주세요.', 'success');
+            $('registerForm').reset();
+          } else {
+            showAlert(data.error || '가입에 실패했습니다.');
+          }
+        } catch { showAlert('서버 연결에 실패했습니다.'); }
+      });
+    })();
+  </script>
+</body>
+
+</html>
