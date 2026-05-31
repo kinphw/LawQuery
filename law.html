@@ -6,6 +6,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#212529">
   <title>법령조회 - LawQuery</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="apple-touch-icon" href="assets/icons/icon-192.png" />
   <link rel="stylesheet" href="assets/vendor/bootstrap.min.css" />
   <link rel="stylesheet" href="assets/vendor/fontawesome/css/fontawesome.min.css" />
   <link rel="stylesheet" href="assets/vendor/fontawesome/css/all.min.css" />
@@ -127,6 +129,17 @@
 
   <!-- <script type="module" src="src/frontend/js/entry/law.js"></script> -->
   <script src="dist/law.bundle.js" type="module"></script>
+
+  <!-- PWA: Service Worker 등록 -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function () {
+        navigator.serviceWorker.register('service-worker.js').catch(function (e) {
+          console.error('SW 등록 실패:', e);
+        });
+      });
+    }
+  </script>
 
 
   <!-- 공통 모달 (body 하단) -->
