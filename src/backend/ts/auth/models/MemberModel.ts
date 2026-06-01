@@ -13,6 +13,7 @@ export interface Member {
   status: MemberStatus;
   role: MemberRole;
   device_key: string | null;
+  session_token: string | null;
   created_at: string;
   approved_at: string | null;
   approved_by: number | null;
@@ -92,6 +93,11 @@ export class MemberModel {
 
   async touchLogin(id: number): Promise<void> {
     await this.db.query('UPDATE member SET last_login_at = NOW() WHERE id = ?', [id]);
+  }
+
+  /** 로그인 시 세션 토큰 갱신 → 이전 기기의 세션 무효화(중복 로그인 차단). */
+  async setSessionToken(id: number, sessionToken: string): Promise<void> {
+    await this.db.query('UPDATE member SET session_token = ? WHERE id = ?', [sessionToken, id]);
   }
 
   /** 본인 표시 이름 변경 */

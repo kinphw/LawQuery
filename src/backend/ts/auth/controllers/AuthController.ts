@@ -3,7 +3,7 @@ import bcrypt from 'bcryptjs';
 import { MemberModel } from '../models/MemberModel';
 import { AccessLogModel } from '../models/AccessLogModel';
 import { PageVisitModel } from '../models/PageVisitModel';
-import { signToken, verifyToken, AUTH_COOKIE, cookieOptions } from '../utils/jwt';
+import { signToken, verifyToken, newSessionToken, AUTH_COOKIE, cookieOptions } from '../utils/jwt';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -61,7 +61,9 @@ export class AuthController {
 
       if (isAdmin) {
         // 관리자는 즉시 로그인 처리
-        const token = signToken({ uid: id, role: 'admin' });
+        const sid = newSessionToken();
+        await this.model.setSessionToken(id, sid);
+        const token = signToken({ uid: id, role: 'admin', sid });
         res.cookie(AUTH_COOKIE, token, cookieOptions());
         res.json({ success: true, status: 'approved', role: 'admin', message: '관리자 계정으로 가입되었습니다.' });
         return;
@@ -105,7 +107,10 @@ export class AuthController {
 
       await this.model.touchLogin(member.id);
       await this.logModel.record(member.id, member.email, 'login', clientIp(req), req.headers['user-agent'] as string || null);
-      const token = signToken({ uid: member.id, role: member.role });
+      // 중복 로그인 차단: 새 세션 토큰 발급 → 기존 기기 세션 무효화
+      const sid = newSessionToken();
+      await this.model.setSessionToken(member.id, sid);
+      const token = signToken({ uid: member.id, role: member.role, sid });
       res.cookie(AUTH_COOKIE, token, cookieOptions());
       res.json({ success: true, role: member.role, displayName: member.display_name });
     } catch (e) {
@@ -231,7 +236,9 @@ export class AuthController {
 
       await this.model.touchLogin(member.id);
       await this.logModel.record(member.id, member.email, 'app_enter', clientIp(req), req.headers['user-agent'] as string || null);
-      const token = signToken({ uid: member.id, role: member.role });
+      const sid = newSessionToken();
+      await this.model.setSessionToken(member.id, sid);
+      const token = signToken({ uid: member.id, role: member.role, sid });
       res.cookie(AUTH_COOKIE, token, cookieOptions());
       res.json({ success: true, role: member.role });
     } catch (e) {

@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { verifyToken, AUTH_COOKIE } from '../utils/jwt';
+import { verifyToken, signToken, AUTH_COOKIE, cookieOptions } from '../utils/jwt';
 import { MemberModel } from '../models/MemberModel';
 
 // Express Request에 인증 사용자 정보 부착
@@ -48,6 +48,16 @@ export async function authGuard(req: Request, res: Response, next: NextFunction)
     res.status(403).json({ success: false, error: '승인되지 않은 계정입니다.', code: 'NOT_APPROVED' });
     return;
   }
+
+  // 중복 로그인 차단: 토큰의 sid가 DB의 최신 세션과 다르면 = 다른 기기에서 새로 로그인됨
+  if (member.session_token && payload.sid !== member.session_token) {
+    res.status(401).json({ success: false, error: '다른 기기에서 로그인되어 로그아웃되었습니다.', code: 'SESSION_REPLACED' });
+    return;
+  }
+
+  // 슬라이딩 만료: 활동 중이면 토큰을 재발급해 만료 시계를 리셋(무활동 10분 타임아웃)
+  const fresh = signToken({ uid: member.id, role: member.role, sid: payload.sid });
+  res.cookie(AUTH_COOKIE, fresh, cookieOptions());
 
   req.member = { id: member.id, role: member.role, status: member.status };
   next();
