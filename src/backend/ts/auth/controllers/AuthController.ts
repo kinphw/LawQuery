@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import { MemberModel } from '../models/MemberModel';
 import { AccessLogModel } from '../models/AccessLogModel';
+import { PageVisitModel } from '../models/PageVisitModel';
 import { signToken, verifyToken, AUTH_COOKIE, cookieOptions } from '../utils/jwt';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -16,10 +17,12 @@ function clientIp(req: Request): string | null {
 export class AuthController {
   private model: MemberModel;
   private logModel: AccessLogModel;
+  private visitModel: PageVisitModel;
 
   constructor() {
     this.model = new MemberModel();
     this.logModel = new AccessLogModel();
+    this.visitModel = new PageVisitModel();
   }
 
   /** 웹 회원가입: status=pending. 단, ADMIN_EMAIL과 일치하면 admin+approved 자동. */
@@ -114,6 +117,52 @@ export class AuthController {
   logout = async (_req: Request, res: Response): Promise<void> => {
     res.clearCookie(AUTH_COOKIE, { path: '/' });
     res.json({ success: true });
+  };
+
+  /** 본인 표시 이름 변경 (authGuard 보호). */
+  updateProfile = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const memberId = req.member?.id;
+      if (!memberId) {
+        res.status(401).json({ success: false, error: '로그인이 필요합니다.' });
+        return;
+      }
+      const displayName = (req.body?.displayName ?? '').toString().trim();
+      if (displayName.length < 1 || displayName.length > 50) {
+        res.status(400).json({ success: false, error: '이름은 1~50자로 입력해 주세요.' });
+        return;
+      }
+      await this.model.updateDisplayName(memberId, displayName);
+      res.json({ success: true, displayName });
+    } catch (e) {
+      console.error('updateProfile 오류:', e);
+      res.status(500).json({ success: false, error: '이름 변경 중 오류가 발생했습니다.' });
+    }
+  };
+
+  /**
+   * 페이지 접근 기록 (게이트 밖, 비로그인 포함).
+   * auth-gate.js가 모든 페이지 진입 시 호출. 로그인 상태면 member_id도 기록.
+   */
+  recordVisit = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const path = (req.body?.path ?? '').toString();
+      // 로그인 상태면 토큰에서 member_id 추출 (없어도 기록은 진행)
+      const token = req.cookies?.[AUTH_COOKIE]
+        || (req.headers.authorization?.startsWith('Bearer ') ? req.headers.authorization.slice(7) : null);
+      const payload = token ? verifyToken(token) : null;
+      await this.visitModel.record(
+        path || null,
+        clientIp(req),
+        payload?.uid ?? null,
+        req.headers['user-agent'] as string || null
+      );
+      res.json({ success: true });
+    } catch (e) {
+      console.error('recordVisit 오류:', e);
+      // 방문 기록 실패가 사용자 경험을 막으면 안 되므로 200으로 무시
+      res.json({ success: false });
+    }
   };
 
   /** 현재 로그인 상태 조회 (프론트가 진입 시 호출) */

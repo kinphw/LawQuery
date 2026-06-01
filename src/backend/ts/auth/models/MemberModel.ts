@@ -94,6 +94,11 @@ export class MemberModel {
     await this.db.query('UPDATE member SET last_login_at = NOW() WHERE id = ?', [id]);
   }
 
+  /** 본인 표시 이름 변경 */
+  async updateDisplayName(id: number, displayName: string): Promise<void> {
+    await this.db.query('UPDATE member SET display_name = ? WHERE id = ?', [displayName, id]);
+  }
+
   async listByStatus(status?: MemberStatus): Promise<Member[]> {
     if (status) {
       return this.db.query<Member>(

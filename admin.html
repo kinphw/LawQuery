@@ -29,6 +29,7 @@
       <ul class="nav nav-tabs mb-3">
         <li class="nav-item"><button class="nav-link active" id="navMembers">회원 관리</button></li>
         <li class="nav-item"><button class="nav-link" id="navLogs">접속 기록</button></li>
+        <li class="nav-item"><button class="nav-link" id="navVisits">방문 기록</button></li>
       </ul>
 
       <!-- 회원 관리 -->
@@ -72,6 +73,26 @@
             </thead>
             <tbody id="logTbody">
               <tr><td colspan="5" class="text-center text-muted">불러오는 중...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- 방문 기록 (페이지 접근, 비로그인 포함, 일자별) -->
+      <section id="sectionVisits" class="d-none">
+        <div class="d-flex align-items-center mb-3">
+          <span class="text-muted small">일자별 페이지 접근(비로그인 포함). 행을 클릭하면 그날 상세가 펼쳐집니다.</span>
+          <button class="btn btn-outline-secondary ms-auto" id="refreshVisitsBtn">새로고침</button>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-bordered table-hover align-middle">
+            <thead class="table-dark">
+              <tr>
+                <th style="width:160px;">날짜</th><th>총 접근</th><th>고유 IP</th><th style="width:60px;"></th>
+              </tr>
+            </thead>
+            <tbody id="visitTbody">
+              <tr><td colspan="4" class="text-center text-muted">불러오는 중...</td></tr>
             </tbody>
           </table>
         </div>
@@ -184,17 +205,78 @@
         </tr>`).join('');
       }
 
+      // ── 방문 기록 (일자별 집계 + 펼치기) ──
+      let visitsLoaded = false;
+
+      async function loadVisits() {
+        const tbody = $('visitTbody');
+        tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">불러오는 중...</td></tr>';
+        const r = await fetch('/api/admin/visits/daily');
+        const data = await r.json();
+        if (!data.success) { tbody.innerHTML = `<tr><td colspan="4" class="text-danger text-center">${data.error || '오류'}</td></tr>`; return; }
+        if (!data.summary.length) { tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">기록 없음</td></tr>'; return; }
+
+        tbody.innerHTML = data.summary.map((s) => {
+          const d = (s.visit_date || '').slice(0, 10);
+          return `<tr class="visit-day" data-date="${d}" style="cursor:pointer;">
+              <td class="fw-semibold">${d}</td>
+              <td>${s.total}</td>
+              <td>${s.unique_ips}</td>
+              <td class="text-center"><span class="toggle">▶</span></td>
+            </tr>
+            <tr class="visit-detail d-none" data-detail="${d}">
+              <td colspan="4" class="p-0"><div class="p-2 bg-light"><span class="text-muted small">불러오는 중...</span></div></td>
+            </tr>`;
+        }).join('');
+
+        tbody.querySelectorAll('.visit-day').forEach((row) => {
+          row.addEventListener('click', async () => {
+            const d = row.dataset.date;
+            const detailRow = tbody.querySelector(`tr.visit-detail[data-detail="${d}"]`);
+            const toggle = row.querySelector('.toggle');
+            const hidden = detailRow.classList.contains('d-none');
+            if (!hidden) { detailRow.classList.add('d-none'); toggle.textContent = '▶'; return; }
+            detailRow.classList.remove('d-none'); toggle.textContent = '▼';
+            if (detailRow.dataset.loaded) return;
+            const r = await fetch(`/api/admin/visits?date=${d}`);
+            const data = await r.json();
+            const cell = detailRow.querySelector('div');
+            if (!data.success || !data.visits.length) { cell.innerHTML = '<span class="text-muted small">상세 없음</span>'; detailRow.dataset.loaded = '1'; return; }
+            cell.innerHTML =
+              '<table class="table table-sm mb-0"><thead><tr>' +
+              '<th class="small">시각</th><th class="small">IP</th><th class="small">경로</th><th class="small">회원</th><th class="small">기기/브라우저</th>' +
+              '</tr></thead><tbody>' +
+              data.visits.map((v) => `<tr>
+                <td class="small text-nowrap">${(v.created_at || '').replace('T', ' ').slice(11, 19)}</td>
+                <td class="small">${v.ip || '-'}</td>
+                <td class="small">${v.path || '-'}</td>
+                <td class="small">${v.member_id || '-'}</td>
+                <td class="small text-truncate" style="max-width:240px;" title="${(v.user_agent || '').replace(/"/g, '&quot;')}">${v.user_agent || '-'}</td>
+              </tr>`).join('') +
+              '</tbody></table>';
+            detailRow.dataset.loaded = '1';
+          });
+        });
+      }
+
       // 탭 전환
-      $('navMembers').addEventListener('click', () => {
-        $('navMembers').classList.add('active'); $('navLogs').classList.remove('active');
-        $('sectionMembers').classList.remove('d-none'); $('sectionLogs').classList.add('d-none');
-      });
+      function switchTab(active) {
+        ['Members', 'Logs', 'Visits'].forEach((t) => {
+          $('nav' + t).classList.toggle('active', t === active);
+          $('section' + t).classList.toggle('d-none', t !== active);
+        });
+      }
+      $('navMembers').addEventListener('click', () => switchTab('Members'));
       $('navLogs').addEventListener('click', () => {
-        $('navLogs').classList.add('active'); $('navMembers').classList.remove('active');
-        $('sectionLogs').classList.remove('d-none'); $('sectionMembers').classList.add('d-none');
+        switchTab('Logs');
         if (!logsLoaded) { logsLoaded = true; loadLogs(); }
       });
+      $('navVisits').addEventListener('click', () => {
+        switchTab('Visits');
+        if (!visitsLoaded) { visitsLoaded = true; loadVisits(); }
+      });
       $('refreshLogsBtn').addEventListener('click', loadLogs);
+      $('refreshVisitsBtn').addEventListener('click', () => { visitsLoaded = true; loadVisits(); });
 
       (async () => { if (await ensureAdmin()) load(); })();
     })();

@@ -1,16 +1,47 @@
 import { Request, Response } from 'express';
 import { MemberModel, MemberStatus } from '../models/MemberModel';
 import { AccessLogModel } from '../models/AccessLogModel';
+import { PageVisitModel } from '../models/PageVisitModel';
 
 /** 관리자용 회원 관리. 모든 라우트는 adminGuard로 보호된다. */
 export class AdminController {
   private model: MemberModel;
   private logModel: AccessLogModel;
+  private visitModel: PageVisitModel;
 
   constructor() {
     this.model = new MemberModel();
     this.logModel = new AccessLogModel();
+    this.visitModel = new PageVisitModel();
   }
+
+  /** 페이지 접근 일자별 집계. */
+  visitsDaily = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const days = parseInt((req.query.days as string) || '60', 10);
+      const summary = await this.visitModel.dailySummary(days);
+      res.json({ success: true, summary });
+    } catch (e) {
+      console.error('visitsDaily 오류:', e);
+      res.status(500).json({ success: false, error: '방문 집계 조회 중 오류가 발생했습니다.' });
+    }
+  };
+
+  /** 특정 일자의 페이지 접근 상세. ?date=YYYY-MM-DD */
+  visitsByDate = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const date = (req.query.date as string || '').trim();
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+        res.status(400).json({ success: false, error: '날짜 형식(YYYY-MM-DD)이 올바르지 않습니다.' });
+        return;
+      }
+      const visits = await this.visitModel.listByDate(date);
+      res.json({ success: true, visits });
+    } catch (e) {
+      console.error('visitsByDate 오류:', e);
+      res.status(500).json({ success: false, error: '방문 상세 조회 중 오류가 발생했습니다.' });
+    }
+  };
 
   /** 접속(로그인/앱진입) 기록 조회. */
   listLogs = async (req: Request, res: Response): Promise<void> => {

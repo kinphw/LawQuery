@@ -63,21 +63,49 @@
       '<div class="lq-userbar">' +
         '<span class="lq-userbar__who">' +
           '<i class="fas fa-user-circle"></i> ' +
-          '<strong>' + escapeHtml(who) + '</strong>' +
+          '<strong id="lqWho">' + escapeHtml(who) + '</strong>' +
           (me.role === 'admin' ? ' <span class="lq-userbar__badge">관리자</span>' : '') +
         '</span>' +
         '<span class="lq-userbar__actions">' +
           adminLink +
+          '<button type="button" id="lqRenameBtn" class="lq-userbar__link">이름변경</button>' +
           '<button type="button" id="lqLogoutBtn" class="lq-userbar__link">로그아웃</button>' +
         '</span>' +
       '</div>';
 
-    var btn = document.getElementById('lqLogoutBtn');
-    if (btn) {
-      btn.addEventListener('click', function () {
+    var logoutBtn = document.getElementById('lqLogoutBtn');
+    if (logoutBtn) {
+      logoutBtn.addEventListener('click', function () {
         origFetch('/api/auth/logout', { method: 'POST' }).then(function () {
           location.href = LOGIN;
         });
+      });
+    }
+
+    var renameBtn = document.getElementById('lqRenameBtn');
+    if (renameBtn) {
+      renameBtn.addEventListener('click', function () {
+        var current = (me.displayName && me.source !== 'app') ? me.displayName : '';
+        var name = window.prompt('표시할 이름을 입력하세요 (1~50자)', current);
+        if (name === null) return;          // 취소
+        name = name.trim();
+        if (!name) { alert('이름을 입력해 주세요.'); return; }
+        origFetch('/api/auth/profile', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ displayName: name }),
+        })
+          .then(function (r) { return r.json(); })
+          .then(function (data) {
+            if (data.success) {
+              var el = document.getElementById('lqWho');
+              if (el) el.textContent = data.displayName;
+              me.displayName = data.displayName;
+            } else {
+              alert(data.error || '이름 변경에 실패했습니다.');
+            }
+          })
+          .catch(function () { alert('서버 연결에 실패했습니다.'); });
       });
     }
   }
@@ -122,6 +150,17 @@
     return k;
   }
 
+  // 페이지 접근 기록 (비로그인 포함). 실패해도 무시 — UX 영향 없음.
+  function recordVisit() {
+    try {
+      origFetch('/api/auth/visit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path: location.pathname }),
+      }).catch(function () { /* noop */ });
+    } catch (e) { /* noop */ }
+  }
+
   var params = new URLSearchParams(location.search);
 
   // 3-A) 앱 자동진입
@@ -140,6 +179,9 @@
       .catch(function () { location.replace(LOGIN); });
     return;
   }
+
+  // 일반 진입: 페이지 접근 기록 (앱 자동진입은 깨끗한 URL 재시작 후 이 분기로 들어와 기록됨)
+  recordVisit();
 
   // 3-B) 일반 웹: 선(先) 인증 확인
   origFetch('/api/auth/me', { headers: { 'Accept': 'application/json' } })

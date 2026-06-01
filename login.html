@@ -76,6 +76,15 @@
       const $ = (id) => document.getElementById(id);
       const alertBox = $('alertBox');
 
+      // 페이지 접근 기록 (로그인 화면도 집계 — 비로그인 방문 포함)
+      try {
+        fetch('/api/auth/visit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ path: location.pathname }),
+        }).catch(() => {});
+      } catch (e) { /* noop */ }
+
       function showAlert(msg, type = 'danger') {
         alertBox.className = `alert alert-${type}`;
         alertBox.textContent = msg;
