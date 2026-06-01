@@ -146,6 +146,8 @@
             if (m.status === 'pending') actions.push(`<button class="btn btn-outline-secondary btn-sm act" data-id="${m.id}" data-act="reject">거부</button>`);
             if (m.status === 'approved') actions.push(`<button class="btn btn-outline-danger btn-sm act" data-id="${m.id}" data-act="revoke">정지</button>`);
           }
+          // 이름 변경은 모든 회원(관리자 포함) 대상
+          actions.push(`<button class="btn btn-outline-primary btn-sm rename-btn" data-id="${m.id}" data-name="${(m.display_name || '').replace(/"/g, '&quot;')}">이름변경</button>`);
           return `<tr>
             <td>${m.id}</td>
             <td class="small">${m.email}</td>
@@ -167,6 +169,25 @@
             const data = await r.json();
             if (data.success) load();
             else { alert(data.error || '처리 실패'); btn.disabled = false; }
+          });
+        });
+
+        tbody.querySelectorAll('.rename-btn').forEach((btn) => {
+          btn.addEventListener('click', async () => {
+            const id = btn.dataset.id;
+            const name = prompt('변경할 이름을 입력하세요 (1~50자)', btn.dataset.name || '');
+            if (name === null) return;
+            const trimmed = name.trim();
+            if (!trimmed) { alert('이름을 입력해 주세요.'); return; }
+            btn.disabled = true;
+            const r = await fetch(`/api/admin/members/${id}/name`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ displayName: trimmed }),
+            });
+            const data = await r.json();
+            if (data.success) load();
+            else { alert(data.error || '이름 변경 실패'); btn.disabled = false; }
           });
         });
       }
