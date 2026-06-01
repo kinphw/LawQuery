@@ -38,6 +38,20 @@ CREATE TABLE IF NOT EXISTS member (
   KEY idx_member_source (signup_source)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
 
+-- 5) 페이지 접근 기록 (비로그인 포함, 페이지 진입마다 1행). 일자별 방문 추이 파악용.
+CREATE TABLE IF NOT EXISTS page_visit (
+  id         BIGINT       NOT NULL AUTO_INCREMENT,
+  path       VARCHAR(255) NULL,
+  ip         VARCHAR(64)  NULL,
+  member_id  BIGINT       NULL,                  -- 로그인 상태면 회원ID, 아니면 NULL
+  user_agent VARCHAR(512) NULL,
+  visit_date DATE         NOT NULL,              -- 일자별 집계용
+  created_at DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_visit_date (visit_date),
+  KEY idx_visit_created (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
+
 -- 4) 접속 기록 (로그인/앱진입 시 1행). 회원이 실제로 쓰는지 파악용.
 CREATE TABLE IF NOT EXISTS access_log (
   id         BIGINT       NOT NULL AUTO_INCREMENT,
