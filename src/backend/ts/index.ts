@@ -14,6 +14,10 @@ dotenv.config({ path: path.join(process.cwd(), '.env') });
 const app = express();
 const PORT = 4000;
 
+// 아파치 리버스 프록시 뒤에서 동작 → X-Forwarded-For를 신뢰해 req.ip가 실제 공인 IP를 반환.
+// (sentinel 프로젝트와 동일한 방식)
+app.set('trust proxy', true);
+
 // 미들웨어 설정
 app.use(cors({ origin: true, credentials: true })); // 쿠키 인증 위해 credentials 허용
 app.use(express.json());

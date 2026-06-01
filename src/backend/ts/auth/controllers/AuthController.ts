@@ -7,11 +7,15 @@ import { signToken, verifyToken, newSessionToken, AUTH_COOKIE, cookieOptions } f
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-/** 아파치 리버스 프록시 뒤이므로 실제 IP는 X-Forwarded-For 우선. */
+/**
+ * 실제 접속 IP. app.set('trust proxy', true) 덕분에 req.ip가
+ * X-Forwarded-For를 파싱한 공인 IP를 반환(아파치 프록시 뒤). sentinel과 동일 방식.
+ * IPv6 매핑(::ffff:1.2.3.4) 접두어는 제거해 보기 좋게.
+ */
 function clientIp(req: Request): string | null {
-  const xff = (req.headers['x-forwarded-for'] as string) || '';
-  const first = xff.split(',')[0].trim();
-  return first || req.socket?.remoteAddress || null;
+  let ip = req.ip || req.socket?.remoteAddress || null;
+  if (ip && ip.startsWith('::ffff:')) ip = ip.slice(7);
+  return ip;
 }
 
 export class AuthController {

@@ -18,9 +18,11 @@
   var style = document.createElement('style');
   style.textContent =
     '.lq-auth-checking body{visibility:hidden!important}' +
+    // z-index는 Bootstrap 모달(1055)/백드롭(1050)보다 낮게 둬서,
+    // 전체화면 모달(별표/벌칙)이 열리면 상태바를 덮도록 한다(상단 잘림 방지).
     '.lq-userbar{display:flex;align-items:center;justify-content:flex-end;gap:.75rem;' +
       'padding:.4rem .9rem;background:#212529;color:#fff;font-size:.85rem;' +
-      'position:sticky;top:0;z-index:1100}' +
+      'position:sticky;top:0;z-index:1030}' +
     '.lq-userbar__who{margin-right:auto}' +
     '.lq-userbar__badge{background:#0d6efd;color:#fff;border-radius:.25rem;' +
       'padding:.05rem .4rem;font-size:.7rem;margin-left:.25rem}' +
