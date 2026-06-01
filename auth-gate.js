@@ -115,15 +115,25 @@
       return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
     });
   }
-  function gotoLogin() {
+  // 인증 끊김 처리: 앱(저장된 토큰 보유)이면 조용히 자동 재진입, 웹이면 로그인 화면.
+  // 앱 계정은 비번이 없어 로그인 불가하므로 반드시 토큰으로 재진입해야 한다.
+  function handleUnauth() {
+    var appToken = localStorage.getItem('lq_app_token');
+    if (appToken) {
+      // 앱: 깨끗한 경로에 토큰 파라미터를 붙여 재진입(app-enter) 흐름으로
+      location.replace(location.pathname + '?src=app&t=' + encodeURIComponent(appToken));
+      return;
+    }
     var next = encodeURIComponent(location.pathname.replace(/^\//, '') + location.search);
     location.replace(LOGIN + '?next=' + next);
   }
+  // 하위호환 별칭
+  function gotoLogin() { handleUnauth(); }
 
   var origFetch = window.fetch.bind(window);
   var redirecting = false;
 
-  // 2) fetch 인터셉터 (세션 만료 등 사후 안전망)
+  // 2) fetch 인터셉터 (세션 만료/교체 등 사후 안전망)
   window.fetch = function (input, init) {
     return origFetch(input, init).then(function (res) {
       try {
@@ -132,7 +142,7 @@
         var isAuthApi = url.indexOf('/api/auth/') !== -1;
         if (isApi && !isAuthApi && (res.status === 401 || res.status === 403) && !redirecting) {
           redirecting = true;
-          gotoLogin();
+          handleUnauth();
         }
       } catch (e) { /* noop */ }
       return res;
@@ -166,10 +176,13 @@
   // 3-A) 앱 자동진입
   if (params.get('src') === 'app' && params.get('t')) {
     redirecting = true; // 처리 끝까지 화면 숨김 유지
+    var appToken = params.get('t');
+    // 앱 토큰을 보관 → 세션 만료 시 자동 재진입(handleUnauth)에 사용
+    try { localStorage.setItem('lq_app_token', appToken); } catch (e) { /* noop */ }
     origFetch('/api/auth/app-enter', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ t: params.get('t'), deviceKey: getDeviceKey() }),
+      body: JSON.stringify({ t: appToken, deviceKey: getDeviceKey() }),
     })
       .then(function (r) { return r.json(); })
       .then(function (data) {
