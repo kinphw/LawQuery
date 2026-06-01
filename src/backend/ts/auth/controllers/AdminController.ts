@@ -78,6 +78,32 @@ export class AdminController {
     }
   };
 
+  /** 관리자가 회원의 표시 이름을 변경. */
+  renameMember = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const id = parseInt(req.params.id, 10);
+      if (!id) {
+        res.status(400).json({ success: false, error: '잘못된 회원 ID입니다.' });
+        return;
+      }
+      const displayName = (req.body?.displayName ?? '').toString().trim();
+      if (displayName.length < 1 || displayName.length > 50) {
+        res.status(400).json({ success: false, error: '이름은 1~50자로 입력해 주세요.' });
+        return;
+      }
+      const target = await this.model.findById(id);
+      if (!target) {
+        res.status(404).json({ success: false, error: '회원을 찾을 수 없습니다.' });
+        return;
+      }
+      await this.model.updateDisplayName(id, displayName);
+      res.json({ success: true, id, displayName });
+    } catch (e) {
+      console.error('renameMember 오류:', e);
+      res.status(500).json({ success: false, error: '이름 변경 중 오류가 발생했습니다.' });
+    }
+  };
+
   approve = async (req: Request, res: Response): Promise<void> => {
     await this.changeStatus(req, res, 'approved');
   };
