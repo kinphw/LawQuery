@@ -136,6 +136,32 @@
     return k;
   }
 
+  // 관리자 지정 배너 표시 (모든 페이지 상단). 로그인 여부와 무관.
+  function showBanner() {
+    origFetch('/api/auth/banner', { headers: { 'Accept': 'application/json' } })
+      .then(function (r) { return r.json(); })
+      .then(function (b) {
+        if (!b || !b.enabled || !b.text) return;
+        var host = document.getElementById('lq-banner-host');
+        if (!host) {
+          host = document.createElement('div');
+          host.id = 'lq-banner-host';
+          if (document.body) document.body.insertBefore(host, document.body.firstChild);
+        }
+        var colorMap = {
+          info: '#0dcaf0', warning: '#ffc107', danger: '#dc3545',
+          success: '#198754', secondary: '#6c757d', primary: '#0d6efd'
+        };
+        var bg = colorMap[b.color] || colorMap.info;
+        var fg = (b.color === 'warning' || b.color === 'info') ? '#212529' : '#fff';
+        host.innerHTML =
+          '<div style="background:' + bg + ';color:' + fg + ';padding:.5rem .9rem;' +
+          'font-size:.9rem;text-align:center;position:sticky;top:0;z-index:1090;">' +
+          escapeHtml(b.text) + '</div>';
+      })
+      .catch(function () { /* noop */ });
+  }
+
   // 페이지 접근 기록 (비로그인 포함). 실패해도 무시 — UX 영향 없음.
   function recordVisit() {
     try {
@@ -171,6 +197,9 @@
 
   // 일반 진입: 페이지 접근 기록 (앱 자동진입은 깨끗한 URL 재시작 후 이 분기로 들어와 기록됨)
   recordVisit();
+  // 관리자 배너 표시 (body 준비 후)
+  if (document.body) showBanner();
+  else document.addEventListener('DOMContentLoaded', showBanner);
 
   // 3-B) 일반 웹: 선(先) 인증 확인
   origFetch('/api/auth/me', { headers: { 'Accept': 'application/json' } })

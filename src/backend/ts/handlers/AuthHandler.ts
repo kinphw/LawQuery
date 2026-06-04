@@ -27,6 +27,7 @@ export class AuthHandler {
     this.router.get('/auth/me', this.auth.me);
     this.router.post('/auth/app-enter', this.auth.appEnter);
     this.router.post('/auth/visit', this.auth.recordVisit); // 페이지 접근 기록(비로그인 포함)
+    this.router.get('/auth/banner', this.auth.publicBanner); // 공개 배너 설정
     this.router.patch('/auth/profile', authGuard, this.auth.updateProfile); // 이름 변경(로그인 필요)
     this.router.patch('/auth/password', authGuard, this.auth.changePassword); // 본인 비번 변경
 
@@ -42,6 +43,8 @@ export class AuthHandler {
     this.router.get('/admin/pending-count', adminGuard, this.admin.pendingCount);
     this.router.get('/admin/fail-warnings', adminGuard, this.admin.failWarnings);
     this.router.get('/admin/stats', adminGuard, this.admin.stats);
+    this.router.get('/admin/settings', adminGuard, this.admin.getSettings);
+    this.router.put('/admin/settings', adminGuard, this.admin.updateSettings);
     this.router.get('/admin/ip-summary', adminGuard, this.admin.ipSummary);
     this.router.get('/admin/visits/daily', adminGuard, this.admin.visitsDaily);
     this.router.get('/admin/visits', adminGuard, this.admin.visitsByDate);

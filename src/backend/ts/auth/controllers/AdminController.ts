@@ -2,16 +2,46 @@ import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import { MemberModel, MemberStatus } from '../models/MemberModel';
 import { AccessLogModel, AccessEvent } from '../models/AccessLogModel';
+import { SettingModel } from '../models/SettingModel';
 
 /** 관리자용 회원 관리. 모든 라우트는 adminGuard로 보호된다. */
 export class AdminController {
   private model: MemberModel;
   private logModel: AccessLogModel;
+  private settingModel: SettingModel;
 
   constructor() {
     this.model = new MemberModel();
     this.logModel = new AccessLogModel();
+    this.settingModel = new SettingModel();
   }
+
+  /** 전역 설정 조회. */
+  getSettings = async (_req: Request, res: Response): Promise<void> => {
+    try {
+      res.json({ success: true, settings: await this.settingModel.getAll() });
+    } catch (e) {
+      console.error('getSettings 오류:', e);
+      res.status(500).json({ success: false, error: '설정 조회 오류' });
+    }
+  };
+
+  /** 전역 설정 수정. */
+  updateSettings = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const b = req.body || {};
+      const patch: any = {};
+      if (typeof b.banner_enabled === 'boolean') patch.banner_enabled = b.banner_enabled;
+      if (typeof b.banner_text === 'string') patch.banner_text = b.banner_text;
+      if (typeof b.banner_color === 'string') patch.banner_color = b.banner_color;
+      if (typeof b.signup_enabled === 'boolean') patch.signup_enabled = b.signup_enabled;
+      const settings = await this.settingModel.update(patch);
+      res.json({ success: true, settings });
+    } catch (e) {
+      console.error('updateSettings 오류:', e);
+      res.status(500).json({ success: false, error: '설정 수정 오류' });
+    }
+  };
 
   /** 승인 대기 회원 수 (뱃지용). */
   pendingCount = async (_req: Request, res: Response): Promise<void> => {
