@@ -88,6 +88,8 @@
       // 관리자 배너 (로그인 화면에도 점검 안내 등 표시)
       fetch('/api/auth/banner').then((r) => r.json()).then((b) => {
         if (!b || !b.enabled || !b.text) return;
+        if (b.pages && b.pages.indexOf('login') === -1) return; // 로그인 화면 대상일 때만
+
         const colorMap = { info: '#0dcaf0', warning: '#ffc107', danger: '#dc3545', success: '#198754', secondary: '#6c757d', primary: '#0d6efd' };
         const bg = colorMap[b.color] || colorMap.info;
         const fg = (b.color === 'warning' || b.color === 'info') ? '#212529' : '#fff';
