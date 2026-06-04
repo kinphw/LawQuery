@@ -110,6 +110,11 @@ export class MemberModel {
     await this.db.query('UPDATE member SET password_hash = ? WHERE id = ?', [passwordHash, id]);
   }
 
+  /** 회원 삭제. 활동 로그는 보존(member_id만 남고 조인 시 이름이 비게 됨). */
+  async deleteMember(id: number): Promise<void> {
+    await this.db.query('DELETE FROM member WHERE id = ?', [id]);
+  }
+
   async listByStatus(status?: MemberStatus): Promise<Member[]> {
     if (status) {
       return this.db.query<Member>(

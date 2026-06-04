@@ -156,6 +156,8 @@
           actions.push(`<button class="btn btn-outline-primary btn-sm rename-btn" data-id="${m.id}" data-name="${(m.display_name || '').replace(/"/g, '&quot;')}">이름변경</button>`);
           // 비번 재설정 (웹 계정만 — 앱 익명계정은 비번 없음)
           if (m.signup_source !== 'app') actions.push(`<button class="btn btn-outline-warning btn-sm pw-btn" data-id="${m.id}" data-email="${(m.email || '').replace(/"/g, '&quot;')}">비번재설정</button>`);
+          // 삭제 (관리자 제외)
+          if (m.role !== 'admin') actions.push(`<button class="btn btn-danger btn-sm del-btn" data-id="${m.id}" data-email="${(m.email || '').replace(/"/g, '&quot;')}">삭제</button>`);
           return `<tr>
             <td>${m.id}</td>
             <td class="small">${m.email}</td>
@@ -214,6 +216,18 @@
             const data = await r.json();
             if (data.success) { alert('비밀번호가 변경되었습니다.'); btn.disabled = false; }
             else { alert(data.error || '비밀번호 변경 실패'); btn.disabled = false; }
+          });
+        });
+
+        tbody.querySelectorAll('.del-btn').forEach((btn) => {
+          btn.addEventListener('click', async () => {
+            const id = btn.dataset.id;
+            if (!confirm(`[${btn.dataset.email}] 회원을 완전히 삭제합니다.\n되돌릴 수 없습니다. 계속할까요?`)) return;
+            btn.disabled = true;
+            const r = await fetch(`/api/admin/members/${id}`, { method: 'DELETE' });
+            const data = await r.json();
+            if (data.success) load();
+            else { alert(data.error || '삭제 실패'); btn.disabled = false; }
           });
         });
       }

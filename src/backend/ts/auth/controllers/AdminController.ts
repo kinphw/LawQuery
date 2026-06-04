@@ -134,6 +134,31 @@ export class AdminController {
     }
   };
 
+  /** 관리자가 회원을 완전 삭제. */
+  deleteMember = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const id = parseInt(req.params.id, 10);
+      if (!id) {
+        res.status(400).json({ success: false, error: '잘못된 회원 ID입니다.' });
+        return;
+      }
+      const target = await this.model.findById(id);
+      if (!target) {
+        res.status(404).json({ success: false, error: '회원을 찾을 수 없습니다.' });
+        return;
+      }
+      if (target.role === 'admin') {
+        res.status(400).json({ success: false, error: '관리자 계정은 삭제할 수 없습니다.' });
+        return;
+      }
+      await this.model.deleteMember(id);
+      res.json({ success: true, id });
+    } catch (e) {
+      console.error('deleteMember 오류:', e);
+      res.status(500).json({ success: false, error: '회원 삭제 중 오류가 발생했습니다.' });
+    }
+  };
+
   approve = async (req: Request, res: Response): Promise<void> => {
     await this.changeStatus(req, res, 'approved');
   };
