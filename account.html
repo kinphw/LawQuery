@@ -86,7 +86,7 @@
         try {
           const me = await (await fetch('/api/auth/me')).json();
           if (!me.authenticated) { location.href = 'login.html?next=account.html'; return; }
-          $('accEmail').textContent = me.email || '-';
+          $('accEmail').textContent = me.loginId || '-';
           $('accMeta').textContent = `${me.source === 'app' ? '앱' : '웹'} / ${me.role === 'admin' ? '관리자' : '일반'}`;
           if (me.displayName) $('displayName').value = me.displayName;
           // 앱 익명계정은 비번이 없으므로 비번 변경 카드 숨김

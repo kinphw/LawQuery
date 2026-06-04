@@ -30,11 +30,11 @@ export class AuthController {
   /** 웹 회원가입: status=pending. 단, ADMIN_EMAIL과 일치하면 admin+approved 자동. */
   register = async (req: Request, res: Response): Promise<void> => {
     try {
-      const email = (req.body?.email ?? '').trim().toLowerCase(); // email 칼럼 = 로그인 ID
+      const loginId = (req.body?.loginId ?? req.body?.email ?? '').trim().toLowerCase();
       const password = req.body?.password ?? '';
       const displayName = (req.body?.displayName ?? '').trim() || null;
 
-      if (!ID_RE.test(email)) {
+      if (!ID_RE.test(loginId)) {
         res.status(400).json({ success: false, error: '아이디는 영문·숫자 4~30자로 입력해 주세요.' });
         return;
       }
@@ -43,7 +43,7 @@ export class AuthController {
         return;
       }
 
-      const existing = await this.model.findByEmail(email);
+      const existing = await this.model.findByLoginId(loginId);
       if (existing) {
         res.status(409).json({ success: false, error: '이미 사용 중인 아이디입니다.' });
         return;
@@ -52,9 +52,9 @@ export class AuthController {
       const hash = await bcrypt.hash(password, 10);
 
       // 관리자 ID면 자동 admin + approved (env ADMIN_EMAIL 값을 ID로 사용)
-      const isAdmin = email === (process.env.ADMIN_EMAIL || '').trim().toLowerCase();
+      const isAdmin = loginId === (process.env.ADMIN_EMAIL || '').trim().toLowerCase();
       const id = await this.model.createWebMember(
-        email,
+        loginId,
         hash,
         displayName,
         isAdmin ? 'admin' : 'user',
@@ -85,24 +85,24 @@ export class AuthController {
   /** 로그인: 승인된 계정만 JWT 발급 */
   login = async (req: Request, res: Response): Promise<void> => {
     try {
-      const email = (req.body?.email ?? '').trim().toLowerCase();
+      const loginId = (req.body?.loginId ?? req.body?.email ?? '').trim().toLowerCase();
       const password = req.body?.password ?? '';
 
       const ua = req.headers['user-agent'] as string || null;
-      const member = await this.model.findByEmail(email);
+      const member = await this.model.findByLoginId(loginId);
       if (!member || !member.password_hash) {
-        await this.logModel.record(member?.id ?? null, email, 'login_fail', clientIp(req), ua);
+        await this.logModel.record(member?.id ?? null, loginId, 'login_fail', clientIp(req), ua);
         res.status(401).json({ success: false, error: '아이디 또는 비밀번호가 올바르지 않습니다.' });
         return;
       }
       const ok = await bcrypt.compare(password, member.password_hash);
       if (!ok) {
-        await this.logModel.record(member.id, member.email, 'login_fail', clientIp(req), ua);
+        await this.logModel.record(member.id, member.login_id, 'login_fail', clientIp(req), ua);
         res.status(401).json({ success: false, error: '아이디 또는 비밀번호가 올바르지 않습니다.' });
         return;
       }
       if (member.status !== 'approved') {
-        await this.logModel.record(member.id, member.email, 'login_fail', clientIp(req), ua);
+        await this.logModel.record(member.id, member.login_id, 'login_fail', clientIp(req), ua);
         const msg =
           member.status === 'pending' ? '아직 승인 대기 중입니다.'
           : member.status === 'rejected' ? '가입이 거부된 계정입니다.'
@@ -112,7 +112,7 @@ export class AuthController {
       }
 
       await this.model.touchLogin(member.id);
-      await this.logModel.record(member.id, member.email, 'login', clientIp(req), req.headers['user-agent'] as string || null);
+      await this.logModel.record(member.id, member.login_id, 'login', clientIp(req), req.headers['user-agent'] as string || null);
       // 중복 로그인 차단: 새 세션 토큰 발급 → 기존 기기 세션 무효화
       const sid = newSessionToken();
       await this.model.setSessionToken(member.id, sid);
@@ -231,7 +231,7 @@ export class AuthController {
         authenticated: member.status === 'approved',
         status: member.status,
         role: member.role,
-        email: member.email,
+        loginId: member.login_id,
         displayName: member.display_name,
         source: member.signup_source,
       });
@@ -261,8 +261,8 @@ export class AuthController {
 
       let member = await this.model.findByDeviceKey(deviceKey);
       if (!member) {
-        const email = `device_${deviceKey}@auto.lq`;
-        const id = await this.model.createAppMember(email, deviceKey);
+        const appLoginId = `device_${deviceKey}`;
+        const id = await this.model.createAppMember(appLoginId, deviceKey);
         member = await this.model.findById(id);
       }
       if (!member) {
@@ -277,7 +277,7 @@ export class AuthController {
       }
 
       await this.model.touchLogin(member.id);
-      await this.logModel.record(member.id, member.email, 'app_enter', clientIp(req), req.headers['user-agent'] as string || null);
+      await this.logModel.record(member.id, member.login_id, 'app_enter', clientIp(req), req.headers['user-agent'] as string || null);
       const sid = newSessionToken();
       await this.model.setSessionToken(member.id, sid);
       const token = signToken({ uid: member.id, role: member.role, sid });

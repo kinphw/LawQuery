@@ -155,12 +155,12 @@
           // 이름 변경은 모든 회원(관리자 포함) 대상
           actions.push(`<button class="btn btn-outline-primary btn-sm rename-btn" data-id="${m.id}" data-name="${(m.display_name || '').replace(/"/g, '&quot;')}">이름변경</button>`);
           // 비번 재설정 (웹 계정만 — 앱 익명계정은 비번 없음)
-          if (m.signup_source !== 'app') actions.push(`<button class="btn btn-outline-warning btn-sm pw-btn" data-id="${m.id}" data-email="${(m.email || '').replace(/"/g, '&quot;')}">비번재설정</button>`);
+          if (m.signup_source !== 'app') actions.push(`<button class="btn btn-outline-warning btn-sm pw-btn" data-id="${m.id}" data-email="${(m.login_id || '').replace(/"/g, '&quot;')}">비번재설정</button>`);
           // 삭제 (관리자 제외)
-          if (m.role !== 'admin') actions.push(`<button class="btn btn-danger btn-sm del-btn" data-id="${m.id}" data-email="${(m.email || '').replace(/"/g, '&quot;')}">삭제</button>`);
+          if (m.role !== 'admin') actions.push(`<button class="btn btn-danger btn-sm del-btn" data-id="${m.id}" data-email="${(m.login_id || '').replace(/"/g, '&quot;')}">삭제</button>`);
           return `<tr>
             <td>${m.id}</td>
-            <td class="small">${m.email}</td>
+            <td class="small">${m.login_id}</td>
             <td>${m.display_name || '-'}</td>
             <td><span class="badge bg-${m.signup_source === 'app' ? 'info' : 'light text-dark'}">${m.signup_source}</span></td>
             <td>${STATUS_BADGE[m.status] || m.status}</td>
@@ -255,7 +255,7 @@
       // 이름 일관 표시: 이름 > 이메일 > 비회원
       function actorName(l) {
         if (l.display_name) return l.display_name;
-        if (l.email) return l.email;
+        if (l.login_id) return l.login_id;
         return '<span class="text-muted">비회원</span>';
       }
 

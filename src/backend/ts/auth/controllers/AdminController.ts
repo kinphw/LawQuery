@@ -61,7 +61,7 @@ export class AdminController {
       const members = await this.model.listByStatus(status);
       const safe = members.map((m) => ({
         id: m.id,
-        email: m.email,
+        login_id: m.login_id,
         display_name: m.display_name,
         signup_source: m.signup_source,
         status: m.status,

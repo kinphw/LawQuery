@@ -10,7 +10,7 @@ export type AccessEvent = 'login' | 'login_fail' | 'app_enter' | 'page_visit';
 export interface AccessLog {
   id: number;
   member_id: number | null;
-  email: string | null;
+  login_id: string | null;
   display_name: string | null; // member 조인 결과(이름 일관 표시용)
   event: AccessEvent;
   path: string | null;
@@ -39,7 +39,7 @@ export class AccessLogModel {
 
   async record(
     memberId: number | null,
-    email: string | null,
+    loginId: string | null,
     event: AccessEvent,
     ip: string | null,
     userAgent: string | null,
@@ -48,9 +48,9 @@ export class AccessLogModel {
     const ua = userAgent ? userAgent.slice(0, 500) : null;
     const p = path ? path.slice(0, 250) : null;
     await this.db.query(
-      `INSERT INTO access_log (member_id, email, event, path, ip, user_agent, visit_date)
+      `INSERT INTO access_log (member_id, login_id, event, path, ip, user_agent, visit_date)
        VALUES (?, ?, ?, ?, ?, ?, CURDATE())`,
-      [memberId, email, event, p, ip, ua]
+      [memberId, loginId, event, p, ip, ua]
     );
   }
 

@@ -56,7 +56,7 @@
     var who;
     if (me.displayName) who = me.displayName;
     else if (me.source === 'app') who = '앱 사용자';
-    else who = me.email || '사용자';
+    else who = me.loginId || '사용자';
 
     var adminLink = me.role === 'admin'
       ? '<a href="admin.html" class="lq-userbar__link">관리자</a>' : '';

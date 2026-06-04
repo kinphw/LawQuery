@@ -115,7 +115,7 @@
           const r = await fetch('/api/auth/login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email: $('loginEmail').value, password: $('loginPassword').value }),
+            body: JSON.stringify({ loginId: $('loginEmail').value, password: $('loginPassword').value }),
           });
           const data = await r.json();
           if (data.success) { go(); }
@@ -131,7 +131,7 @@
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              email: $('regEmail').value,
+              loginId: $('regEmail').value,
               password: $('regPassword').value,
               displayName: $('regName').value,
             }),
