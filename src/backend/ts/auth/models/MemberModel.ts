@@ -31,6 +31,12 @@ export class MemberModel {
     this.db = DbContext.getInstance(process.env.AUTH_DB || 'ldb_auth');
   }
 
+  /** 전체 회원 수 (최초 가입자 관리자 판별용). */
+  async countMembers(): Promise<number> {
+    const rows = await this.db.query<{ cnt: number }>('SELECT COUNT(*) AS cnt FROM member');
+    return Number(rows[0]?.cnt ?? 0);
+  }
+
   async findByLoginId(loginId: string): Promise<Member | null> {
     const rows = await this.db.query<Member>(
       'SELECT * FROM member WHERE login_id = ? LIMIT 1',

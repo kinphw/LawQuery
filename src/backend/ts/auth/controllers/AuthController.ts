@@ -4,8 +4,10 @@ import { MemberModel } from '../models/MemberModel';
 import { AccessLogModel } from '../models/AccessLogModel';
 import { signToken, verifyToken, newSessionToken, AUTH_COOKIE, cookieOptions } from '../utils/jwt';
 
-// 로그인 ID 규칙: 영문/숫자/._- 4~30자 (email 칼럼을 ID 저장용으로 사용)
-const ID_RE = /^[a-zA-Z0-9._-]{4,30}$/;
+// 로그인 ID 규칙: 영문·숫자 4~20자
+const ID_RE = /^[a-zA-Z0-9]{4,20}$/;
+// 비밀번호 규칙: 영문·숫자 6~30자
+const PW_RE = /^[a-zA-Z0-9]{6,30}$/;
 
 /**
  * 실제 접속 IP. app.set('trust proxy', true) 덕분에 req.ip가
@@ -35,11 +37,11 @@ export class AuthController {
       const displayName = (req.body?.displayName ?? '').trim() || null;
 
       if (!ID_RE.test(loginId)) {
-        res.status(400).json({ success: false, error: '아이디는 영문·숫자 4~30자로 입력해 주세요.' });
+        res.status(400).json({ success: false, error: '아이디는 영문·숫자 4~20자로 입력해 주세요.' });
         return;
       }
-      if (typeof password !== 'string' || password.length < 6) {
-        res.status(400).json({ success: false, error: '비밀번호는 6자 이상이어야 합니다.' });
+      if (typeof password !== 'string' || !PW_RE.test(password)) {
+        res.status(400).json({ success: false, error: '비밀번호는 영문·숫자 6~30자로 입력해 주세요.' });
         return;
       }
 
@@ -51,8 +53,8 @@ export class AuthController {
 
       const hash = await bcrypt.hash(password, 10);
 
-      // 관리자 ID면 자동 admin + approved (env ADMIN_EMAIL 값을 ID로 사용)
-      const isAdmin = loginId === (process.env.ADMIN_EMAIL || '').trim().toLowerCase();
+      // 최초 가입자(회원 0명)는 자동으로 관리자 + 승인 → 설정에 관리자 ID를 둘 필요 없음
+      const isAdmin = (await this.model.countMembers()) === 0;
       const id = await this.model.createWebMember(
         loginId,
         hash,
@@ -161,8 +163,8 @@ export class AuthController {
       }
       const currentPassword = (req.body?.currentPassword ?? '').toString();
       const newPassword = (req.body?.newPassword ?? '').toString();
-      if (newPassword.length < 6) {
-        res.status(400).json({ success: false, error: '새 비밀번호는 6자 이상이어야 합니다.' });
+      if (!PW_RE.test(newPassword)) {
+        res.status(400).json({ success: false, error: '새 비밀번호는 영문·숫자 6~30자로 입력해 주세요.' });
         return;
       }
       const member = await this.model.findById(memberId);

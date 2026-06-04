@@ -112,8 +112,8 @@ export class AdminController {
         return;
       }
       const newPassword = (req.body?.newPassword ?? '').toString();
-      if (newPassword.length < 6) {
-        res.status(400).json({ success: false, error: '새 비밀번호는 6자 이상이어야 합니다.' });
+      if (!/^[a-zA-Z0-9]{6,30}$/.test(newPassword)) {
+        res.status(400).json({ success: false, error: '새 비밀번호는 영문·숫자 6~30자로 입력해 주세요.' });
         return;
       }
       const target = await this.model.findById(id);
