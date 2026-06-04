@@ -28,8 +28,8 @@
       <!-- 상단 섹션 탭 -->
       <ul class="nav nav-tabs mb-3">
         <li class="nav-item"><button class="nav-link active" id="navMembers">회원 관리</button></li>
-        <li class="nav-item"><button class="nav-link" id="navLogs">접속 기록</button></li>
-        <li class="nav-item"><button class="nav-link" id="navVisits">방문 기록</button></li>
+        <li class="nav-item"><button class="nav-link" id="navLogs">활동 기록</button></li>
+        <li class="nav-item"><button class="nav-link" id="navVisits">일자별 방문</button></li>
       </ul>
 
       <!-- 회원 관리 -->
@@ -47,7 +47,7 @@
           <table class="table table-bordered table-hover align-middle">
             <thead class="table-dark">
               <tr>
-                <th>ID</th><th>이메일</th><th>이름</th><th>가입경로</th>
+                <th>ID</th><th>아이디</th><th>이름</th><th>가입경로</th>
                 <th>상태</th><th>권한</th><th>가입일</th><th>최근로그인</th><th>처리</th>
               </tr>
             </thead>
@@ -58,21 +58,27 @@
         </div>
       </section>
 
-      <!-- 접속 기록 -->
+      <!-- 활동 기록 (로그인·실패·앱진입·페이지접근 통합) -->
       <section id="sectionLogs" class="d-none">
-        <div class="d-flex align-items-center mb-3">
-          <span class="text-muted small">최근 접속(로그인·앱진입) 기록 200건</span>
+        <div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
+          <div class="btn-group" role="group">
+            <button class="btn btn-outline-dark log-filter-btn active" data-event="">전체</button>
+            <button class="btn btn-outline-dark log-filter-btn" data-event="login">로그인</button>
+            <button class="btn btn-outline-dark log-filter-btn" data-event="login_fail">로그인실패</button>
+            <button class="btn btn-outline-dark log-filter-btn" data-event="app_enter">앱진입</button>
+            <button class="btn btn-outline-dark log-filter-btn" data-event="page_visit">페이지접근</button>
+          </div>
           <button class="btn btn-outline-secondary ms-auto" id="refreshLogsBtn">새로고침</button>
         </div>
         <div class="table-responsive">
           <table class="table table-bordered table-hover align-middle">
             <thead class="table-dark">
               <tr>
-                <th>일시</th><th>이메일</th><th>이벤트</th><th>IP</th><th>기기/브라우저</th>
+                <th>일시</th><th>이름</th><th>이벤트</th><th>경로</th><th>IP</th><th>기기/브라우저</th>
               </tr>
             </thead>
             <tbody id="logTbody">
-              <tr><td colspan="5" class="text-center text-muted">불러오는 중...</td></tr>
+              <tr><td colspan="6" class="text-center text-muted">불러오는 중...</td></tr>
             </tbody>
           </table>
         </div>
@@ -148,9 +154,13 @@
           }
           // 이름 변경은 모든 회원(관리자 포함) 대상
           actions.push(`<button class="btn btn-outline-primary btn-sm rename-btn" data-id="${m.id}" data-name="${(m.display_name || '').replace(/"/g, '&quot;')}">이름변경</button>`);
+          // 비번 재설정 (웹 계정만 — 앱 익명계정은 비번 없음)
+          if (m.signup_source !== 'app') actions.push(`<button class="btn btn-outline-warning btn-sm pw-btn" data-id="${m.id}" data-email="${(m.login_id || '').replace(/"/g, '&quot;')}">비번재설정</button>`);
+          // 삭제 (관리자 제외)
+          if (m.role !== 'admin') actions.push(`<button class="btn btn-danger btn-sm del-btn" data-id="${m.id}" data-email="${(m.login_id || '').replace(/"/g, '&quot;')}">삭제</button>`);
           return `<tr>
             <td>${m.id}</td>
-            <td class="small">${m.email}</td>
+            <td class="small">${m.login_id}</td>
             <td>${m.display_name || '-'}</td>
             <td><span class="badge bg-${m.signup_source === 'app' ? 'info' : 'light text-dark'}">${m.signup_source}</span></td>
             <td>${STATUS_BADGE[m.status] || m.status}</td>
@@ -190,6 +200,36 @@
             else { alert(data.error || '이름 변경 실패'); btn.disabled = false; }
           });
         });
+
+        tbody.querySelectorAll('.pw-btn').forEach((btn) => {
+          btn.addEventListener('click', async () => {
+            const id = btn.dataset.id;
+            const np = prompt(`[${btn.dataset.email}]\n새 비밀번호를 입력하세요 (6자 이상)`);
+            if (np === null) return;
+            if (np.length < 6) { alert('비밀번호는 6자 이상이어야 합니다.'); return; }
+            btn.disabled = true;
+            const r = await fetch(`/api/admin/members/${id}/password`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ newPassword: np }),
+            });
+            const data = await r.json();
+            if (data.success) { alert('비밀번호가 변경되었습니다.'); btn.disabled = false; }
+            else { alert(data.error || '비밀번호 변경 실패'); btn.disabled = false; }
+          });
+        });
+
+        tbody.querySelectorAll('.del-btn').forEach((btn) => {
+          btn.addEventListener('click', async () => {
+            const id = btn.dataset.id;
+            if (!confirm(`[${btn.dataset.email}] 회원을 완전히 삭제합니다.\n되돌릴 수 없습니다. 계속할까요?`)) return;
+            btn.disabled = true;
+            const r = await fetch(`/api/admin/members/${id}`, { method: 'DELETE' });
+            const data = await r.json();
+            if (data.success) load();
+            else { alert(data.error || '삭제 실패'); btn.disabled = false; }
+          });
+        });
       }
 
       document.querySelectorAll('.filter-btn').forEach((b) => {
@@ -206,23 +246,34 @@
         location.href = 'login.html';
       });
 
-      // ── 접속 기록 ──
-      const EVENT_LABEL = { login: '웹 로그인', app_enter: '앱 진입' };
+      // ── 활동 기록 (통합) ──
+      const EVENT_LABEL = { login: '로그인', login_fail: '로그인실패', app_enter: '앱진입', page_visit: '페이지접근' };
+      const EVENT_COLOR = { login: 'success', login_fail: 'danger', app_enter: 'info', page_visit: 'secondary' };
       let logsLoaded = false;
+      let currentLogEvent = '';
+
+      // 이름 일관 표시: 이름 > 이메일 > 비회원
+      function actorName(l) {
+        if (l.display_name) return l.display_name;
+        if (l.login_id) return l.login_id;
+        return '<span class="text-muted">비회원</span>';
+      }
 
       async function loadLogs() {
         const tbody = $('logTbody');
-        tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">불러오는 중...</td></tr>';
-        const r = await fetch('/api/admin/logs');
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">불러오는 중...</td></tr>';
+        const qs = currentLogEvent ? `?event=${currentLogEvent}` : '';
+        const r = await fetch(`/api/admin/logs${qs}`);
         const data = await r.json();
-        if (!data.success) { tbody.innerHTML = `<tr><td colspan="5" class="text-danger text-center">${data.error || '오류'}</td></tr>`; return; }
-        if (!data.logs.length) { tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">기록 없음</td></tr>'; return; }
+        if (!data.success) { tbody.innerHTML = `<tr><td colspan="6" class="text-danger text-center">${data.error || '오류'}</td></tr>`; return; }
+        if (!data.logs.length) { tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">기록 없음</td></tr>'; return; }
         tbody.innerHTML = data.logs.map((l) => `<tr>
           <td class="small text-nowrap">${(l.created_at || '').replace('T', ' ').slice(0, 19)}</td>
-          <td class="small">${l.email || '-'}</td>
-          <td><span class="badge bg-${l.event === 'app_enter' ? 'info' : 'secondary'}">${EVENT_LABEL[l.event] || l.event}</span></td>
+          <td class="small">${actorName(l)}</td>
+          <td><span class="badge bg-${EVENT_COLOR[l.event] || 'secondary'}">${EVENT_LABEL[l.event] || l.event}</span></td>
+          <td class="small">${l.path || '-'}</td>
           <td class="small">${l.ip || '-'}</td>
-          <td class="small text-truncate" style="max-width:280px;" title="${(l.user_agent || '').replace(/"/g, '&quot;')}">${l.user_agent || '-'}</td>
+          <td class="small text-truncate" style="max-width:240px;" title="${(l.user_agent || '').replace(/"/g, '&quot;')}">${l.user_agent || '-'}</td>
         </tr>`).join('');
       }
 
@@ -265,13 +316,13 @@
             if (!data.success || !data.visits.length) { cell.innerHTML = '<span class="text-muted small">상세 없음</span>'; detailRow.dataset.loaded = '1'; return; }
             cell.innerHTML =
               '<table class="table table-sm mb-0"><thead><tr>' +
-              '<th class="small">시각</th><th class="small">IP</th><th class="small">경로</th><th class="small">회원</th><th class="small">기기/브라우저</th>' +
+              '<th class="small">시각</th><th class="small">IP</th><th class="small">경로</th><th class="small">이름</th><th class="small">기기/브라우저</th>' +
               '</tr></thead><tbody>' +
               data.visits.map((v) => `<tr>
                 <td class="small text-nowrap">${(v.created_at || '').replace('T', ' ').slice(11, 19)}</td>
                 <td class="small">${v.ip || '-'}</td>
                 <td class="small">${v.path || '-'}</td>
-                <td class="small">${v.member_id || '-'}</td>
+                <td class="small">${actorName(v)}</td>
                 <td class="small text-truncate" style="max-width:240px;" title="${(v.user_agent || '').replace(/"/g, '&quot;')}">${v.user_agent || '-'}</td>
               </tr>`).join('') +
               '</tbody></table>';
@@ -298,6 +349,16 @@
       });
       $('refreshLogsBtn').addEventListener('click', loadLogs);
       $('refreshVisitsBtn').addEventListener('click', () => { visitsLoaded = true; loadVisits(); });
+
+      // 활동 기록 이벤트 필터
+      document.querySelectorAll('.log-filter-btn').forEach((b) => {
+        b.addEventListener('click', () => {
+          document.querySelectorAll('.log-filter-btn').forEach((x) => x.classList.remove('active'));
+          b.classList.add('active');
+          currentLogEvent = b.dataset.event;
+          loadLogs();
+        });
+      });
 
       (async () => { if (await ensureAdmin()) load(); })();
     })();

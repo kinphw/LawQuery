@@ -1,25 +1,23 @@
 import { Request, Response } from 'express';
+import bcrypt from 'bcryptjs';
 import { MemberModel, MemberStatus } from '../models/MemberModel';
-import { AccessLogModel } from '../models/AccessLogModel';
-import { PageVisitModel } from '../models/PageVisitModel';
+import { AccessLogModel, AccessEvent } from '../models/AccessLogModel';
 
 /** 관리자용 회원 관리. 모든 라우트는 adminGuard로 보호된다. */
 export class AdminController {
   private model: MemberModel;
   private logModel: AccessLogModel;
-  private visitModel: PageVisitModel;
 
   constructor() {
     this.model = new MemberModel();
     this.logModel = new AccessLogModel();
-    this.visitModel = new PageVisitModel();
   }
 
   /** 페이지 접근 일자별 집계. */
   visitsDaily = async (req: Request, res: Response): Promise<void> => {
     try {
       const days = parseInt((req.query.days as string) || '60', 10);
-      const summary = await this.visitModel.dailySummary(days);
+      const summary = await this.logModel.dailySummary(days);
       res.json({ success: true, summary });
     } catch (e) {
       console.error('visitsDaily 오류:', e);
@@ -35,7 +33,7 @@ export class AdminController {
         res.status(400).json({ success: false, error: '날짜 형식(YYYY-MM-DD)이 올바르지 않습니다.' });
         return;
       }
-      const visits = await this.visitModel.listByDate(date);
+      const visits = await this.logModel.listByDate(date);
       res.json({ success: true, visits });
     } catch (e) {
       console.error('visitsByDate 오류:', e);
@@ -43,15 +41,16 @@ export class AdminController {
     }
   };
 
-  /** 접속(로그인/앱진입) 기록 조회. */
+  /** 통합 활동 로그 조회. ?event=login|login_fail|app_enter|page_visit (없으면 전체). */
   listLogs = async (req: Request, res: Response): Promise<void> => {
     try {
-      const limit = parseInt((req.query.limit as string) || '200', 10);
-      const logs = await this.logModel.list(limit);
+      const event = (req.query.event as AccessEvent) || undefined;
+      const limit = parseInt((req.query.limit as string) || '300', 10);
+      const logs = await this.logModel.list(event, limit);
       res.json({ success: true, logs });
     } catch (e) {
       console.error('listLogs 오류:', e);
-      res.status(500).json({ success: false, error: '접속 기록 조회 중 오류가 발생했습니다.' });
+      res.status(500).json({ success: false, error: '활동 기록 조회 중 오류가 발생했습니다.' });
     }
   };
 
@@ -62,7 +61,7 @@ export class AdminController {
       const members = await this.model.listByStatus(status);
       const safe = members.map((m) => ({
         id: m.id,
-        email: m.email,
+        login_id: m.login_id,
         display_name: m.display_name,
         signup_source: m.signup_source,
         status: m.status,
@@ -101,6 +100,62 @@ export class AdminController {
     } catch (e) {
       console.error('renameMember 오류:', e);
       res.status(500).json({ success: false, error: '이름 변경 중 오류가 발생했습니다.' });
+    }
+  };
+
+  /** 관리자가 회원 비밀번호를 강제 변경(현재 비번 불필요). */
+  resetPassword = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const id = parseInt(req.params.id, 10);
+      if (!id) {
+        res.status(400).json({ success: false, error: '잘못된 회원 ID입니다.' });
+        return;
+      }
+      const newPassword = (req.body?.newPassword ?? '').toString();
+      if (!/^[a-zA-Z0-9]{6,30}$/.test(newPassword)) {
+        res.status(400).json({ success: false, error: '새 비밀번호는 영문·숫자 6~30자로 입력해 주세요.' });
+        return;
+      }
+      const target = await this.model.findById(id);
+      if (!target) {
+        res.status(404).json({ success: false, error: '회원을 찾을 수 없습니다.' });
+        return;
+      }
+      if (target.signup_source === 'app') {
+        res.status(400).json({ success: false, error: '앱 익명계정은 비밀번호가 없습니다.' });
+        return;
+      }
+      const hash = await bcrypt.hash(newPassword, 10);
+      await this.model.updatePassword(id, hash);
+      res.json({ success: true, id });
+    } catch (e) {
+      console.error('resetPassword 오류:', e);
+      res.status(500).json({ success: false, error: '비밀번호 변경 중 오류가 발생했습니다.' });
+    }
+  };
+
+  /** 관리자가 회원을 완전 삭제. */
+  deleteMember = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const id = parseInt(req.params.id, 10);
+      if (!id) {
+        res.status(400).json({ success: false, error: '잘못된 회원 ID입니다.' });
+        return;
+      }
+      const target = await this.model.findById(id);
+      if (!target) {
+        res.status(404).json({ success: false, error: '회원을 찾을 수 없습니다.' });
+        return;
+      }
+      if (target.role === 'admin') {
+        res.status(400).json({ success: false, error: '관리자 계정은 삭제할 수 없습니다.' });
+        return;
+      }
+      await this.model.deleteMember(id);
+      res.json({ success: true, id });
+    } catch (e) {
+      console.error('deleteMember 오류:', e);
+      res.status(500).json({ success: false, error: '회원 삭제 중 오류가 발생했습니다.' });
     }
   };
 

@@ -39,8 +39,8 @@
 
         <form id="loginForm">
           <div class="mb-3">
-            <label class="form-label">이메일</label>
-            <input type="email" class="form-control" id="loginEmail" autocomplete="username" required />
+            <label class="form-label">아이디</label>
+            <input type="text" class="form-control" id="loginEmail" autocomplete="username" required />
           </div>
           <div class="mb-3">
             <label class="form-label">비밀번호</label>
@@ -51,11 +51,11 @@
 
         <form id="registerForm" class="d-none">
           <div class="mb-3">
-            <label class="form-label">이메일</label>
-            <input type="email" class="form-control" id="regEmail" autocomplete="username" required />
+            <label class="form-label">아이디 <span class="text-muted small">(영문·숫자 4~20자)</span></label>
+            <input type="text" class="form-control" id="regEmail" autocomplete="username" required />
           </div>
           <div class="mb-3">
-            <label class="form-label">비밀번호 <span class="text-muted small">(6자 이상)</span></label>
+            <label class="form-label">비밀번호 <span class="text-muted small">(영문·숫자 6~30자)</span></label>
             <input type="password" class="form-control" id="regPassword" autocomplete="new-password" required />
           </div>
           <div class="mb-3">
@@ -115,7 +115,7 @@
           const r = await fetch('/api/auth/login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email: $('loginEmail').value, password: $('loginPassword').value }),
+            body: JSON.stringify({ loginId: $('loginEmail').value, password: $('loginPassword').value }),
           });
           const data = await r.json();
           if (data.success) { go(); }
@@ -131,7 +131,7 @@
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              email: $('regEmail').value,
+              loginId: $('regEmail').value,
               password: $('regPassword').value,
               displayName: $('regName').value,
             }),

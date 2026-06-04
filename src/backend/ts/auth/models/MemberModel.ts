@@ -6,7 +6,7 @@ export type MemberRole = 'user' | 'admin';
 
 export interface Member {
   id: number;
-  email: string;
+  login_id: string;
   password_hash: string | null;
   display_name: string | null;
   signup_source: SignupSource;
@@ -31,10 +31,16 @@ export class MemberModel {
     this.db = DbContext.getInstance(process.env.AUTH_DB || 'ldb_auth');
   }
 
-  async findByEmail(email: string): Promise<Member | null> {
+  /** 전체 회원 수 (최초 가입자 관리자 판별용). */
+  async countMembers(): Promise<number> {
+    const rows = await this.db.query<{ cnt: number }>('SELECT COUNT(*) AS cnt FROM member');
+    return Number(rows[0]?.cnt ?? 0);
+  }
+
+  async findByLoginId(loginId: string): Promise<Member | null> {
     const rows = await this.db.query<Member>(
-      'SELECT * FROM member WHERE email = ? LIMIT 1',
-      [email]
+      'SELECT * FROM member WHERE login_id = ? LIMIT 1',
+      [loginId]
     );
     return rows[0] ?? null;
   }
@@ -57,27 +63,27 @@ export class MemberModel {
 
   /** 웹 가입: status=pending(관리자 승인 대기) */
   async createWebMember(
-    email: string,
+    loginId: string,
     passwordHash: string,
     displayName: string | null,
     role: MemberRole = 'user',
     status: MemberStatus = 'pending'
   ): Promise<number> {
     const result: any = await this.db.query(
-      `INSERT INTO member (email, password_hash, display_name, signup_source, status, role)
+      `INSERT INTO member (login_id, password_hash, display_name, signup_source, status, role)
        VALUES (?, ?, ?, 'web', ?, ?)`,
-      [email, passwordHash, displayName, status, role]
+      [loginId, passwordHash, displayName, status, role]
     );
     // mysql2: insertId는 ResultSetHeader에 있음
     return (result as any).insertId ?? (result as any)[0]?.insertId;
   }
 
   /** 앱 자동가입: 익명, status=approved 즉시 */
-  async createAppMember(email: string, deviceKey: string): Promise<number> {
+  async createAppMember(loginId: string, deviceKey: string): Promise<number> {
     const result: any = await this.db.query(
-      `INSERT INTO member (email, password_hash, display_name, signup_source, status, role, device_key, approved_at)
+      `INSERT INTO member (login_id, password_hash, display_name, signup_source, status, role, device_key, approved_at)
        VALUES (?, NULL, NULL, 'app', 'approved', 'user', ?, NOW())`,
-      [email, deviceKey]
+      [loginId, deviceKey]
     );
     return (result as any).insertId ?? (result as any)[0]?.insertId;
   }
@@ -103,6 +109,16 @@ export class MemberModel {
   /** 본인 표시 이름 변경 */
   async updateDisplayName(id: number, displayName: string): Promise<void> {
     await this.db.query('UPDATE member SET display_name = ? WHERE id = ?', [displayName, id]);
+  }
+
+  /** 비밀번호 해시 변경 */
+  async updatePassword(id: number, passwordHash: string): Promise<void> {
+    await this.db.query('UPDATE member SET password_hash = ? WHERE id = ?', [passwordHash, id]);
+  }
+
+  /** 회원 삭제. 활동 로그는 보존(member_id만 남고 조인 시 이름이 비게 됨). */
+  async deleteMember(id: number): Promise<void> {
+    await this.db.query('DELETE FROM member WHERE id = ?', [id]);
   }
 
   async listByStatus(status?: MemberStatus): Promise<Member[]> {

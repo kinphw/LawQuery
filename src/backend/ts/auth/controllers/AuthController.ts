@@ -2,10 +2,12 @@ import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import { MemberModel } from '../models/MemberModel';
 import { AccessLogModel } from '../models/AccessLogModel';
-import { PageVisitModel } from '../models/PageVisitModel';
 import { signToken, verifyToken, newSessionToken, AUTH_COOKIE, cookieOptions } from '../utils/jwt';
 
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+// 로그인 ID 규칙: 영문·숫자 4~20자
+const ID_RE = /^[a-zA-Z0-9]{4,20}$/;
+// 비밀번호 규칙: 영문·숫자 6~30자
+const PW_RE = /^[a-zA-Z0-9]{6,30}$/;
 
 /**
  * 실제 접속 IP. app.set('trust proxy', true) 덕분에 req.ip가
@@ -21,42 +23,40 @@ function clientIp(req: Request): string | null {
 export class AuthController {
   private model: MemberModel;
   private logModel: AccessLogModel;
-  private visitModel: PageVisitModel;
 
   constructor() {
     this.model = new MemberModel();
     this.logModel = new AccessLogModel();
-    this.visitModel = new PageVisitModel();
   }
 
   /** 웹 회원가입: status=pending. 단, ADMIN_EMAIL과 일치하면 admin+approved 자동. */
   register = async (req: Request, res: Response): Promise<void> => {
     try {
-      const email = (req.body?.email ?? '').trim().toLowerCase();
+      const loginId = (req.body?.loginId ?? req.body?.email ?? '').trim().toLowerCase();
       const password = req.body?.password ?? '';
       const displayName = (req.body?.displayName ?? '').trim() || null;
 
-      if (!EMAIL_RE.test(email)) {
-        res.status(400).json({ success: false, error: '올바른 이메일을 입력해 주세요.' });
+      if (!ID_RE.test(loginId)) {
+        res.status(400).json({ success: false, error: '아이디는 영문·숫자 4~20자로 입력해 주세요.' });
         return;
       }
-      if (typeof password !== 'string' || password.length < 6) {
-        res.status(400).json({ success: false, error: '비밀번호는 6자 이상이어야 합니다.' });
+      if (typeof password !== 'string' || !PW_RE.test(password)) {
+        res.status(400).json({ success: false, error: '비밀번호는 영문·숫자 6~30자로 입력해 주세요.' });
         return;
       }
 
-      const existing = await this.model.findByEmail(email);
+      const existing = await this.model.findByLoginId(loginId);
       if (existing) {
-        res.status(409).json({ success: false, error: '이미 가입된 이메일입니다.' });
+        res.status(409).json({ success: false, error: '이미 사용 중인 아이디입니다.' });
         return;
       }
 
       const hash = await bcrypt.hash(password, 10);
 
-      // 관리자 이메일이면 자동 admin + approved
-      const isAdmin = email === (process.env.ADMIN_EMAIL || '').trim().toLowerCase();
+      // 최초 가입자(회원 0명)는 자동으로 관리자 + 승인 → 설정에 관리자 ID를 둘 필요 없음
+      const isAdmin = (await this.model.countMembers()) === 0;
       const id = await this.model.createWebMember(
-        email,
+        loginId,
         hash,
         displayName,
         isAdmin ? 'admin' : 'user',
@@ -87,20 +87,24 @@ export class AuthController {
   /** 로그인: 승인된 계정만 JWT 발급 */
   login = async (req: Request, res: Response): Promise<void> => {
     try {
-      const email = (req.body?.email ?? '').trim().toLowerCase();
+      const loginId = (req.body?.loginId ?? req.body?.email ?? '').trim().toLowerCase();
       const password = req.body?.password ?? '';
 
-      const member = await this.model.findByEmail(email);
+      const ua = req.headers['user-agent'] as string || null;
+      const member = await this.model.findByLoginId(loginId);
       if (!member || !member.password_hash) {
-        res.status(401).json({ success: false, error: '이메일 또는 비밀번호가 올바르지 않습니다.' });
+        await this.logModel.record(member?.id ?? null, loginId, 'login_fail', clientIp(req), ua);
+        res.status(401).json({ success: false, error: '아이디 또는 비밀번호가 올바르지 않습니다.' });
         return;
       }
       const ok = await bcrypt.compare(password, member.password_hash);
       if (!ok) {
-        res.status(401).json({ success: false, error: '이메일 또는 비밀번호가 올바르지 않습니다.' });
+        await this.logModel.record(member.id, member.login_id, 'login_fail', clientIp(req), ua);
+        res.status(401).json({ success: false, error: '아이디 또는 비밀번호가 올바르지 않습니다.' });
         return;
       }
       if (member.status !== 'approved') {
+        await this.logModel.record(member.id, member.login_id, 'login_fail', clientIp(req), ua);
         const msg =
           member.status === 'pending' ? '아직 승인 대기 중입니다.'
           : member.status === 'rejected' ? '가입이 거부된 계정입니다.'
@@ -110,7 +114,7 @@ export class AuthController {
       }
 
       await this.model.touchLogin(member.id);
-      await this.logModel.record(member.id, member.email, 'login', clientIp(req), req.headers['user-agent'] as string || null);
+      await this.logModel.record(member.id, member.login_id, 'login', clientIp(req), req.headers['user-agent'] as string || null);
       // 중복 로그인 차단: 새 세션 토큰 발급 → 기존 기기 세션 무효화
       const sid = newSessionToken();
       await this.model.setSessionToken(member.id, sid);
@@ -149,6 +153,40 @@ export class AuthController {
     }
   };
 
+  /** 본인 비밀번호 변경 (authGuard 보호). 현재 비번 확인 후 변경. */
+  changePassword = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const memberId = req.member?.id;
+      if (!memberId) {
+        res.status(401).json({ success: false, error: '로그인이 필요합니다.' });
+        return;
+      }
+      const currentPassword = (req.body?.currentPassword ?? '').toString();
+      const newPassword = (req.body?.newPassword ?? '').toString();
+      if (!PW_RE.test(newPassword)) {
+        res.status(400).json({ success: false, error: '새 비밀번호는 영문·숫자 6~30자로 입력해 주세요.' });
+        return;
+      }
+      const member = await this.model.findById(memberId);
+      if (!member || !member.password_hash) {
+        // 앱 익명계정 등 비번이 없는 계정은 변경 불가
+        res.status(400).json({ success: false, error: '비밀번호를 변경할 수 없는 계정입니다.' });
+        return;
+      }
+      const ok = await bcrypt.compare(currentPassword, member.password_hash);
+      if (!ok) {
+        res.status(401).json({ success: false, error: '현재 비밀번호가 올바르지 않습니다.' });
+        return;
+      }
+      const hash = await bcrypt.hash(newPassword, 10);
+      await this.model.updatePassword(memberId, hash);
+      res.json({ success: true });
+    } catch (e) {
+      console.error('changePassword 오류:', e);
+      res.status(500).json({ success: false, error: '비밀번호 변경 중 오류가 발생했습니다.' });
+    }
+  };
+
   /**
    * 페이지 접근 기록 (게이트 밖, 비로그인 포함).
    * auth-gate.js가 모든 페이지 진입 시 호출. 로그인 상태면 member_id도 기록.
@@ -160,11 +198,13 @@ export class AuthController {
       const token = req.cookies?.[AUTH_COOKIE]
         || (req.headers.authorization?.startsWith('Bearer ') ? req.headers.authorization.slice(7) : null);
       const payload = token ? verifyToken(token) : null;
-      await this.visitModel.record(
-        path || null,
-        clientIp(req),
+      await this.logModel.record(
         payload?.uid ?? null,
-        req.headers['user-agent'] as string || null
+        null,
+        'page_visit',
+        clientIp(req),
+        req.headers['user-agent'] as string || null,
+        path || null
       );
       res.json({ success: true });
     } catch (e) {
@@ -193,7 +233,7 @@ export class AuthController {
         authenticated: member.status === 'approved',
         status: member.status,
         role: member.role,
-        email: member.email,
+        loginId: member.login_id,
         displayName: member.display_name,
         source: member.signup_source,
       });
@@ -223,8 +263,8 @@ export class AuthController {
 
       let member = await this.model.findByDeviceKey(deviceKey);
       if (!member) {
-        const email = `device_${deviceKey}@auto.lq`;
-        const id = await this.model.createAppMember(email, deviceKey);
+        const appLoginId = `device_${deviceKey}`;
+        const id = await this.model.createAppMember(appLoginId, deviceKey);
         member = await this.model.findById(id);
       }
       if (!member) {
@@ -239,7 +279,7 @@ export class AuthController {
       }
 
       await this.model.touchLogin(member.id);
-      await this.logModel.record(member.id, member.email, 'app_enter', clientIp(req), req.headers['user-agent'] as string || null);
+      await this.logModel.record(member.id, member.login_id, 'app_enter', clientIp(req), req.headers['user-agent'] as string || null);
       const sid = newSessionToken();
       await this.model.setSessionToken(member.id, sid);
       const token = signToken({ uid: member.id, role: member.role, sid });

@@ -56,7 +56,7 @@
     var who;
     if (me.displayName) who = me.displayName;
     else if (me.source === 'app') who = '앱 사용자';
-    else who = me.email || '사용자';
+    else who = me.loginId || '사용자';
 
     var adminLink = me.role === 'admin'
       ? '<a href="admin.html" class="lq-userbar__link">관리자</a>' : '';
@@ -70,7 +70,7 @@
         '</span>' +
         '<span class="lq-userbar__actions">' +
           adminLink +
-          '<button type="button" id="lqRenameBtn" class="lq-userbar__link">이름변경</button>' +
+          '<a href="account.html" class="lq-userbar__link">내 계정</a>' +
           '<button type="button" id="lqLogoutBtn" class="lq-userbar__link">로그아웃</button>' +
         '</span>' +
       '</div>';
@@ -84,32 +84,6 @@
       });
     }
 
-    var renameBtn = document.getElementById('lqRenameBtn');
-    if (renameBtn) {
-      renameBtn.addEventListener('click', function () {
-        var current = (me.displayName && me.source !== 'app') ? me.displayName : '';
-        var name = window.prompt('표시할 이름을 입력하세요 (1~50자)', current);
-        if (name === null) return;          // 취소
-        name = name.trim();
-        if (!name) { alert('이름을 입력해 주세요.'); return; }
-        origFetch('/api/auth/profile', {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ displayName: name }),
-        })
-          .then(function (r) { return r.json(); })
-          .then(function (data) {
-            if (data.success) {
-              var el = document.getElementById('lqWho');
-              if (el) el.textContent = data.displayName;
-              me.displayName = data.displayName;
-            } else {
-              alert(data.error || '이름 변경에 실패했습니다.');
-            }
-          })
-          .catch(function () { alert('서버 연결에 실패했습니다.'); });
-      });
-    }
   }
 
   function escapeHtml(s) {
