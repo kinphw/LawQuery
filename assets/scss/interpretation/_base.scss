@@ -50,11 +50,11 @@
     }
   }
 
-  // 글자크기 조절 컨트롤(유권해석에도 존재): 우상단으로
+  // 글자크기 조절 컨트롤(유권해석에도 존재): 우상단으로(회원바 높이 반영)
   .floating-controls {
     left: auto !important;
     right: 0.5rem;
-    top: 0.5rem;
+    top: calc(var(--lq-userbar-h, 0px) + 0.5rem);
 
     .btn {
       padding: 0.2rem 0.5rem;
