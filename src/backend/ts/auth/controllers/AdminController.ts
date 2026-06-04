@@ -13,6 +13,41 @@ export class AdminController {
     this.logModel = new AccessLogModel();
   }
 
+  /** 승인 대기 회원 수 (뱃지용). */
+  pendingCount = async (_req: Request, res: Response): Promise<void> => {
+    try {
+      res.json({ success: true, count: await this.model.countPending() });
+    } catch (e) {
+      console.error('pendingCount 오류:', e);
+      res.status(500).json({ success: false, error: '조회 오류' });
+    }
+  };
+
+  /** 로그인 실패 반복 경고. */
+  failWarnings = async (_req: Request, res: Response): Promise<void> => {
+    try {
+      res.json({ success: true, rows: await this.logModel.failWarnings(3) });
+    } catch (e) {
+      console.error('failWarnings 오류:', e);
+      res.status(500).json({ success: false, error: '실패 경고 조회 오류' });
+    }
+  };
+
+  /** 통계: 일별 이벤트 + 가입 추이. */
+  stats = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const days = parseInt((req.query.days as string) || '30', 10);
+      const [events, signups] = await Promise.all([
+        this.logModel.dailyStats(days),
+        this.model.dailySignups(days),
+      ]);
+      res.json({ success: true, events, signups });
+    } catch (e) {
+      console.error('stats 오류:', e);
+      res.status(500).json({ success: false, error: '통계 조회 오류' });
+    }
+  };
+
   /** ID별 IP 접근 요약 ("어떤 ID가 어떤 IP로"). */
   ipSummary = async (_req: Request, res: Response): Promise<void> => {
     try {
@@ -57,7 +92,10 @@ export class AdminController {
     try {
       const event = (req.query.event as AccessEvent) || undefined;
       const limit = parseInt((req.query.limit as string) || '300', 10);
-      const logs = await this.logModel.list(event, limit);
+      const dateRe = /^\d{4}-\d{2}-\d{2}$/;
+      const from = dateRe.test(req.query.from as string) ? (req.query.from as string) : undefined;
+      const to = dateRe.test(req.query.to as string) ? (req.query.to as string) : undefined;
+      const logs = await this.logModel.list(event, limit, from, to);
       res.json({ success: true, logs });
     } catch (e) {
       console.error('listLogs 오류:', e);

@@ -40,8 +40,9 @@
 
     <div id="adminContent" class="d-none">
       <ul class="nav nav-tabs mb-3">
-        <li class="nav-item"><button class="nav-link active" id="navMembers">회원 관리</button></li>
+        <li class="nav-item"><button class="nav-link active" id="navMembers">회원 관리 <span id="pendBadge" class="badge bg-danger d-none">0</span></button></li>
         <li class="nav-item"><button class="nav-link" id="navAccess">접근 기록</button></li>
+        <li class="nav-item"><button class="nav-link" id="navStats">통계</button></li>
       </ul>
 
       <!-- ===== 회원 관리 ===== -->
@@ -71,6 +72,12 @@
 
       <!-- ===== 접근 기록 (ID별 IP 요약 + 상세 로그 통합) ===== -->
       <section id="sectionAccess" class="d-none">
+        <!-- ⓪ 로그인 실패 반복 경고 -->
+        <div id="failWarnBox" class="alert alert-danger d-none">
+          <strong>⚠ 로그인 실패 반복 (최근 24시간)</strong>
+          <div id="failWarnList" class="small mt-1"></div>
+        </div>
+
         <!-- ① ID별 IP 요약 -->
         <h6 class="mb-2">아이디별 접속 IP</h6>
         <p class="text-muted small mb-2">아이디마다 접속한 IP를 모아 봅니다. IP가 여러 개면 <span class="multi-ip">빨강</span>으로 표시(계정 공유 의심).</p>
@@ -97,6 +104,14 @@
           </div>
           <button class="btn btn-outline-secondary btn-sm ms-auto" id="refreshLogsBtn">새로고침</button>
         </div>
+        <!-- 기간 필터 -->
+        <div class="d-flex align-items-center gap-2 mb-2 flex-wrap">
+          <input type="date" id="logFrom" class="form-control form-control-sm" style="width:auto;">
+          <span class="text-muted">~</span>
+          <input type="date" id="logTo" class="form-control form-control-sm" style="width:auto;">
+          <button class="btn btn-dark btn-sm" id="applyDate">적용</button>
+          <button class="btn btn-outline-secondary btn-sm" id="clearDate">기간 해제</button>
+        </div>
         <div class="table-responsive">
           <table class="table table-bordered table-hover table-sm align-middle admin-table">
             <thead class="table-dark">
@@ -104,6 +119,25 @@
             </thead>
             <tbody id="logTbody">
               <tr><td colspan="6" class="text-center text-muted">불러오는 중...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ===== 통계 ===== -->
+      <section id="sectionStats" class="d-none">
+        <div class="d-flex align-items-center mb-3">
+          <h6 class="mb-0">최근 30일 통계</h6>
+          <button class="btn btn-outline-secondary btn-sm ms-auto" id="refreshStatsBtn">새로고침</button>
+        </div>
+        <div id="statSummary" class="row g-2 mb-3"></div>
+        <div class="table-responsive">
+          <table class="table table-bordered table-sm align-middle admin-table">
+            <thead class="table-dark">
+              <tr><th>날짜</th><th>가입</th><th>로그인</th><th>실패</th><th>앱진입</th><th>페이지</th><th>고유IP</th></tr>
+            </thead>
+            <tbody id="statTbody">
+              <tr><td colspan="7" class="text-center text-muted">불러오는 중...</td></tr>
             </tbody>
           </table>
         </div>
@@ -199,6 +233,8 @@
           const d = await (await fetch(`/api/admin/members/${b.dataset.id}`, { method: 'DELETE' })).json();
           d.success ? loadMembers() : (alert(d.error || '실패'), b.disabled = false);
         }));
+
+        refreshPendingBadge(); // 목록 갱신 시 대기 뱃지도 동기화
       }
 
       document.querySelectorAll('.filter-btn').forEach((b) => b.addEventListener('click', () => {
@@ -232,7 +268,11 @@
       async function loadLogs() {
         const tbody = $('logTbody');
         tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">불러오는 중...</td></tr>';
-        const qs = currentLogEvent ? `?event=${currentLogEvent}` : '';
+        const p = new URLSearchParams();
+        if (currentLogEvent) p.set('event', currentLogEvent);
+        if (logFrom) p.set('from', logFrom);
+        if (logTo) p.set('to', logTo);
+        const qs = p.toString() ? `?${p.toString()}` : '';
         const data = await (await fetch(`/api/admin/logs${qs}`)).json();
         if (!data.success) { tbody.innerHTML = `<tr><td colspan="6" class="text-danger text-center">${esc(data.error)}</td></tr>`; return; }
         if (!data.logs.length) { tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">없음</td></tr>'; return; }
@@ -246,7 +286,7 @@
         </tr>`).join('');
       }
 
-      function loadAccess() { loadIpSummary(); loadLogs(); }
+      function loadAccess() { loadFailWarnings(); loadIpSummary(); loadLogs(); }
 
       document.querySelectorAll('.log-filter-btn').forEach((b) => b.addEventListener('click', () => {
         document.querySelectorAll('.log-filter-btn').forEach((x) => x.classList.remove('active'));
@@ -254,17 +294,77 @@
       }));
       $('refreshLogsBtn').addEventListener('click', loadAccess);
 
+      // ── 기간 필터 ──
+      let logFrom = '', logTo = '';
+      $('applyDate').addEventListener('click', () => { logFrom = $('logFrom').value; logTo = $('logTo').value; loadLogs(); });
+      $('clearDate').addEventListener('click', () => { logFrom = ''; logTo = ''; $('logFrom').value = ''; $('logTo').value = ''; loadLogs(); });
+
+      // ── 로그인 실패 경고 ──
+      async function loadFailWarnings() {
+        const data = await (await fetch('/api/admin/fail-warnings')).json();
+        const box = $('failWarnBox');
+        if (!data.success || !data.rows.length) { box.classList.add('d-none'); return; }
+        box.classList.remove('d-none');
+        $('failWarnList').innerHTML = data.rows.map((r) =>
+          `<div>아이디 <strong>${esc(r.login_id) || '-'}</strong> · IP ${esc(r.ip)} · 실패 <strong>${r.fails}회</strong> (최근 ${(r.last_at || '').replace('T', ' ').slice(5, 16)})</div>`
+        ).join('');
+      }
+
+      // ── 통계 ──
+      let statsLoaded = false;
+      async function loadStats() {
+        const data = await (await fetch('/api/admin/stats?days=30')).json();
+        if (!data.success) return;
+        // 가입 추이를 날짜별 맵으로
+        const signupMap = {};
+        data.signups.forEach((s) => { signupMap[(s.d || '').slice(0, 10)] = s.cnt; });
+        // 합계 카드
+        const sum = data.events.reduce((a, e) => {
+          a.login += +e.login; a.fail += +e.login_fail; a.app += +e.app_enter; a.visit += +e.page_visit; return a;
+        }, { login: 0, fail: 0, app: 0, visit: 0 });
+        const signupTotal = data.signups.reduce((a, s) => a + +s.cnt, 0);
+        const card = (label, val, color) => `<div class="col-6 col-md-2"><div class="card text-center"><div class="card-body p-2"><div class="small text-muted">${label}</div><div class="h5 mb-0 text-${color}">${val}</div></div></div></div>`;
+        $('statSummary').innerHTML =
+          card('가입', signupTotal, 'primary') + card('로그인', sum.login, 'success') +
+          card('실패', sum.fail, 'danger') + card('앱진입', sum.app, 'info') +
+          card('페이지', sum.visit, 'secondary');
+        // 일별 표
+        const tbody = $('statTbody');
+        if (!data.events.length) { tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">데이터 없음</td></tr>'; return; }
+        tbody.innerHTML = data.events.map((e) => {
+          const d = (e.d || '').slice(0, 10);
+          return `<tr><td class="small">${d}</td><td>${signupMap[d] || 0}</td><td>${e.login}</td>
+            <td class="${+e.login_fail > 0 ? 'text-danger' : ''}">${e.login_fail}</td>
+            <td>${e.app_enter}</td><td>${e.page_visit}</td><td>${e.uniq_ip}</td></tr>`;
+        }).join('');
+      }
+      $('refreshStatsBtn').addEventListener('click', loadStats);
+
+      // ── 대기 뱃지 ──
+      async function refreshPendingBadge() {
+        try {
+          const data = await (await fetch('/api/admin/pending-count')).json();
+          const b = $('pendBadge');
+          if (data.success && data.count > 0) { b.textContent = data.count; b.classList.remove('d-none'); }
+          else b.classList.add('d-none');
+        } catch {}
+      }
+
       // ── 탭 전환 ──
       function switchTab(active) {
-        $('navMembers').classList.toggle('active', active === 'Members');
-        $('navAccess').classList.toggle('active', active === 'Access');
-        $('sectionMembers').classList.toggle('d-none', active !== 'Members');
-        $('sectionAccess').classList.toggle('d-none', active !== 'Access');
+        ['Members', 'Access', 'Stats'].forEach((t) => {
+          $('nav' + t).classList.toggle('active', t === active);
+          $('section' + t).classList.toggle('d-none', t !== active);
+        });
       }
       $('navMembers').addEventListener('click', () => switchTab('Members'));
       $('navAccess').addEventListener('click', () => {
         switchTab('Access');
         if (!accessLoaded) { accessLoaded = true; loadAccess(); }
+      });
+      $('navStats').addEventListener('click', () => {
+        switchTab('Stats');
+        if (!statsLoaded) { statsLoaded = true; loadStats(); }
       });
 
       $('logoutBtn').addEventListener('click', async () => {
@@ -272,7 +372,7 @@
         location.href = 'login.html';
       });
 
-      (async () => { if (await ensureAdmin()) loadMembers(); })();
+      (async () => { if (await ensureAdmin()) { loadMembers(); refreshPendingBadge(); } })();
     })();
   </script>
 </body>
