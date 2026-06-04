@@ -2,7 +2,6 @@ import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import { MemberModel } from '../models/MemberModel';
 import { AccessLogModel } from '../models/AccessLogModel';
-import { PageVisitModel } from '../models/PageVisitModel';
 import { signToken, verifyToken, newSessionToken, AUTH_COOKIE, cookieOptions } from '../utils/jwt';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -21,12 +20,10 @@ function clientIp(req: Request): string | null {
 export class AuthController {
   private model: MemberModel;
   private logModel: AccessLogModel;
-  private visitModel: PageVisitModel;
 
   constructor() {
     this.model = new MemberModel();
     this.logModel = new AccessLogModel();
-    this.visitModel = new PageVisitModel();
   }
 
   /** 웹 회원가입: status=pending. 단, ADMIN_EMAIL과 일치하면 admin+approved 자동. */
@@ -90,17 +87,21 @@ export class AuthController {
       const email = (req.body?.email ?? '').trim().toLowerCase();
       const password = req.body?.password ?? '';
 
+      const ua = req.headers['user-agent'] as string || null;
       const member = await this.model.findByEmail(email);
       if (!member || !member.password_hash) {
+        await this.logModel.record(member?.id ?? null, email, 'login_fail', clientIp(req), ua);
         res.status(401).json({ success: false, error: '이메일 또는 비밀번호가 올바르지 않습니다.' });
         return;
       }
       const ok = await bcrypt.compare(password, member.password_hash);
       if (!ok) {
+        await this.logModel.record(member.id, member.email, 'login_fail', clientIp(req), ua);
         res.status(401).json({ success: false, error: '이메일 또는 비밀번호가 올바르지 않습니다.' });
         return;
       }
       if (member.status !== 'approved') {
+        await this.logModel.record(member.id, member.email, 'login_fail', clientIp(req), ua);
         const msg =
           member.status === 'pending' ? '아직 승인 대기 중입니다.'
           : member.status === 'rejected' ? '가입이 거부된 계정입니다.'
@@ -194,11 +195,13 @@ export class AuthController {
       const token = req.cookies?.[AUTH_COOKIE]
         || (req.headers.authorization?.startsWith('Bearer ') ? req.headers.authorization.slice(7) : null);
       const payload = token ? verifyToken(token) : null;
-      await this.visitModel.record(
-        path || null,
-        clientIp(req),
+      await this.logModel.record(
         payload?.uid ?? null,
-        req.headers['user-agent'] as string || null
+        null,
+        'page_visit',
+        clientIp(req),
+        req.headers['user-agent'] as string || null,
+        path || null
       );
       res.json({ success: true });
     } catch (e) {

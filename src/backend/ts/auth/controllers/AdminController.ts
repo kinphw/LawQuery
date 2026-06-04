@@ -1,26 +1,23 @@
 import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import { MemberModel, MemberStatus } from '../models/MemberModel';
-import { AccessLogModel } from '../models/AccessLogModel';
-import { PageVisitModel } from '../models/PageVisitModel';
+import { AccessLogModel, AccessEvent } from '../models/AccessLogModel';
 
 /** 관리자용 회원 관리. 모든 라우트는 adminGuard로 보호된다. */
 export class AdminController {
   private model: MemberModel;
   private logModel: AccessLogModel;
-  private visitModel: PageVisitModel;
 
   constructor() {
     this.model = new MemberModel();
     this.logModel = new AccessLogModel();
-    this.visitModel = new PageVisitModel();
   }
 
   /** 페이지 접근 일자별 집계. */
   visitsDaily = async (req: Request, res: Response): Promise<void> => {
     try {
       const days = parseInt((req.query.days as string) || '60', 10);
-      const summary = await this.visitModel.dailySummary(days);
+      const summary = await this.logModel.dailySummary(days);
       res.json({ success: true, summary });
     } catch (e) {
       console.error('visitsDaily 오류:', e);
@@ -36,7 +33,7 @@ export class AdminController {
         res.status(400).json({ success: false, error: '날짜 형식(YYYY-MM-DD)이 올바르지 않습니다.' });
         return;
       }
-      const visits = await this.visitModel.listByDate(date);
+      const visits = await this.logModel.listByDate(date);
       res.json({ success: true, visits });
     } catch (e) {
       console.error('visitsByDate 오류:', e);
@@ -44,15 +41,16 @@ export class AdminController {
     }
   };
 
-  /** 접속(로그인/앱진입) 기록 조회. */
+  /** 통합 활동 로그 조회. ?event=login|login_fail|app_enter|page_visit (없으면 전체). */
   listLogs = async (req: Request, res: Response): Promise<void> => {
     try {
-      const limit = parseInt((req.query.limit as string) || '200', 10);
-      const logs = await this.logModel.list(limit);
+      const event = (req.query.event as AccessEvent) || undefined;
+      const limit = parseInt((req.query.limit as string) || '300', 10);
+      const logs = await this.logModel.list(event, limit);
       res.json({ success: true, logs });
     } catch (e) {
       console.error('listLogs 오류:', e);
-      res.status(500).json({ success: false, error: '접속 기록 조회 중 오류가 발생했습니다.' });
+      res.status(500).json({ success: false, error: '활동 기록 조회 중 오류가 발생했습니다.' });
     }
   };
 
