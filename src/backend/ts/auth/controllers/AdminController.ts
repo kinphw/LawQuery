@@ -34,6 +34,7 @@ export class AdminController {
       if (typeof b.banner_enabled === 'boolean') patch.banner_enabled = b.banner_enabled;
       if (typeof b.banner_text === 'string') patch.banner_text = b.banner_text;
       if (typeof b.banner_color === 'string') patch.banner_color = b.banner_color;
+      if (Array.isArray(b.banner_pages)) patch.banner_pages = b.banner_pages.filter((x: any) => typeof x === 'string');
       if (typeof b.signup_enabled === 'boolean') patch.signup_enabled = b.signup_enabled;
       const settings = await this.settingModel.update(patch);
       res.json({ success: true, settings });

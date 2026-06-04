@@ -173,6 +173,14 @@
                 <option value="secondary">회색</option>
               </select>
             </div>
+            <div class="mb-2">
+              <label class="form-label small d-block">표출 페이지</label>
+              <div class="d-flex gap-3 flex-wrap">
+                <div class="form-check"><input class="form-check-input bpage" type="checkbox" value="login" id="bpLogin"><label class="form-check-label" for="bpLogin">로그인</label></div>
+                <div class="form-check"><input class="form-check-input bpage" type="checkbox" value="law" id="bpLaw"><label class="form-check-label" for="bpLaw">법령</label></div>
+                <div class="form-check"><input class="form-check-input bpage" type="checkbox" value="interp" id="bpInterp"><label class="form-check-label" for="bpInterp">해석</label></div>
+              </div>
+            </div>
             <div class="mt-2"><span class="text-muted small">미리보기:</span> <span id="setBannerPreview" class="badge"></span></div>
           </div>
         </div>
@@ -415,6 +423,10 @@
         $('setBannerEnabled').checked = s.banner_enabled;
         $('setBannerText').value = s.banner_text || '';
         $('setBannerColor').value = s.banner_color || 'info';
+        const pages = s.banner_pages || ['login', 'law', 'interp'];
+        $('bpLogin').checked = pages.includes('login');
+        $('bpLaw').checked = pages.includes('law');
+        $('bpInterp').checked = pages.includes('interp');
         $('setSignupEnabled').checked = s.signup_enabled;
         bannerPreview();
       }
@@ -424,6 +436,7 @@
           banner_enabled: $('setBannerEnabled').checked,
           banner_text: $('setBannerText').value,
           banner_color: $('setBannerColor').value,
+          banner_pages: Array.from(document.querySelectorAll('.bpage:checked')).map((c) => c.value),
           signup_enabled: $('setSignupEnabled').checked,
         };
         const data = await (await fetch('/api/admin/settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })).json();

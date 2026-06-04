@@ -149,6 +149,9 @@
       .then(function (r) { return r.json(); })
       .then(function (b) {
         if (!b || !b.enabled || !b.text) return;
+        // 이 페이지가 배너 대상인지: law.html → 'law', 그 외 → 'interp'
+        var pageKey = /law\.html$/i.test(location.pathname) ? 'law' : 'interp';
+        if (b.pages && b.pages.indexOf(pageKey) === -1) return;
         var host = document.getElementById('lq-banner-host');
         if (!host) {
           host = document.createElement('div');
@@ -163,7 +166,7 @@
         var fg = (b.color === 'warning' || b.color === 'info') ? '#212529' : '#fff';
         host.innerHTML =
           '<div style="background:' + bg + ';color:' + fg + ';padding:.5rem .9rem;' +
-          'font-size:.9rem;text-align:center;position:sticky;top:0;z-index:1090;">' +
+          'font-size:.9rem;text-align:center;position:sticky;top:0;z-index:1110;">' +
           escapeHtml(b.text) + '</div>';
       })
       .catch(function () { /* noop */ });
