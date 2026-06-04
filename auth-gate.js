@@ -75,6 +75,13 @@
         '</span>' +
       '</div>';
 
+    // 회원바 높이를 CSS 변수로 노출 → floating-controls 등이 가려지지 않게 내려준다.
+    // (회원바는 로그인 시에만 생기므로 동적으로 반영)
+    try {
+      var h = host.offsetHeight || 0;
+      docEl.style.setProperty('--lq-userbar-h', h + 'px');
+    } catch (e) { /* noop */ }
+
     var logoutBtn = document.getElementById('lqLogoutBtn');
     if (logoutBtn) {
       logoutBtn.addEventListener('click', function () {

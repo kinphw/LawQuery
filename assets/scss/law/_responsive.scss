@@ -15,10 +15,11 @@
 @media (max-width: 767.98px) {
 
   // 글자크기 조절 컨트롤: 데스크탑은 left:300px 고정 → 모바일에선 우상단으로
+  // 회원바(--lq-userbar-h, 동적) 높이만큼 내려 가려지지 않게
   .floating-controls {
     left: auto !important;
     right: 0.5rem;
-    top: 0.5rem;
+    top: calc(var(--lq-userbar-h, 0px) + 0.5rem);
 
     .btn {
       padding: 0.2rem 0.5rem;
@@ -139,10 +140,10 @@
     font-size: 0.65rem;
   }
 
-  // 글자크기 컨트롤은 가로에서도 우상단 유지
+  // 글자크기 컨트롤은 가로에서도 우상단 유지(회원바 높이 반영)
   .floating-controls {
     left: auto !important;
     right: 0.5rem;
-    top: 0.5rem;
+    top: calc(var(--lq-userbar-h, 0px) + 0.5rem);
   }
 }
