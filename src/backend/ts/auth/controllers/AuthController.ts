@@ -4,7 +4,8 @@ import { MemberModel } from '../models/MemberModel';
 import { AccessLogModel } from '../models/AccessLogModel';
 import { signToken, verifyToken, newSessionToken, AUTH_COOKIE, cookieOptions } from '../utils/jwt';
 
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+// 로그인 ID 규칙: 영문/숫자/._- 4~30자 (email 칼럼을 ID 저장용으로 사용)
+const ID_RE = /^[a-zA-Z0-9._-]{4,30}$/;
 
 /**
  * 실제 접속 IP. app.set('trust proxy', true) 덕분에 req.ip가
@@ -29,12 +30,12 @@ export class AuthController {
   /** 웹 회원가입: status=pending. 단, ADMIN_EMAIL과 일치하면 admin+approved 자동. */
   register = async (req: Request, res: Response): Promise<void> => {
     try {
-      const email = (req.body?.email ?? '').trim().toLowerCase();
+      const email = (req.body?.email ?? '').trim().toLowerCase(); // email 칼럼 = 로그인 ID
       const password = req.body?.password ?? '';
       const displayName = (req.body?.displayName ?? '').trim() || null;
 
-      if (!EMAIL_RE.test(email)) {
-        res.status(400).json({ success: false, error: '올바른 이메일을 입력해 주세요.' });
+      if (!ID_RE.test(email)) {
+        res.status(400).json({ success: false, error: '아이디는 영문·숫자 4~30자로 입력해 주세요.' });
         return;
       }
       if (typeof password !== 'string' || password.length < 6) {
@@ -44,13 +45,13 @@ export class AuthController {
 
       const existing = await this.model.findByEmail(email);
       if (existing) {
-        res.status(409).json({ success: false, error: '이미 가입된 이메일입니다.' });
+        res.status(409).json({ success: false, error: '이미 사용 중인 아이디입니다.' });
         return;
       }
 
       const hash = await bcrypt.hash(password, 10);
 
-      // 관리자 이메일이면 자동 admin + approved
+      // 관리자 ID면 자동 admin + approved (env ADMIN_EMAIL 값을 ID로 사용)
       const isAdmin = email === (process.env.ADMIN_EMAIL || '').trim().toLowerCase();
       const id = await this.model.createWebMember(
         email,
@@ -91,13 +92,13 @@ export class AuthController {
       const member = await this.model.findByEmail(email);
       if (!member || !member.password_hash) {
         await this.logModel.record(member?.id ?? null, email, 'login_fail', clientIp(req), ua);
-        res.status(401).json({ success: false, error: '이메일 또는 비밀번호가 올바르지 않습니다.' });
+        res.status(401).json({ success: false, error: '아이디 또는 비밀번호가 올바르지 않습니다.' });
         return;
       }
       const ok = await bcrypt.compare(password, member.password_hash);
       if (!ok) {
         await this.logModel.record(member.id, member.email, 'login_fail', clientIp(req), ua);
-        res.status(401).json({ success: false, error: '이메일 또는 비밀번호가 올바르지 않습니다.' });
+        res.status(401).json({ success: false, error: '아이디 또는 비밀번호가 올바르지 않습니다.' });
         return;
       }
       if (member.status !== 'approved') {
