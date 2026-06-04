@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import bcrypt from 'bcryptjs';
 import { MemberModel, MemberStatus } from '../models/MemberModel';
 import { AccessLogModel } from '../models/AccessLogModel';
 import { PageVisitModel } from '../models/PageVisitModel';
@@ -101,6 +102,37 @@ export class AdminController {
     } catch (e) {
       console.error('renameMember 오류:', e);
       res.status(500).json({ success: false, error: '이름 변경 중 오류가 발생했습니다.' });
+    }
+  };
+
+  /** 관리자가 회원 비밀번호를 강제 변경(현재 비번 불필요). */
+  resetPassword = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const id = parseInt(req.params.id, 10);
+      if (!id) {
+        res.status(400).json({ success: false, error: '잘못된 회원 ID입니다.' });
+        return;
+      }
+      const newPassword = (req.body?.newPassword ?? '').toString();
+      if (newPassword.length < 6) {
+        res.status(400).json({ success: false, error: '새 비밀번호는 6자 이상이어야 합니다.' });
+        return;
+      }
+      const target = await this.model.findById(id);
+      if (!target) {
+        res.status(404).json({ success: false, error: '회원을 찾을 수 없습니다.' });
+        return;
+      }
+      if (target.signup_source === 'app') {
+        res.status(400).json({ success: false, error: '앱 익명계정은 비밀번호가 없습니다.' });
+        return;
+      }
+      const hash = await bcrypt.hash(newPassword, 10);
+      await this.model.updatePassword(id, hash);
+      res.json({ success: true, id });
+    } catch (e) {
+      console.error('resetPassword 오류:', e);
+      res.status(500).json({ success: false, error: '비밀번호 변경 중 오류가 발생했습니다.' });
     }
   };
 

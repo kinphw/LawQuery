@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#212529" />
+  <title>내 계정 - LawQuery</title>
+  <link rel="stylesheet" href="assets/vendor/bootstrap.min.css" />
+  <link rel="stylesheet" href="assets/css/style.css" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="apple-touch-icon" href="assets/icons/icon-192.png" />
+  <!-- 인증 게이트: 미로그인 시 로그인으로 -->
+  <script src="auth-gate.js"></script>
+  <style>
+    body { background: #f8f9fa; }
+    .acc-wrap { max-width: 480px; margin: 0 auto; padding: 1.5rem 1rem; }
+    .acc-card { border: 0; box-shadow: 0 2px 12px rgba(0,0,0,.08); }
+  </style>
+</head>
+
+<body>
+  <div class="acc-wrap">
+    <div class="d-flex align-items-center mb-3">
+      <h4 class="mb-0">내 계정</h4>
+      <a href="index.html" class="btn btn-outline-secondary btn-sm ms-auto">← 돌아가기</a>
+    </div>
+
+    <div id="alertBox" class="alert d-none" role="alert"></div>
+
+    <!-- 내 정보 -->
+    <div class="card acc-card mb-3">
+      <div class="card-body">
+        <div class="text-muted small">이메일</div>
+        <div id="accEmail" class="mb-2">-</div>
+        <div class="text-muted small">가입 경로 / 권한</div>
+        <div id="accMeta">-</div>
+      </div>
+    </div>
+
+    <!-- 이름 변경 -->
+    <div class="card acc-card mb-3">
+      <div class="card-body">
+        <h6 class="mb-3">이름 변경</h6>
+        <form id="nameForm">
+          <div class="input-group">
+            <input type="text" class="form-control" id="displayName" placeholder="표시할 이름 (1~50자)" />
+            <button type="submit" class="btn btn-dark">변경</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- 비밀번호 변경 -->
+    <div class="card acc-card mb-3" id="pwCard">
+      <div class="card-body">
+        <h6 class="mb-3">비밀번호 변경</h6>
+        <form id="pwForm">
+          <div class="mb-2">
+            <input type="password" class="form-control" id="curPw" placeholder="현재 비밀번호" autocomplete="current-password" required />
+          </div>
+          <div class="mb-2">
+            <input type="password" class="form-control" id="newPw" placeholder="새 비밀번호 (6자 이상)" autocomplete="new-password" required />
+          </div>
+          <div class="mb-3">
+            <input type="password" class="form-control" id="newPw2" placeholder="새 비밀번호 확인" autocomplete="new-password" required />
+          </div>
+          <button type="submit" class="btn btn-dark w-100">비밀번호 변경</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      const $ = (id) => document.getElementById(id);
+      const alertBox = $('alertBox');
+      function showAlert(msg, type = 'danger') {
+        alertBox.className = `alert alert-${type}`;
+        alertBox.textContent = msg;
+        window.scrollTo(0, 0);
+      }
+
+      // 현재 계정 정보 로드
+      (async () => {
+        try {
+          const me = await (await fetch('/api/auth/me')).json();
+          if (!me.authenticated) { location.href = 'login.html?next=account.html'; return; }
+          $('accEmail').textContent = me.email || '-';
+          $('accMeta').textContent = `${me.source === 'app' ? '앱' : '웹'} / ${me.role === 'admin' ? '관리자' : '일반'}`;
+          if (me.displayName) $('displayName').value = me.displayName;
+          // 앱 익명계정은 비번이 없으므로 비번 변경 카드 숨김
+          if (me.source === 'app') $('pwCard').classList.add('d-none');
+        } catch { showAlert('계정 정보를 불러오지 못했습니다.'); }
+      })();
+
+      // 이름 변경
+      $('nameForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const name = $('displayName').value.trim();
+        if (!name) { showAlert('이름을 입력해 주세요.'); return; }
+        const data = await (await fetch('/api/auth/profile', {
+          method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ displayName: name }),
+        })).json();
+        if (data.success) showAlert('이름이 변경되었습니다.', 'success');
+        else showAlert(data.error || '이름 변경 실패');
+      });
+
+      // 비밀번호 변경
+      $('pwForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const cur = $('curPw').value, np = $('newPw').value, np2 = $('newPw2').value;
+        if (np.length < 6) { showAlert('새 비밀번호는 6자 이상이어야 합니다.'); return; }
+        if (np !== np2) { showAlert('새 비밀번호가 일치하지 않습니다.'); return; }
+        const data = await (await fetch('/api/auth/password', {
+          method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ currentPassword: cur, newPassword: np }),
+        })).json();
+        if (data.success) { showAlert('비밀번호가 변경되었습니다.', 'success'); $('pwForm').reset(); }
+        else showAlert(data.error || '비밀번호 변경 실패');
+      });
+    })();
+  </script>
+</body>
+
+</html>

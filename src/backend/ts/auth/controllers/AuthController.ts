@@ -149,6 +149,40 @@ export class AuthController {
     }
   };
 
+  /** 본인 비밀번호 변경 (authGuard 보호). 현재 비번 확인 후 변경. */
+  changePassword = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const memberId = req.member?.id;
+      if (!memberId) {
+        res.status(401).json({ success: false, error: '로그인이 필요합니다.' });
+        return;
+      }
+      const currentPassword = (req.body?.currentPassword ?? '').toString();
+      const newPassword = (req.body?.newPassword ?? '').toString();
+      if (newPassword.length < 6) {
+        res.status(400).json({ success: false, error: '새 비밀번호는 6자 이상이어야 합니다.' });
+        return;
+      }
+      const member = await this.model.findById(memberId);
+      if (!member || !member.password_hash) {
+        // 앱 익명계정 등 비번이 없는 계정은 변경 불가
+        res.status(400).json({ success: false, error: '비밀번호를 변경할 수 없는 계정입니다.' });
+        return;
+      }
+      const ok = await bcrypt.compare(currentPassword, member.password_hash);
+      if (!ok) {
+        res.status(401).json({ success: false, error: '현재 비밀번호가 올바르지 않습니다.' });
+        return;
+      }
+      const hash = await bcrypt.hash(newPassword, 10);
+      await this.model.updatePassword(memberId, hash);
+      res.json({ success: true });
+    } catch (e) {
+      console.error('changePassword 오류:', e);
+      res.status(500).json({ success: false, error: '비밀번호 변경 중 오류가 발생했습니다.' });
+    }
+  };
+
   /**
    * 페이지 접근 기록 (게이트 밖, 비로그인 포함).
    * auth-gate.js가 모든 페이지 진입 시 호출. 로그인 상태면 member_id도 기록.

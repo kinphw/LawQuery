@@ -105,6 +105,11 @@ export class MemberModel {
     await this.db.query('UPDATE member SET display_name = ? WHERE id = ?', [displayName, id]);
   }
 
+  /** 비밀번호 해시 변경 */
+  async updatePassword(id: number, passwordHash: string): Promise<void> {
+    await this.db.query('UPDATE member SET password_hash = ? WHERE id = ?', [passwordHash, id]);
+  }
+
   async listByStatus(status?: MemberStatus): Promise<Member[]> {
     if (status) {
       return this.db.query<Member>(
