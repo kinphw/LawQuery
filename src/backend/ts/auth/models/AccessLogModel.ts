@@ -73,6 +73,35 @@ export class AccessLogModel {
     );
   }
 
+  /**
+   * ID별 IP 접근 요약: 회원(또는 로그인ID)별로 어떤 IP에서 접속했는지 집계.
+   * "어떤 ID가 어떤 IP로 접근했나"를 한눈에 보기 위함.
+   */
+  async ipSummaryByMember(limit = 200): Promise<Array<{
+    login_id: string | null;
+    display_name: string | null;
+    ips: string;          // 콤마로 묶인 IP 목록
+    ip_count: number;
+    total: number;
+    last_at: string;
+  }>> {
+    const n = Math.min(Math.max(1, limit), 1000);
+    return this.db.query(
+      `SELECT a.login_id,
+              m.display_name,
+              GROUP_CONCAT(DISTINCT a.ip ORDER BY a.ip SEPARATOR ', ') AS ips,
+              COUNT(DISTINCT a.ip) AS ip_count,
+              COUNT(*)             AS total,
+              MAX(a.created_at)    AS last_at
+       FROM access_log a
+       LEFT JOIN member m ON m.id = a.member_id
+       WHERE a.login_id IS NOT NULL
+       GROUP BY a.login_id, m.display_name
+       ORDER BY last_at DESC
+       LIMIT ${n}`
+    );
+  }
+
   /** 일자별 페이지 접근 집계(page_visit 이벤트 기준). */
   async dailySummary(days = 60): Promise<DailySummary[]> {
     const n = Math.min(Math.max(1, days), 365);

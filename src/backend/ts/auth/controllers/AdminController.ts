@@ -13,6 +13,17 @@ export class AdminController {
     this.logModel = new AccessLogModel();
   }
 
+  /** ID별 IP 접근 요약 ("어떤 ID가 어떤 IP로"). */
+  ipSummary = async (_req: Request, res: Response): Promise<void> => {
+    try {
+      const rows = await this.logModel.ipSummaryByMember();
+      res.json({ success: true, rows });
+    } catch (e) {
+      console.error('ipSummary 오류:', e);
+      res.status(500).json({ success: false, error: 'IP 요약 조회 중 오류가 발생했습니다.' });
+    }
+  };
+
   /** 페이지 접근 일자별 집계. */
   visitsDaily = async (req: Request, res: Response): Promise<void> => {
     try {

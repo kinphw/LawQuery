@@ -39,6 +39,7 @@ export class AuthHandler {
     this.router.patch('/admin/members/:id/password', adminGuard, this.admin.resetPassword);
     this.router.delete('/admin/members/:id', adminGuard, this.admin.deleteMember);
     this.router.get('/admin/logs', adminGuard, this.admin.listLogs);
+    this.router.get('/admin/ip-summary', adminGuard, this.admin.ipSummary);
     this.router.get('/admin/visits/daily', adminGuard, this.admin.visitsDaily);
     this.router.get('/admin/visits', adminGuard, this.admin.visitsByDate);
   }
