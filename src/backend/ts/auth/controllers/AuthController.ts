@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import { MemberModel } from '../models/MemberModel';
 import { AccessLogModel } from '../models/AccessLogModel';
+import { SettingModel } from '../models/SettingModel';
 import { signToken, verifyToken, newSessionToken, AUTH_COOKIE, cookieOptions } from '../utils/jwt';
 
 // 로그인 ID 규칙: 영문·숫자 4~20자
@@ -23,11 +24,22 @@ function clientIp(req: Request): string | null {
 export class AuthController {
   private model: MemberModel;
   private logModel: AccessLogModel;
+  private settingModel: SettingModel;
 
   constructor() {
     this.model = new MemberModel();
     this.logModel = new AccessLogModel();
+    this.settingModel = new SettingModel();
   }
+
+  /** 공개 배너 설정 (게이트 밖, 누구나). 모든 페이지가 상단 배너 표시에 사용. */
+  publicBanner = async (_req: Request, res: Response): Promise<void> => {
+    try {
+      res.json(await this.settingModel.getPublicBanner());
+    } catch {
+      res.json({ enabled: false, text: '', color: 'info' });
+    }
+  };
 
   /** 웹 회원가입: status=pending. 단, ADMIN_EMAIL과 일치하면 admin+approved 자동. */
   register = async (req: Request, res: Response): Promise<void> => {
@@ -51,10 +63,16 @@ export class AuthController {
         return;
       }
 
-      const hash = await bcrypt.hash(password, 10);
-
       // 최초 가입자(회원 0명)는 자동으로 관리자 + 승인 → 설정에 관리자 ID를 둘 필요 없음
       const isAdmin = (await this.model.countMembers()) === 0;
+
+      // 가입 허용 off면 차단 (단, 최초 관리자 가입은 항상 허용)
+      if (!isAdmin && !(await this.settingModel.isSignupEnabled())) {
+        res.status(403).json({ success: false, error: '현재 신규 가입이 중단되었습니다.' });
+        return;
+      }
+
+      const hash = await bcrypt.hash(password, 10);
       const id = await this.model.createWebMember(
         loginId,
         hash,

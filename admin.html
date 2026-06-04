@@ -43,6 +43,7 @@
         <li class="nav-item"><button class="nav-link active" id="navMembers">회원 관리 <span id="pendBadge" class="badge bg-danger d-none">0</span></button></li>
         <li class="nav-item"><button class="nav-link" id="navAccess">접근 기록</button></li>
         <li class="nav-item"><button class="nav-link" id="navStats">통계</button></li>
+        <li class="nav-item"><button class="nav-link" id="navSettings">설정</button></li>
       </ul>
 
       <!-- ===== 회원 관리 ===== -->
@@ -141,6 +142,50 @@
             </tbody>
           </table>
         </div>
+      </section>
+
+      <!-- ===== 설정 ===== -->
+      <section id="sectionSettings" class="d-none">
+        <div id="setMsg" class="alert d-none"></div>
+
+        <div class="card mb-3" style="max-width:640px;">
+          <div class="card-body">
+            <h6 class="mb-3">상단 배너</h6>
+            <div class="form-check form-switch mb-2">
+              <input class="form-check-input" type="checkbox" id="setBannerEnabled">
+              <label class="form-check-label" for="setBannerEnabled">배너 표시</label>
+            </div>
+            <div class="mb-2">
+              <label class="form-label small">배너 문구</label>
+              <textarea class="form-control" id="setBannerText" rows="2" maxlength="1000" placeholder="예) 6/10 02:00~04:00 점검 예정입니다."></textarea>
+            </div>
+            <div class="mb-2">
+              <label class="form-label small">색상</label>
+              <select class="form-select" id="setBannerColor" style="max-width:200px;">
+                <option value="info">정보(하늘)</option>
+                <option value="warning">주의(노랑)</option>
+                <option value="danger">경고(빨강)</option>
+                <option value="success">안내(초록)</option>
+                <option value="primary">파랑</option>
+                <option value="secondary">회색</option>
+              </select>
+            </div>
+            <div class="mt-2"><span class="text-muted small">미리보기:</span> <span id="setBannerPreview" class="badge"></span></div>
+          </div>
+        </div>
+
+        <div class="card mb-3" style="max-width:640px;">
+          <div class="card-body">
+            <h6 class="mb-3">가입 허용</h6>
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" id="setSignupEnabled">
+              <label class="form-check-label" for="setSignupEnabled">신규 회원가입 허용</label>
+            </div>
+            <div class="text-muted small mt-1">끄면 신규 가입이 차단됩니다(관리자 제외).</div>
+          </div>
+        </div>
+
+        <button class="btn btn-dark" id="saveSettingsBtn">저장</button>
       </section>
     </div>
   </div>
@@ -350,9 +395,44 @@
         } catch {}
       }
 
+      // ── 설정 ──
+      let settingsLoaded = false;
+      function bannerPreview() {
+        const colors = { info: '#0dcaf0', warning: '#ffc107', danger: '#dc3545', success: '#198754', primary: '#0d6efd', secondary: '#6c757d' };
+        const c = $('setBannerColor').value;
+        const p = $('setBannerPreview');
+        p.style.background = colors[c] || colors.info;
+        p.style.color = (c === 'warning' || c === 'info') ? '#212529' : '#fff';
+        p.textContent = $('setBannerText').value || '(문구 없음)';
+      }
+      async function loadSettings() {
+        const data = await (await fetch('/api/admin/settings')).json();
+        if (!data.success) return;
+        const s = data.settings;
+        $('setBannerEnabled').checked = s.banner_enabled;
+        $('setBannerText').value = s.banner_text || '';
+        $('setBannerColor').value = s.banner_color || 'info';
+        $('setSignupEnabled').checked = s.signup_enabled;
+        bannerPreview();
+      }
+      ['setBannerText', 'setBannerColor'].forEach((id) => $(id).addEventListener('input', bannerPreview));
+      $('saveSettingsBtn').addEventListener('click', async () => {
+        const body = {
+          banner_enabled: $('setBannerEnabled').checked,
+          banner_text: $('setBannerText').value,
+          banner_color: $('setBannerColor').value,
+          signup_enabled: $('setSignupEnabled').checked,
+        };
+        const data = await (await fetch('/api/admin/settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })).json();
+        const m = $('setMsg');
+        m.className = 'alert alert-' + (data.success ? 'success' : 'danger');
+        m.textContent = data.success ? '저장되었습니다.' : (data.error || '저장 실패');
+        setTimeout(() => m.classList.add('d-none'), 2500);
+      });
+
       // ── 탭 전환 ──
       function switchTab(active) {
-        ['Members', 'Access', 'Stats'].forEach((t) => {
+        ['Members', 'Access', 'Stats', 'Settings'].forEach((t) => {
           $('nav' + t).classList.toggle('active', t === active);
           $('section' + t).classList.toggle('d-none', t !== active);
         });
@@ -365,6 +445,10 @@
       $('navStats').addEventListener('click', () => {
         switchTab('Stats');
         if (!statsLoaded) { statsLoaded = true; loadStats(); }
+      });
+      $('navSettings').addEventListener('click', () => {
+        switchTab('Settings');
+        if (!settingsLoaded) { settingsLoaded = true; loadSettings(); }
       });
 
       $('logoutBtn').addEventListener('click', async () => {
