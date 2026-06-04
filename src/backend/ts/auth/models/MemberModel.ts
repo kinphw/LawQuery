@@ -37,6 +37,25 @@ export class MemberModel {
     return Number(rows[0]?.cnt ?? 0);
   }
 
+  /** 승인 대기 회원 수 (대기 알림 뱃지용). */
+  async countPending(): Promise<number> {
+    const rows = await this.db.query<{ cnt: number }>(
+      "SELECT COUNT(*) AS cnt FROM member WHERE status = 'pending'"
+    );
+    return Number(rows[0]?.cnt ?? 0);
+  }
+
+  /** 일별 가입 추이. */
+  async dailySignups(days = 30): Promise<Array<{ d: string; cnt: number }>> {
+    const n = Math.min(Math.max(1, days), 180);
+    return this.db.query(
+      `SELECT DATE(created_at) AS d, COUNT(*) AS cnt
+       FROM member
+       WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL ${n} DAY)
+       GROUP BY DATE(created_at) ORDER BY d DESC`
+    );
+  }
+
   async findByLoginId(loginId: string): Promise<Member | null> {
     const rows = await this.db.query<Member>(
       'SELECT * FROM member WHERE login_id = ? LIMIT 1',

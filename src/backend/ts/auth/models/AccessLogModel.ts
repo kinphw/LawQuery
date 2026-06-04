@@ -58,10 +58,14 @@ export class AccessLogModel {
    * 활동 로그 목록. event로 필터 가능(없으면 전체).
    * member.display_name을 조인해 이름을 함께 반환.
    */
-  async list(event?: AccessEvent, limit = 300): Promise<AccessLog[]> {
+  async list(event?: AccessEvent, limit = 300, from?: string, to?: string): Promise<AccessLog[]> {
     const n = Math.min(Math.max(1, limit), 2000);
-    const where = event ? 'WHERE a.event = ?' : '';
-    const params = event ? [event] : [];
+    const conds: string[] = [];
+    const params: any[] = [];
+    if (event) { conds.push('a.event = ?'); params.push(event); }
+    if (from) { conds.push('a.created_at >= ?'); params.push(from + ' 00:00:00'); }
+    if (to) { conds.push('a.created_at <= ?'); params.push(to + ' 23:59:59'); }
+    const where = conds.length ? 'WHERE ' + conds.join(' AND ') : '';
     return this.db.query<AccessLog>(
       `SELECT a.*, m.display_name
        FROM access_log a
@@ -70,6 +74,44 @@ export class AccessLogModel {
        ORDER BY a.created_at DESC, a.id DESC
        LIMIT ${n}`,
       params
+    );
+  }
+
+  /** 일별 통계: 날짜별 이벤트 건수(피벗). 최근 days일. */
+  async dailyStats(days = 30): Promise<Array<{
+    d: string; login: number; login_fail: number; app_enter: number; page_visit: number; uniq_ip: number;
+  }>> {
+    const n = Math.min(Math.max(1, days), 180);
+    return this.db.query(
+      `SELECT DATE(created_at) AS d,
+              SUM(event='login')      AS login,
+              SUM(event='login_fail') AS login_fail,
+              SUM(event='app_enter')  AS app_enter,
+              SUM(event='page_visit') AS page_visit,
+              COUNT(DISTINCT ip)      AS uniq_ip
+       FROM access_log
+       WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL ${n} DAY)
+       GROUP BY DATE(created_at)
+       ORDER BY d DESC`
+    );
+  }
+
+  /**
+   * 로그인 실패 반복 경고: 최근 24시간 내 login_fail이 임계 이상인 ID/IP.
+   * 무차별 대입(brute force) 탐지용.
+   */
+  async failWarnings(threshold = 3): Promise<Array<{
+    login_id: string | null; ip: string | null; fails: number; last_at: string;
+  }>> {
+    const t = Math.max(2, threshold);
+    return this.db.query(
+      `SELECT login_id, ip, COUNT(*) AS fails, MAX(created_at) AS last_at
+       FROM access_log
+       WHERE event = 'login_fail' AND created_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)
+       GROUP BY login_id, ip
+       HAVING fails >= ${t}
+       ORDER BY fails DESC, last_at DESC
+       LIMIT 100`
     );
   }
 
