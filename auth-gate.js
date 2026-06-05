@@ -70,6 +70,7 @@
         '</span>' +
         '<span class="lq-userbar__actions">' +
           adminLink +
+          '<a href="board.html" class="lq-userbar__link">건의사항</a>' +
           '<a href="account.html" class="lq-userbar__link">내 계정</a>' +
           '<button type="button" id="lqLogoutBtn" class="lq-userbar__link">로그아웃</button>' +
         '</span>' +

@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#212529" />
+  <title>건의사항 - LawQuery</title>
+  <link rel="stylesheet" href="assets/vendor/bootstrap.min.css" />
+  <link rel="stylesheet" href="assets/css/style.css" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="apple-touch-icon" href="assets/icons/icon-192.png" />
+  <script src="auth-gate.js"></script>
+  <style>
+    body { background: #f8f9fa; }
+    .board-wrap { max-width: 760px; margin: 0 auto; padding: 1rem; }
+    .post-content { white-space: pre-wrap; word-break: break-word; }
+    .comment { border-top: 1px solid #eee; padding: .5rem 0; }
+  </style>
+</head>
+
+<body>
+  <div class="board-wrap">
+    <div class="d-flex align-items-center mb-3">
+      <h4 class="mb-0">건의사항</h4>
+      <a href="index.html" class="btn btn-outline-secondary btn-sm ms-auto">← 돌아가기</a>
+    </div>
+
+    <!-- 목록 -->
+    <div id="listView">
+      <div class="d-flex mb-2">
+        <button class="btn btn-dark btn-sm ms-auto" id="newBtn">글쓰기</button>
+      </div>
+      <div class="list-group" id="postList"><div class="text-muted p-3 text-center">불러오는 중...</div></div>
+    </div>
+
+    <!-- 작성/수정 폼 -->
+    <div id="formView" class="d-none">
+      <div class="card"><div class="card-body">
+        <h6 id="formTitle">새 건의</h6>
+        <input type="hidden" id="editId">
+        <div class="mb-2"><input type="text" id="fTitle" class="form-control" placeholder="제목" maxlength="200"></div>
+        <div class="mb-2"><textarea id="fContent" class="form-control" rows="6" placeholder="내용" maxlength="10000"></textarea></div>
+        <div class="d-flex gap-2">
+          <button class="btn btn-dark" id="saveBtn">저장</button>
+          <button class="btn btn-outline-secondary" id="cancelBtn">취소</button>
+        </div>
+      </div></div>
+    </div>
+
+    <!-- 상세 -->
+    <div id="detailView" class="d-none">
+      <button class="btn btn-outline-secondary btn-sm mb-2" id="backBtn">← 목록</button>
+      <div class="card mb-3"><div class="card-body">
+        <div class="d-flex align-items-start">
+          <h5 id="dTitle" class="mb-1"></h5>
+          <div class="ms-auto text-nowrap" id="dActions"></div>
+        </div>
+        <div class="text-muted small mb-3" id="dMeta"></div>
+        <div class="post-content" id="dContent"></div>
+      </div></div>
+
+      <h6>댓글 <span id="cCount" class="text-muted"></span></h6>
+      <div id="commentList"></div>
+      <div class="input-group mt-2">
+        <input type="text" id="cInput" class="form-control" placeholder="댓글 입력" maxlength="2000">
+        <button class="btn btn-dark" id="cSubmit">등록</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      const $ = (id) => document.getElementById(id);
+      const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+      const show = (v) => { ['listView', 'formView', 'detailView'].forEach((x) => $(x).classList.toggle('d-none', x !== v)); };
+      let curPostId = null;
+
+      async function loadList() {
+        show('listView');
+        const data = await (await fetch('/api/board/posts')).json();
+        const el = $('postList');
+        if (!data.success) { el.innerHTML = `<div class="text-danger p-3">${esc(data.error)}</div>`; return; }
+        if (!data.posts.length) { el.innerHTML = '<div class="text-muted p-3 text-center">아직 글이 없습니다.</div>'; return; }
+        el.innerHTML = data.posts.map((p) => `
+          <a href="#" class="list-group-item list-group-item-action post-link" data-id="${p.id}">
+            <div class="d-flex">
+              <span class="fw-semibold">${esc(p.title)}</span>
+              <span class="ms-2 text-primary small">[${p.comment_count}]</span>
+              <span class="ms-auto text-muted small">${esc(p.author)} · ${(p.created_at || '').slice(0, 10)}</span>
+            </div>
+          </a>`).join('');
+        el.querySelectorAll('.post-link').forEach((a) => a.addEventListener('click', (e) => { e.preventDefault(); openPost(a.dataset.id); }));
+      }
+
+      async function openPost(id) {
+        curPostId = id;
+        const data = await (await fetch(`/api/board/posts/${id}`)).json();
+        if (!data.success) { alert(data.error || '오류'); return; }
+        show('detailView');
+        const p = data.post;
+        $('dTitle').textContent = p.title;
+        $('dMeta').textContent = `${p.author} · ${(p.created_at || '').replace('T', ' ').slice(0, 16)}` + (p.updated_at ? ' (수정됨)' : '');
+        $('dContent').textContent = p.content;
+        // 글 수정/삭제: 본인 or 관리자
+        const canEdit = data.isAdmin || data.me === p.member_id;
+        $('dActions').innerHTML = canEdit
+          ? `<button class="btn btn-outline-primary btn-sm" id="editBtn">수정</button> <button class="btn btn-danger btn-sm" id="delBtn">삭제</button>` : '';
+        if (canEdit) {
+          $('editBtn').addEventListener('click', () => openForm(p));
+          $('delBtn').addEventListener('click', async () => {
+            if (!confirm('이 글을 삭제할까요?')) return;
+            const r = await (await fetch(`/api/board/posts/${id}`, { method: 'DELETE' })).json();
+            r.success ? loadList() : alert(r.error || '실패');
+          });
+        }
+        // 댓글
+        $('cCount').textContent = `(${data.comments.length})`;
+        $('commentList').innerHTML = data.comments.map((c) => {
+          const canDel = data.isAdmin || data.me === c.member_id;
+          return `<div class="comment d-flex">
+            <div><span class="fw-semibold small">${esc(c.author)}</span>
+              <span class="text-muted small ms-1">${(c.created_at || '').replace('T', ' ').slice(0, 16)}</span>
+              <div>${esc(c.content)}</div></div>
+            ${canDel ? `<button class="btn btn-sm btn-outline-danger ms-auto cdel" data-id="${c.id}">삭제</button>` : ''}
+          </div>`;
+        }).join('') || '<div class="text-muted small">댓글이 없습니다.</div>';
+        $('commentList').querySelectorAll('.cdel').forEach((b) => b.addEventListener('click', async () => {
+          if (!confirm('댓글을 삭제할까요?')) return;
+          const r = await (await fetch(`/api/board/comments/${b.dataset.id}`, { method: 'DELETE' })).json();
+          r.success ? openPost(id) : alert(r.error || '실패');
+        }));
+      }
+
+      function openForm(p) {
+        show('formView');
+        $('formTitle').textContent = p ? '글 수정' : '새 건의';
+        $('editId').value = p ? p.id : '';
+        $('fTitle').value = p ? p.title : '';
+        $('fContent').value = p ? p.content : '';
+      }
+
+      $('newBtn').addEventListener('click', () => openForm(null));
+      $('cancelBtn').addEventListener('click', loadList);
+      $('backBtn').addEventListener('click', loadList);
+      $('saveBtn').addEventListener('click', async () => {
+        const id = $('editId').value;
+        const body = JSON.stringify({ title: $('fTitle').value, content: $('fContent').value });
+        const url = id ? `/api/board/posts/${id}` : '/api/board/posts';
+        const method = id ? 'PUT' : 'POST';
+        const r = await (await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body })).json();
+        if (r.success) { id ? openPost(id) : loadList(); } else alert(r.error || '실패');
+      });
+      $('cSubmit').addEventListener('click', async () => {
+        const content = $('cInput').value.trim();
+        if (!content) return;
+        const r = await (await fetch(`/api/board/posts/${curPostId}/comments`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content }) })).json();
+        if (r.success) { $('cInput').value = ''; openPost(curPostId); } else alert(r.error || '실패');
+      });
+      $('cInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('cSubmit').click(); });
+
+      loadList();
+    })();
+  </script>
+</body>
+
+</html>

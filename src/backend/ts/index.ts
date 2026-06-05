@@ -6,6 +6,7 @@ import path from 'path';
 import { LawHandler } from './handlers/LawHandler';
 import { InterpretationHandler } from './handlers/InterpretationHandler';
 import { AuthHandler } from './handlers/AuthHandler';
+import { BoardHandler } from './handlers/BoardHandler';
 import { authGuard } from './auth/middleware/authGuard';
 
 // .env 로드 (DbContext보다 먼저 환경변수가 필요하므로 진입점에서 1회 로드)
@@ -34,6 +35,7 @@ app.use('/api', authHandler.router);
 // 보호 라우터 (로그인 + 승인 필요)
 app.use('/api/law', authGuard, lawHandler.router);
 app.use('/api/interpretation', authGuard, interpretationHandler.router);
+app.use('/api/board', new BoardHandler().router); // 게시판(내부에서 authGuard 적용)
 
 // 404 처리
 app.use((req, res) => {
