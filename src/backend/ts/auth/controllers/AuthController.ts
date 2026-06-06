@@ -5,8 +5,8 @@ import { AccessLogModel } from '../models/AccessLogModel';
 import { SettingModel } from '../models/SettingModel';
 import { signToken, verifyToken, newSessionToken, AUTH_COOKIE, cookieOptions } from '../utils/jwt';
 
-// 로그인 ID 규칙: 영문·숫자 4~20자
-const ID_RE = /^[a-zA-Z0-9]{4,20}$/;
+// 로그인 ID = 이메일(회원 확대용). 간단 형식 검증(인증메일 단계는 없음).
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 // 비밀번호 규칙: 영문·숫자 6~30자
 const PW_RE = /^[a-zA-Z0-9]{6,30}$/;
 
@@ -52,8 +52,8 @@ export class AuthController {
       const occRaw = (req.body?.occupation ?? '').toString().trim();
       const occupation = OCC.includes(occRaw) ? occRaw : null;
 
-      if (!ID_RE.test(loginId)) {
-        res.status(400).json({ success: false, error: '아이디는 영문·숫자 4~20자로 입력해 주세요.' });
+      if (!EMAIL_RE.test(loginId)) {
+        res.status(400).json({ success: false, error: '올바른 이메일 주소를 입력해 주세요.' });
         return;
       }
       if (typeof password !== 'string' || !PW_RE.test(password)) {
@@ -63,7 +63,7 @@ export class AuthController {
 
       const existing = await this.model.findByLoginId(loginId);
       if (existing) {
-        res.status(409).json({ success: false, error: '이미 사용 중인 아이디입니다.' });
+        res.status(409).json({ success: false, error: '이미 가입된 이메일입니다.' });
         return;
       }
 
@@ -119,13 +119,13 @@ export class AuthController {
       const member = await this.model.findByLoginId(loginId);
       if (!member || !member.password_hash) {
         await this.logModel.record(member?.id ?? null, loginId, 'login_fail', clientIp(req), ua);
-        res.status(401).json({ success: false, error: '아이디 또는 비밀번호가 올바르지 않습니다.' });
+        res.status(401).json({ success: false, error: '이메일 또는 비밀번호가 올바르지 않습니다.' });
         return;
       }
       const ok = await bcrypt.compare(password, member.password_hash);
       if (!ok) {
         await this.logModel.record(member.id, member.login_id, 'login_fail', clientIp(req), ua);
-        res.status(401).json({ success: false, error: '아이디 또는 비밀번호가 올바르지 않습니다.' });
+        res.status(401).json({ success: false, error: '이메일 또는 비밀번호가 올바르지 않습니다.' });
         return;
       }
       if (member.status !== 'approved') {
