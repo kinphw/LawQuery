@@ -12,6 +12,7 @@ export interface Member {
   signup_source: SignupSource;
   status: MemberStatus;
   role: MemberRole;
+  plan: 'free' | 'pro';
   device_key: string | null;
   session_token: string | null;
   created_at: string;
