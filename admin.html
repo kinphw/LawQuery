@@ -20,10 +20,12 @@
       .navbar-brand { font-size: 1rem; }
     }
     .ip-list { word-break: break-all; }
-    /* 토글 스위치가 카드 왼쪽 밖으로 밀리지 않게 — 스위치 자리만큼 들여쓰기 보장 */
-    .form-switch { padding-left: 2.5em; }
-    .form-switch .form-check-input { margin-left: -2.5em; }
     .multi-ip { color: #c62828; font-weight: 600; } /* IP 여러 개면 강조(공유 의심) */
+    /* 토글/체크박스: Bootstrap 기본 정렬 유지 + 라벨이 입력에 바짝 붙게 */
+    #sectionSettings .form-check { padding-left: 2.4em; min-height: 1.6rem; }
+    #sectionSettings .form-check-input { margin-left: -2.4em; float: none; }
+    #sectionSettings .form-check-label { margin-left: .25rem; }
+    #sectionSettings .form-switch .form-check-input { width: 2.2em; }
   </style>
 </head>
 
