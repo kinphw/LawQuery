@@ -8,23 +8,25 @@
     gap: 0px;  /* Minimal gap between items */      
   }
   
-  .form-check {
+  /* ⚠️ 법령 조문선택 체크박스 전용. #lawCheckboxes로 한정해야 함.
+     (전역으로 두면 Bootstrap의 .form-check/.form-switch를 깨뜨려 admin 등 다른 페이지의 토글이 어긋남) */
+  #lawCheckboxes .form-check {
     position: relative;
     margin: 0;
     padding: 2px 0.1rem 2px 1.5rem;  /* Reduced vertical padding */
   }
-  
-  .form-check-label {
+
+  #lawCheckboxes .form-check-label {
     font-size: 0.875rem;  /* Match Bootstrap's small */
     line-height: 1.2;     /* Tighter line height */
   }
-  
-  .form-check-input {
+
+  #lawCheckboxes .form-check-input {
     position: absolute;     /* Absolute positioning */
     left: 0;               /* Align to left */
     margin-top: 0.25rem;   /* Vertical alignment */
   }
-  
+
   /* 체크박스용 */
   
   .title-row {
