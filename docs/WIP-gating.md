@@ -6,7 +6,7 @@
 
 **무료 베타 출시를 위한 free/pro 기능 게이팅** 구현 중. 2개 커밋으로 분할:
 - ✅ **커밋1 (완료, dev, 미배포)**: 백엔드 게이팅 인프라 — 검증 끝남
-- 🔜 **커밋2 (다음 작업)**: 프론트 (단일뷰 + PRO 잠금 UI + auth-gate 비로그인 + 가입폼)
+- ✅ **커밋2 (완료, dev, 미배포)**: 프론트 (단일뷰 + PRO 잠금 UI + auth-gate 비로그인 + 가입폼 + admin plan 토글)
 
 ## 핵심 정책 (확정)
 
@@ -38,29 +38,32 @@
 - me 응답에 plan 포함, admin 회원목록에 plan 포함
 - **검증 통과**: 비회원 /unit 200(감독규정 123조), 비회원 /all 401차단, pro_beta /all·유권해석 200, occupation 저장 확인
 
-## 🔜 커밋2에서 할 일 (프론트 — 미착수)
+## ✅ 커밋2에서 완료된 것 (프론트 + 일부 백엔드)
 
 1. **auth-gate.js 전면 개편** ([auth-gate.js](../auth-gate.js)):
-   - 현재: 미로그인 즉시 login.html로 강제(전체 로그인 벽)
-   - 변경: **비로그인도 통과**(콘텐츠 표시), 보호 API가 401/403(PRO_REQUIRED) 줄 때만 처리
-   - PRO_REQUIRED(403) → 로그인으로 보내지 말고 "PRO 안내/잠금" 처리(비회원은 가입 유도)
-   - ⚠️ account.html·admin.html은 여전히 로그인 필요 — 이들은 자체 me 체크함
+   - 비로그인도 통과(콘텐츠 표시). 미로그인 강제 이동 제거.
+   - me 결과를 `window.__lqMePromise`로 노출 → 번들이 plan 분기에 재사용(중복 fetch 방지).
+   - 상태바 분기: 로그인(PRO/FREE 뱃지) / 게스트("둘러보는 중" + 가입 CTA).
+   - fetch 인터셉터는 **앱(lq_app_token) 401 자동 재진입만** 담당. 웹은 401/403에 강제 이동 안 함(화면별 잠금 UI가 처리).
+   - account.html은 자체 me 체크로 보호(기존대로).
 
-2. **법령 프론트** (src/frontend/ts/law/):
-   - 무료/비회원: "단위 선택"(법/시행령/감독규정/세칙) → `/api/law/unit` 호출 → 1컬럼 단일뷰
-   - PRO: 기존 연계표(`/all`,`/get`) 그대로
-   - me.plan 보고 분기. 비PRO에겐 5단표·벌칙·참조·별표 버튼에 **PRO 뱃지 + 잠금**
-   - 현재 LawController([src/frontend/ts/law/controllers/LawController.ts](../src/frontend/ts/law/controllers/LawController.ts))는 처음부터 /all?step=4 호출 → 비PRO면 이게 401 남. 분기 필요.
+2. **법령 프론트**:
+   - 공통 [AuthState.ts](../src/frontend/ts/common/AuthState.ts) — `getMe()`/`isPro()`.
+   - [LawController](../src/frontend/ts/law/controllers/LawController.ts) `initialize()`에서 me 분기: 비PRO면 [LawUnitView](../src/frontend/ts/law/views/LawUnitView.ts).start()로 단일뷰, PRO면 기존 연계표.
+   - [LawUnitView](../src/frontend/ts/law/views/LawUnitView.ts): 단위 선택바(법/시행령/감독규정/세칙, meta 기준 a/e/s/r) → [LawFetchUnitModel](../src/frontend/ts/law/models/LawFetchUnitModel.ts) `/api/law/unit` → 1컬럼 렌더(텍스트검색 필터·하이라이트). 벌칙/별표 버튼·조문별선택조회는 잠금 + 업셀.
 
-3. **유권해석 프론트**: 비PRO면 "PRO 전용" 잠금 화면.
+3. **유권해석 프론트**: [SearchController](../src/frontend/ts/interpretation/controllers/SearchController.ts) me 분기 → 비PRO면 [SearchView](../src/frontend/ts/interpretation/views/SearchView.ts).renderLock()(폼 비활성화 + PRO 잠금 화면).
 
-4. **SW 캐싱** ([service-worker.js](../service-worker.js)): 지금 index/law를 "미로그인 차단" 전제로 둠 → 비로그인 허용에 맞게 재조정.
+4. **SW 캐싱** ([service-worker.js](../service-worker.js)): v3→v4, PROTECTED_PAGES 제거, index/law도 network-first(비로그인 개방).
 
-5. **가입폼** ([login.html](../login.html)): 직군 드롭다운(회계사/세무사/금융회사/회계팀/법무팀/학생/기타) 추가, register에 occupation 전송. "PRO 기능 베타 무료, 추후 유료화 예정" 공지.
+5. **가입폼** ([login.html](../login.html)): 직군 드롭다운(회계사/세무사/금융회사/회계팀/법무팀/학생/기타) + occupation 전송 + "PRO 베타 무료, 추후 유료" 공지.
 
-6. **관리자**: 회원 plan free↔pro_beta↔pro 토글 버튼(수동 부여용) — admin.html.
+6. **관리자 plan 토글**: [admin.html](../admin.html) "등급" 컬럼·버튼(prompt로 free/pro_beta/pro) + 백엔드 [AdminController.setPlan](../src/backend/ts/auth/controllers/AdminController.ts) + [MemberModel.updatePlan](../src/backend/ts/auth/models/MemberModel.ts) + 라우트 `PATCH /api/admin/members/:id/plan`. (Member.plan 타입도 `MemberPlan`으로 정정)
 
-7. 통합 테스트 + 커밋2.
+### 커밋2 검증 (백엔드 런타임 + 빌드)
+- `tsc -p tsconfig.json`(프론트)·`tsconfig.backend.json` 통과, `npm run build` 번들 성공.
+- 런타임: `/law/unit` 200 / 잘못된 origin 400 / `/law/all`·`/interpretation/initial` 비인증 401 / `setPlan` 라우트 401(존재).
+- ⚠️ 프론트 **브라우저 시각 검증은 미실시**(빌드/타입만 확인). 배포 전 비회원·PRO 화면 눈으로 확인 권장.
 
 ## ⚠️ 운영 배포 시 필요 (커밋1+2 다 끝나고)
 

@@ -7,6 +7,8 @@ import { SearchResult } from "../types/SearchResult";
 import { SearchDataManager } from "./data/SearchDataManager";
 import { SearchEventManager } from "./event/SearchEventManager";
 
+import { getMe, isPro } from "../../common/AuthState";
+
 export interface ISearchController extends IController { // 의존성 주입을 위한 인터페이스
   model: SearchModel;
   view: SearchView;
@@ -42,7 +44,14 @@ export class SearchController implements ISearchController {
 
   async initialize(): Promise<void> {
     // 헤더 렌더링 (뷰 생성자에서 실행됨)
-    
+
+    // 등급 분기: 유권해석은 통째로 PRO. 비PRO면 잠금 화면만 표시하고 종료.
+    const me = await getMe();
+    if (!isPro(me)) {
+      this.view.renderLock(me.authenticated);
+      return;
+    }
+
     // 초기 데이터 로드
     this.view.showLoading();
     // const initialResults = await this.model.getInitialData();

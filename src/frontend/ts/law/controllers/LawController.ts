@@ -34,6 +34,9 @@ import { LawAnnexView } from "../views/components/LawAnnexView";
 
 import { CurrentLawBox } from "../views/components/CurrentLawBox";
 
+import { getMe, isPro } from "../../common/AuthState";
+import { LawUnitView } from "../views/LawUnitView";
+
 export interface ILawController extends IController {
 
     dataManager: LawDataManager;
@@ -148,8 +151,16 @@ export class LawController implements ILawController {
 
     async initialize(): Promise<void> {
 
-        // DB에서 법령명 메타 로드 → LawConfig 하드코딩 대체
+        // DB에서 법령명 메타 로드 → LawConfig 하드코딩 대체 (무료/PRO 공통)
         const meta = await this.modelFetchMeta.getMeta();
+
+        // 등급 분기: 비PRO(비회원·FREE)는 단일 단위 무료뷰. PRO만 5단 연계표.
+        const me = await getMe();
+        if (!isPro(me)) {
+            await new LawUnitView(meta, me.authenticated).start();
+            return;
+        }
+
         if (meta.length > 0) {
             this.view.setLawNames(meta.map(m => m.full_name));
             const label = meta.find(m => m.origin === 'a')?.full_name.split('\n')[0] ?? '';

@@ -61,7 +61,7 @@
             <thead class="table-dark">
               <tr>
                 <th>ID</th><th>아이디</th><th>이름</th><th>경로</th>
-                <th>상태</th><th>권한</th><th>가입일</th><th>최근로그인</th><th>처리</th>
+                <th>상태</th><th>권한</th><th>등급</th><th>가입일</th><th>최근로그인</th><th>처리</th>
               </tr>
             </thead>
             <tbody id="memberTbody">
@@ -229,14 +229,19 @@
         rejected: '<span class="badge bg-secondary">거부</span>',
         revoked: '<span class="badge bg-danger">정지</span>',
       };
+      const PLAN_BADGE = {
+        free: '<span class="badge bg-secondary">FREE</span>',
+        pro_beta: '<span class="badge bg-info text-dark">PRO베타</span>',
+        pro: '<span class="badge bg-success">PRO</span>',
+      };
 
       async function loadMembers() {
         const tbody = $('memberTbody');
-        tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted">불러오는 중...</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="10" class="text-center text-muted">불러오는 중...</td></tr>';
         const qs = currentStatus ? `?status=${currentStatus}` : '';
         const data = await (await fetch(`/api/admin/members${qs}`)).json();
-        if (!data.success) { tbody.innerHTML = `<tr><td colspan="9" class="text-danger text-center">${esc(data.error)}</td></tr>`; return; }
-        if (!data.members.length) { tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted">없음</td></tr>'; return; }
+        if (!data.success) { tbody.innerHTML = `<tr><td colspan="10" class="text-danger text-center">${esc(data.error)}</td></tr>`; return; }
+        if (!data.members.length) { tbody.innerHTML = '<tr><td colspan="10" class="text-center text-muted">없음</td></tr>'; return; }
 
         tbody.innerHTML = data.members.map((m) => {
           const a = [];
@@ -246,6 +251,7 @@
             if (m.status === 'approved') a.push(`<button class="btn btn-outline-danger btn-sm act" data-id="${m.id}" data-act="revoke">정지</button>`);
           }
           a.push(`<button class="btn btn-outline-primary btn-sm rename-btn" data-id="${m.id}" data-name="${esc(m.display_name)}">이름</button>`);
+          a.push(`<button class="btn btn-outline-info btn-sm plan-btn" data-id="${m.id}" data-plan="${m.plan}">등급</button>`);
           if (m.signup_source !== 'app') a.push(`<button class="btn btn-outline-warning btn-sm pw-btn" data-id="${m.id}" data-lid="${esc(m.login_id)}">비번</button>`);
           if (m.role !== 'admin') a.push(`<button class="btn btn-danger btn-sm del-btn" data-id="${m.id}" data-lid="${esc(m.login_id)}">삭제</button>`);
           return `<tr>
@@ -255,6 +261,7 @@
             <td><span class="badge bg-${m.signup_source === 'app' ? 'info' : 'light text-dark'}">${m.signup_source}</span></td>
             <td>${STATUS_BADGE[m.status] || m.status}</td>
             <td>${m.role}</td>
+            <td>${PLAN_BADGE[m.plan] || esc(m.plan)}</td>
             <td class="small">${(m.created_at || '').slice(0, 10)}</td>
             <td class="small">${(m.last_login_at || '').slice(0, 10) || '-'}</td>
             <td><div class="actions text-nowrap">${a.join(' ') || '-'}</div></td>
@@ -271,6 +278,16 @@
           if (name === null) return; const t = name.trim(); if (!t) { alert('이름을 입력해 주세요.'); return; }
           b.disabled = true;
           const d = await (await fetch(`/api/admin/members/${b.dataset.id}/name`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ displayName: t }) })).json();
+          d.success ? loadMembers() : (alert(d.error || '실패'), b.disabled = false);
+        }));
+        tbody.querySelectorAll('.plan-btn').forEach((b) => b.addEventListener('click', async () => {
+          const cur = b.dataset.plan || 'free';
+          const np = prompt('등급 입력: free / pro_beta / pro\n(free=잠금, pro_beta=베타무료, pro=정식유료)', cur);
+          if (np === null) return; const t = np.trim();
+          if (!['free', 'pro_beta', 'pro'].includes(t)) { alert('free / pro_beta / pro 중 하나로 입력해 주세요.'); return; }
+          if (t === cur) return;
+          b.disabled = true;
+          const d = await (await fetch(`/api/admin/members/${b.dataset.id}/plan`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ plan: t }) })).json();
           d.success ? loadMembers() : (alert(d.error || '실패'), b.disabled = false);
         }));
         tbody.querySelectorAll('.pw-btn').forEach((b) => b.addEventListener('click', async () => {

@@ -37,6 +37,7 @@ export class AuthHandler {
     this.router.post('/admin/members/:id/reject', adminGuard, this.admin.reject);
     this.router.post('/admin/members/:id/revoke', adminGuard, this.admin.revoke);
     this.router.patch('/admin/members/:id/name', adminGuard, this.admin.renameMember);
+    this.router.patch('/admin/members/:id/plan', adminGuard, this.admin.setPlan); // 등급 수동 부여
     this.router.patch('/admin/members/:id/password', adminGuard, this.admin.resetPassword);
     this.router.delete('/admin/members/:id', adminGuard, this.admin.deleteMember);
     this.router.get('/admin/logs', adminGuard, this.admin.listLogs);

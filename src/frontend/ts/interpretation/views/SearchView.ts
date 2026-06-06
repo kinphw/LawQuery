@@ -72,6 +72,28 @@ export class SearchView {
     }
   }
 
+  /** 비PRO(비회원·FREE) 잠금 화면. 유권해석은 통째로 PRO 전용. */
+  renderLock(authenticated: boolean): void {
+    // 검색 폼 비활성화
+    document.querySelectorAll('#searchForm input, #searchForm select, #searchForm button')
+      .forEach((el) => ((el as HTMLInputElement).disabled = true));
+
+    if (!this.resultsContainer) return;
+    const cta = authenticated
+      ? '<span class="text-muted">PRO 등급에서 이용 가능합니다. 관리자에게 문의해 주세요.</span>'
+      : '<a href="login.html" class="btn btn-primary btn-lg">가입하고 무료로 PRO 베타 이용 →</a>';
+    this.resultsContainer.innerHTML = `
+      <div class="text-center p-5">
+        <div class="display-4 mb-3"><i class="fas fa-lock text-secondary"></i></div>
+        <h4 class="mb-2">유권해석·비조치의견서는 PRO 전용입니다</h4>
+        <p class="text-muted mb-4">
+          흩어져 있어 찾기 어려운 유권해석·법령해석·비조치의견서를<br>
+          한 곳에서 검색·조회하는 킬 기능입니다.
+        </p>
+        <div>${cta}</div>
+      </div>`;
+  }
+
   showToast(message: string): void {
     this.toastManager.showToast(message);
   }

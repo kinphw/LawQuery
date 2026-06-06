@@ -62,9 +62,26 @@
             <label class="form-label">이름 <span class="text-muted small">(선택)</span></label>
             <input type="text" class="form-control" id="regName" autocomplete="name" />
           </div>
+          <div class="mb-3">
+            <label class="form-label">직군 <span class="text-muted small">(선택)</span></label>
+            <select class="form-select" id="regOccupation">
+              <option value="">선택 안 함</option>
+              <option value="회계사">회계사</option>
+              <option value="세무사">세무사</option>
+              <option value="금융회사">금융회사</option>
+              <option value="회계팀">회계팀</option>
+              <option value="법무팀">법무팀</option>
+              <option value="학생">학생</option>
+              <option value="기타">기타</option>
+            </select>
+          </div>
           <button type="submit" class="btn btn-dark w-100">가입하기</button>
-          <p class="text-success small mt-3 mb-0">
+          <p class="text-success small mt-3 mb-1">
             ✓ 회원가입 시 자동 승인되어 바로 이용하실 수 있습니다.
+          </p>
+          <p class="text-muted small mb-0">
+            가입하면 <strong>5단 연계표·벌칙·별표·유권해석</strong> 등 PRO 기능을
+            <strong>베타 기간 무료</strong>로 이용하실 수 있습니다. (추후 유료 전환 예정)
           </p>
         </form>
       </div>
@@ -148,6 +165,7 @@
               loginId: $('regEmail').value,
               password: $('regPassword').value,
               displayName: $('regName').value,
+              occupation: $('regOccupation').value,
             }),
           });
           const data = await r.json();

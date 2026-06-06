@@ -3,6 +3,7 @@ import DbContext from '../../common/DbContext';
 export type SignupSource = 'web' | 'app';
 export type MemberStatus = 'pending' | 'approved' | 'rejected' | 'revoked';
 export type MemberRole = 'user' | 'admin';
+export type MemberPlan = 'free' | 'pro_beta' | 'pro';
 
 export interface Member {
   id: number;
@@ -13,7 +14,7 @@ export interface Member {
   signup_source: SignupSource;
   status: MemberStatus;
   role: MemberRole;
-  plan: 'free' | 'pro';
+  plan: MemberPlan;
   device_key: string | null;
   session_token: string | null;
   created_at: string;
@@ -136,6 +137,11 @@ export class MemberModel {
   /** 비밀번호 해시 변경 */
   async updatePassword(id: number, passwordHash: string): Promise<void> {
     await this.db.query('UPDATE member SET password_hash = ? WHERE id = ?', [passwordHash, id]);
+  }
+
+  /** 등급(plan) 변경 — 관리자 수동 부여(free↔pro_beta↔pro). */
+  async updatePlan(id: number, plan: MemberPlan): Promise<void> {
+    await this.db.query('UPDATE member SET plan = ? WHERE id = ?', [plan, id]);
   }
 
   /** 회원 삭제. 활동 로그는 보존(member_id만 남고 조인 시 이름이 비게 됨). */
