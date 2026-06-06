@@ -146,6 +146,7 @@ export class AdminController {
         signup_source: m.signup_source,
         status: m.status,
         role: m.role,
+        plan: m.plan,
         created_at: m.created_at,
         approved_at: m.approved_at,
         last_login_at: m.last_login_at,

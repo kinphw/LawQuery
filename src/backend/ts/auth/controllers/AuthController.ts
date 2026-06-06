@@ -73,28 +73,25 @@ export class AuthController {
       }
 
       const hash = await bcrypt.hash(password, 10);
+      // 무료 베타: 가입 즉시 자동 승인(approved). 악용 계정은 관리자가 사후 정지(revoke).
       const id = await this.model.createWebMember(
         loginId,
         hash,
         displayName,
         isAdmin ? 'admin' : 'user',
-        isAdmin ? 'approved' : 'pending'
+        'approved'
       );
 
-      if (isAdmin) {
-        // 관리자는 즉시 로그인 처리
-        const sid = newSessionToken();
-        await this.model.setSessionToken(id, sid);
-        const token = signToken({ uid: id, role: 'admin', sid });
-        res.cookie(AUTH_COOKIE, token, cookieOptions());
-        res.json({ success: true, status: 'approved', role: 'admin', message: '관리자 계정으로 가입되었습니다.' });
-        return;
-      }
-
+      // 가입 즉시 로그인 처리(관리자/일반 공통)
+      const sid = newSessionToken();
+      await this.model.setSessionToken(id, sid);
+      const token = signToken({ uid: id, role: isAdmin ? 'admin' : 'user', sid });
+      res.cookie(AUTH_COOKIE, token, cookieOptions());
       res.json({
         success: true,
-        status: 'pending',
-        message: '가입 신청이 완료되었습니다. 관리자 승인 후 이용하실 수 있습니다.',
+        status: 'approved',
+        role: isAdmin ? 'admin' : 'user',
+        message: isAdmin ? '관리자 계정으로 가입되었습니다.' : '가입이 완료되었습니다.',
       });
     } catch (e) {
       console.error('register 오류:', e);
@@ -251,6 +248,7 @@ export class AuthController {
         authenticated: member.status === 'approved',
         status: member.status,
         role: member.role,
+        plan: member.plan,
         loginId: member.login_id,
         displayName: member.display_name,
         source: member.signup_source,
