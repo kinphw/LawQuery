@@ -179,7 +179,8 @@
       .then(function (r) { return r.json(); })
       .then(function (b) {
         if (!b || !b.enabled || !b.text) return;
-        var pageKey = /law\.html$/i.test(location.pathname) ? 'law' : 'interp';
+        // 법령=index.html(또는 루트 '/'), 유권해석=interpretation.html
+        var pageKey = /interpretation\.html$/i.test(location.pathname) ? 'interp' : 'law';
         if (b.pages && b.pages.indexOf(pageKey) === -1) return;
         var host = document.getElementById('lq-banner-host');
         if (!host) {

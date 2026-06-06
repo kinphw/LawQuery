@@ -52,10 +52,12 @@ npm run typecheck:watch
 ### 전체 구조
 
 ```
-프론트엔드 (브라우저)          백엔드 (Node.js/Express)       DB
-law.html / index.html  ──→   /api/law/*     ──→   ldb_j / ldb_y (MySQL)
-                       ──→   /api/interpretation/*  ──→   ldb_i (MySQL)
+프론트엔드 (브라우저)               백엔드 (Node.js/Express)       DB
+index.html(법령=시작화면)    ──→   /api/law/*     ──→   ldb_j / ldb_y (MySQL)
+interpretation.html(유권해석) ──→   /api/interpretation/*  ──→   ldb_i (MySQL)
 ```
+
+> **시작화면 = 법령(index.html).** 무료 본문이 미끼이므로 루트(`/`)·앱 start_url·로그인 후 모두 법령으로 진입. 유권해석은 `interpretation.html`(PRO 전용). `index.html`은 `law.bundle.js`, `interpretation.html`은 `interpretation.bundle.js`를 로드.
 
 빌드 결과물: `dist/law.bundle.js`, `dist/interpretation.bundle.js`
 프론트엔드 진입점: `src/frontend/ts/entry/law.ts`, `src/frontend/ts/entry/interpretation.ts`

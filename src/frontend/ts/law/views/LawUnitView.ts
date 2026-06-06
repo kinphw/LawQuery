@@ -10,7 +10,7 @@ import type { LawMeta } from '../models/LawFetchMetaModel';
  * 무료 사용자에게는 "한 단(법/시행령/감독규정/세칙)을 통째로 보는" 단일뷰를 제공하고
  * 연계표/벌칙/별표 등은 잠금(가입·업그레이드 유도) 처리한다.
  *
- * law.html의 정적 레이아웃을 재사용하되 PRO 요소는 잠그고, #results에 단일뷰를 그린다.
+ * 법령 페이지(index.html)의 정적 레이아웃을 재사용하되 PRO 요소는 잠그고, #results에 단일뷰를 그린다.
  */
 export class LawUnitView {
   private header = new Header();
@@ -95,7 +95,7 @@ export class LawUnitView {
     results.parentElement?.insertBefore(host, results);
   }
 
-  /** law.html의 PRO 전용 정적 요소(벌칙/별표 버튼, 조문별 선택조회)를 잠근다. */
+  /** 법령 페이지의 PRO 전용 정적 요소(벌칙/별표 버튼, 조문별 선택조회)를 잠근다. */
   private lockProElements(): void {
     ['penaltyBtn', 'annexBtn'].forEach((id) => {
       const btn = document.getElementById(id);
