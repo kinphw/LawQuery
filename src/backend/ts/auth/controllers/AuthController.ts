@@ -47,6 +47,10 @@ export class AuthController {
       const loginId = (req.body?.loginId ?? req.body?.email ?? '').trim().toLowerCase();
       const password = req.body?.password ?? '';
       const displayName = (req.body?.displayName ?? '').trim() || null;
+      // 직군/소속 수집 (B2B 자산). 화이트리스트만 허용.
+      const OCC = ['회계사', '세무사', '금융회사', '회계팀', '법무팀', '학생', '기타'];
+      const occRaw = (req.body?.occupation ?? '').toString().trim();
+      const occupation = OCC.includes(occRaw) ? occRaw : null;
 
       if (!ID_RE.test(loginId)) {
         res.status(400).json({ success: false, error: '아이디는 영문·숫자 4~20자로 입력해 주세요.' });
@@ -73,13 +77,15 @@ export class AuthController {
       }
 
       const hash = await bcrypt.hash(password, 10);
-      // 무료 베타: 가입 즉시 자동 승인(approved). 악용 계정은 관리자가 사후 정지(revoke).
+      // 무료 베타: 가입 즉시 자동 승인 + plan=pro_beta(킬 기능 베타 개방). 악용 시 관리자 사후 정지.
       const id = await this.model.createWebMember(
         loginId,
         hash,
         displayName,
         isAdmin ? 'admin' : 'user',
-        'approved'
+        'approved',
+        'pro_beta',
+        occupation
       );
 
       // 가입 즉시 로그인 처리(관리자/일반 공통)

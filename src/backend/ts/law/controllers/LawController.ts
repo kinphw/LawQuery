@@ -16,7 +16,7 @@ export class LawController extends BaseLawController<LawModel> {
   // /all
   async getAll(req: Request, res: Response): Promise<void> {
 
-    // 요청별 구조를 읽는다
+    // 요청별 구조를 읽는다 (연계표 = PRO 전용, proGuard로 보호됨)
     const dbName: string = req.query.law as string;
     const step: number = parseInt(req.query.step as string);
     const dbContext = this.getDbContext(dbName);
@@ -34,7 +34,7 @@ export class LawController extends BaseLawController<LawModel> {
   // async getByIds(req: IncomingMessage, res: ServerResponse, lawIds: string[] | null) {
   async getByIds(req: Request, res: Response): Promise<void> {
 
-    // 요청별 구조를 읽는다
+    // 요청별 구조를 읽는다 (선택 연계표 = PRO 전용)
     const dbName: string = req.query.law as string;
     const step: number = parseInt(req.query.step as string);
     const dbContext = this.getDbContext(dbName);
@@ -105,6 +105,19 @@ export class LawController extends BaseLawController<LawModel> {
       return;
     }
 
+    res.status(200).json({ success: true, data });
+  }
+
+  // 단일 단위 전체 조회 (/api/law/unit?law=j&origin=s) — 무료. 연계 없이 한 단의 모든 조문.
+  async getUnit(req: Request, res: Response): Promise<void> {
+    const dbName: string = req.query.law as string;
+    const origin = (req.query.origin as string || '').toLowerCase();
+    if (!['a', 'e', 's', 'r'].includes(origin)) {
+      res.status(400).json({ success: false, error: 'origin은 a/e/s/r 중 하나여야 합니다.' });
+      return;
+    }
+    const dbContext = this.getDbContext(dbName);
+    const data = await this.model.getSingleUnit(dbContext, origin);
     res.status(200).json({ success: true, data });
   }
 }

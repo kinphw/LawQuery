@@ -143,6 +143,7 @@ export class AdminController {
         id: m.id,
         login_id: m.login_id,
         display_name: m.display_name,
+        occupation: m.occupation,
         signup_source: m.signup_source,
         status: m.status,
         role: m.role,

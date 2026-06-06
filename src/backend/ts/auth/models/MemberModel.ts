@@ -9,6 +9,7 @@ export interface Member {
   login_id: string;
   password_hash: string | null;
   display_name: string | null;
+  occupation: string | null;
   signup_source: SignupSource;
   status: MemberStatus;
   role: MemberRole;
@@ -81,20 +82,21 @@ export class MemberModel {
     return rows[0] ?? null;
   }
 
-  /** 웹 가입: status=pending(관리자 승인 대기) */
+  /** 웹 가입. 무료 베타라 plan 기본 pro_beta(가입 즉시 킬 기능 개방). */
   async createWebMember(
     loginId: string,
     passwordHash: string,
     displayName: string | null,
     role: MemberRole = 'user',
-    status: MemberStatus = 'pending'
+    status: MemberStatus = 'approved',
+    plan: 'free' | 'pro_beta' | 'pro' = 'pro_beta',
+    occupation: string | null = null
   ): Promise<number> {
     const result: any = await this.db.query(
-      `INSERT INTO member (login_id, password_hash, display_name, signup_source, status, role)
-       VALUES (?, ?, ?, 'web', ?, ?)`,
-      [loginId, passwordHash, displayName, status, role]
+      `INSERT INTO member (login_id, password_hash, display_name, occupation, signup_source, status, role, plan)
+       VALUES (?, ?, ?, ?, 'web', ?, ?, ?)`,
+      [loginId, passwordHash, displayName, occupation, status, role, plan]
     );
-    // mysql2: insertId는 ResultSetHeader에 있음
     return (result as any).insertId ?? (result as any)[0]?.insertId;
   }
 
