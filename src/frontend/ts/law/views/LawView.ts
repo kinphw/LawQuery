@@ -65,6 +65,12 @@ export class LawView {
             this.lawTable.render(results, searchText);
     }
 
+    /** 헤더만 렌더(토글바가 그 아래 위치하도록 모드와 무관하게 1회 호출). */
+    renderHeaderOnly(): void {
+        document.getElementById('header')!.innerHTML = this.header.render('law');
+        this.header.setInfoButtonHandler();
+    }
+
     renderLawCheckboxes(laws: Array<LawTitle>): void {
         // document.getElementById('lawCheckboxes')!.innerHTML = this.lawTable.renderLawCheckboxes(laws);
         document.getElementById('lawCheckboxes')!.innerHTML = this.lawCheckbox.renderLawCheckboxes(laws);

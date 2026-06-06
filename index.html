@@ -38,8 +38,11 @@
     </div>
   </div>
 
+  <!-- 조회 방식 토글 (단일 ↔ 연계표). 컨트롤러가 채움 -->
+  <div id="lawViewToggleHost" class="container mb-2"></div>
+
   <!-- 텍스트 검색 영역 -->
-  <div class="container mb-3">
+  <div class="container mb-3" id="lawSearchCard">
     <div class="card">
       <div class="card-body p-2">
         <div class="d-flex align-items-center flex-wrap gap-2">
@@ -63,8 +66,8 @@
     </div>
   </div>
 
-  <!-- 조문 검색 영역 추가 -->
-  <div class="container mb-3">
+  <!-- 조문 검색 영역 추가 (연계표 PRO 전용) -->
+  <div class="container mb-3" id="lawArticleCard">
     <div class="card">
       <div class="card-header p-0" id="lawSearchHeader">
         <button class="btn btn-link collapsed" type="button" data-bs-toggle="collapse"

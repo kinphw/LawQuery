@@ -1,54 +1,47 @@
-import { Header } from '../../common/components/Header';
 import { ToastManager } from '../../common/components/ToastManager';
 import { LawFetchUnitModel, LawUnitRow } from '../models/LawFetchUnitModel';
 import type { LawMeta } from '../models/LawFetchMetaModel';
 
 /**
- * 무료(비회원·FREE) 단일 단위 뷰.
+ * 단일 조회 뷰 (법/시행령/감독규정/세칙 중 한 단을 통째로).
  *
- * 킬 기능(5단 연계표·벌칙·참조·별표·유권해석)은 PRO 전용이므로,
- * 무료 사용자에게는 "한 단(법/시행령/감독규정/세칙)을 통째로 보는" 단일뷰를 제공하고
- * 연계표/벌칙/별표 등은 잠금(가입·업그레이드 유도) 처리한다.
+ * 연계표(LawTable)와 "동일한 하나의 기능"으로 통합되어, 상단 토글로 전환된다.
+ * 디자인도 연계표를 정답으로 삼아 동일한 마크업(law-table / law-box / box-item,
+ * 시행예정 diff 박스)을 그대로 사용해 일관성을 맞춘다.
  *
- * 법령 페이지(index.html)의 정적 레이아웃을 재사용하되 PRO 요소는 잠그고, #results에 단일뷰를 그린다.
+ * 데이터는 무료 API /api/law/unit (origin a/e/s/r)에서 받는다.
  */
 export class LawUnitView {
-  private header = new Header();
   private toast = new ToastManager();
   private model = new LawFetchUnitModel();
 
   private meta: LawMeta[];
-  private authenticated: boolean;
   private currentOrigin = 'a';
   private currentRows: LawUnitRow[] = [];
+  private textSize = ''; // '' | 'fs-5' | 'small' — 연계표와 동일한 크기 클래스
 
-  // /unit이 지원하는 단위(db_a/e/s/r). 5단(별표/시행세칙 b)은 PRO 연계표에서만.
+  // /unit이 지원하는 단위(db_a/e/s/r). 별표/시행세칙(b, step5)은 연계표에서만.
   private static readonly UNIT_ORIGINS = ['a', 'e', 's', 'r'];
+  // 연계표 LawTable.COL_CLASS와 동일한 컬럼별 색/스타일을 단일뷰에도 적용
+  private static readonly COL_CLASS: Record<string, string> = {
+    a: 'law-title', e: 'decree-title', s: 'regulation-title', r: 'rule-title',
+  };
   private static readonly FALLBACK_LABEL: Record<string, string> = {
     a: '법', e: '시행령', s: '감독규정', r: '시행세칙',
   };
 
-  constructor(meta: LawMeta[], authenticated: boolean) {
+  constructor(meta: LawMeta[]) {
     this.meta = meta;
-    this.authenticated = authenticated;
   }
 
-  /** 무료 화면 구성 + 첫 단위 로드. */
+  /** 단일 조회 화면 구성 + 첫 단위 로드. */
   async start(): Promise<void> {
-    this.renderHeader();
-    this.lockProElements();
-    this.renderShell();
+    this.renderSelector();
     this.bindSelector();
     this.bindTextSearch();
+    this.bindTextSize();
+    this.syncTextSize();
     await this.loadUnit(this.currentOrigin);
-  }
-
-  private renderHeader(): void {
-    const headerEl = document.getElementById('header');
-    if (headerEl) {
-      headerEl.innerHTML = this.header.render('law');
-      this.header.setInfoButtonHandler();
-    }
   }
 
   /** 지원 단위 목록(meta 기준, origin a/e/s/r만). */
@@ -62,84 +55,71 @@ export class LawUnitView {
       }));
   }
 
-  /** 단위 선택바 + 업셀 배너를 #results 위에 삽입. */
-  private renderShell(): void {
+  /** 단위 선택 세그먼트(연계표 토글과 동일 톤)를 #results 위에 삽입. */
+  private renderSelector(): void {
     const results = document.getElementById('results');
     if (!results) return;
-
-    const cta = this.authenticated
-      ? '<span class="text-muted">PRO 등급에서 이용 가능합니다.</span>'
-      : '<a href="login.html" class="btn btn-primary btn-sm">가입하고 무료로 PRO 베타 이용 →</a>';
-
-    const buttons = this.units()
+    const units = this.units();
+    const buttons = units
       .map(
         (u, i) =>
-          `<button type="button" class="btn btn-sm ${i === 0 ? 'btn-dark' : 'btn-outline-dark'} lq-unit-btn" data-origin="${u.origin}">${u.label}</button>`
+          `<button type="button" class="btn btn-sm ${i === 0 ? 'btn-secondary' : 'btn-outline-secondary'} lq-unit-btn" data-origin="${u.origin}">${this.esc(u.label)}</button>`
       )
       .join('');
 
-    const host = document.createElement('div');
-    host.id = 'lq-unit-host';
-    host.className = 'container mb-3';
-    host.innerHTML = `
-      <div class="alert alert-primary d-flex flex-wrap align-items-center gap-2 py-2 mb-3">
-        <span><i class="fas fa-unlock-alt"></i>
-          <strong>5단 연계표·벌칙·별표·유권해석</strong>은 PRO 전용입니다.</span>
-        <span class="ms-auto">${cta}</span>
-      </div>
-      <div class="d-flex flex-wrap align-items-center gap-2">
-        <span class="text-muted small">단위 선택:</span>
-        <div class="btn-group btn-group-sm" role="group" id="lq-unit-buttons">${buttons}</div>
-      </div>
-    `;
-    results.parentElement?.insertBefore(host, results);
-  }
-
-  /** 법령 페이지의 PRO 전용 정적 요소(벌칙/별표 버튼, 조문별 선택조회)를 잠근다. */
-  private lockProElements(): void {
-    ['penaltyBtn', 'annexBtn'].forEach((id) => {
-      const btn = document.getElementById(id);
-      if (!btn) return;
-      btn.classList.add('disabled');
-      btn.setAttribute('title', 'PRO 전용 기능입니다.');
-      btn.innerHTML += ' <i class="fas fa-lock"></i>';
-      btn.addEventListener('click', (e) => {
-        e.preventDefault();
-        e.stopImmediatePropagation();
-        this.showUpsell();
-      });
-    });
-
-    // 조문별 선택조회(연계표 = PRO) → 잠금 안내로 교체
-    const checkboxes = document.getElementById('lawCheckboxes');
-    if (checkboxes) {
-      checkboxes.innerHTML =
-        '<div class="p-3 text-muted small"><i class="fas fa-lock"></i> ' +
-        '조문별 연계표는 PRO 전용입니다.</div>';
+    let host = document.getElementById('lq-unit-host');
+    if (!host) {
+      host = document.createElement('div');
+      host.id = 'lq-unit-host';
+      host.className = 'container mb-2';
+      // 조회 컨트롤을 한곳에 모으도록 토글 바로 아래에 배치(없으면 results 위)
+      const toggle = document.getElementById('lawViewToggleHost');
+      if (toggle && toggle.parentElement) toggle.parentElement.insertBefore(host, toggle.nextSibling);
+      else results.parentElement?.insertBefore(host, results);
     }
+    host.innerHTML = `
+      <div class="d-flex justify-content-center align-items-center gap-2 flex-wrap">
+        <span class="text-muted small">단위</span>
+        <div class="btn-group" role="group" id="lq-unit-buttons">${buttons}</div>
+      </div>`;
   }
 
   private bindSelector(): void {
     document.getElementById('lq-unit-buttons')?.addEventListener('click', (e) => {
       const btn = (e.target as HTMLElement).closest('.lq-unit-btn') as HTMLElement | null;
       if (!btn) return;
-      const origin = btn.dataset.origin!;
       document.querySelectorAll('.lq-unit-btn').forEach((b) => {
-        b.classList.toggle('btn-dark', b === btn);
-        b.classList.toggle('btn-outline-dark', b !== btn);
+        b.classList.toggle('btn-secondary', b === btn);
+        b.classList.toggle('btn-outline-secondary', b !== btn);
       });
-      this.loadUnit(origin);
+      this.loadUnit(btn.dataset.origin!);
     });
   }
 
   private bindTextSearch(): void {
     const input = document.getElementById('lawTextSearch') as HTMLInputElement | null;
     const btn = document.getElementById('lawTextSearchBtn');
-    const run = () => this.renderRows(input?.value.trim() || '');
+    const run = () => this.renderTable(input?.value.trim() || '');
     btn?.addEventListener('click', run);
     input?.addEventListener('keypress', (e) => {
       if ((e as KeyboardEvent).key === 'Enter') { e.preventDefault(); run(); }
     });
+  }
+
+  /** 플로팅 글자크기 컨트롤을 단일뷰에도 연결(연계표와 동일 동작). */
+  private bindTextSize(): void {
+    document.querySelectorAll('input[name="textSize"]').forEach((radio) => {
+      radio.addEventListener('change', (e) => {
+        this.textSize = (e.target as HTMLInputElement).value;
+        const input = document.getElementById('lawTextSearch') as HTMLInputElement | null;
+        this.renderTable(input?.value.trim() || '');
+      });
+    });
+  }
+
+  private syncTextSize(): void {
+    const checked = document.querySelector('input[name="textSize"]:checked') as HTMLInputElement | null;
+    this.textSize = checked?.value || '';
   }
 
   private async loadUnit(origin: string): Promise<void> {
@@ -149,7 +129,7 @@ export class LawUnitView {
       '<div class="text-center p-4"><div class="spinner-border text-secondary" role="status"></div></div>';
     this.currentRows = await this.model.getUnit(origin);
     const input = document.getElementById('lawTextSearch') as HTMLInputElement | null;
-    this.renderRows(input?.value.trim() || '');
+    this.renderTable(input?.value.trim() || '');
     this.toast.showToast(`${this.unitLabel(origin)} ${this.currentRows.length}개 조문`);
   }
 
@@ -158,8 +138,8 @@ export class LawUnitView {
       || LawUnitView.FALLBACK_LABEL[origin] || origin;
   }
 
-  /** 단일 단위 본문을 #results에 단일 컬럼으로 렌더(검색어 하이라이트·필터 포함). */
-  private renderRows(search: string): void {
+  /** 연계표(LawTable)와 동일한 마크업의 1컬럼 테이블로 렌더. */
+  private renderTable(search: string): void {
     const results = document.getElementById('results');
     if (!results) return;
 
@@ -174,58 +154,75 @@ export class LawUnitView {
     }
 
     if (!rows.length) {
-      results.innerHTML = `<div class="container"><div class="alert alert-warning">${search ? '검색 결과가 없습니다.' : '표시할 내용이 없습니다.'}</div></div>`;
+      results.innerHTML = `<div class="alert alert-warning">${search ? '검색 결과가 없습니다.' : '표시할 내용이 없습니다.'}</div>`;
       return;
     }
 
-    const fullName = this.meta.find((m) => m.origin === this.currentOrigin)?.full_name || '';
-    const head = fullName
-      ? `<div class="text-center my-3"><span class="badge bg-dark fs-6">${this.esc(fullName.split('\n')[0])}</span></div>`
-      : '';
+    const colClass = LawUnitView.COL_CLASS[this.currentOrigin] || 'law-title';
+    const fullName = this.meta.find((m) => m.origin === this.currentOrigin)?.full_name || this.unitLabel(this.currentOrigin);
+    const nameParts = fullName.split('\n');
+    const thead = `
+      <thead class="table-dark sticky-top">
+        <tr>
+          <th class="text-center py-1">
+            <div class="small">${this.esc(nameParts[0])}</div>
+            <div class="text-xs">${nameParts.slice(1).map((p) => this.esc(p)).join('<br>')}</div>
+          </th>
+        </tr>
+      </thead>`;
 
-    const body = rows.map((r) => this.renderRow(r, search)).join('');
-    results.innerHTML = `<div class="container"><div class="law-unit-list">${head}${body}</div></div>`;
+    const body = rows.map((r) => this.renderRow(r, colClass, search)).join('');
+
+    results.innerHTML =
+      `<div class="table-responsive"><table class="table table-bordered law-table">${thead}<tbody>${body}</tbody></table></div>`;
   }
 
-  private renderRow(r: LawUnitRow, search: string): string {
-    // 법(db_a)의 제목행(content 없이 title만) → 장/절 제목으로
-    if (r.title && !r.content) {
-      return `<h5 class="law-unit-title mt-4 mb-2">${this.hl(r.title, search)}</h5>`;
+  private renderRow(r: LawUnitRow, colClass: string, search: string): string {
+    // 장/절 제목행(법 db_a): id 없이 제목만 → title-row 로 (연계표와 동일)
+    if (r.id === null && r.title) {
+      return `<tr class="title-row"><td class="${colClass} law-box ${this.textSize}">${this.formatContent(r.title, null, null, search)}</td></tr>`;
     }
+    const idAttr = r.id ? ` data-id="${this.esc(r.id)}"` : '';
+    return `<tr><td class="${colClass} law-box ${this.textSize}"${idAttr}>${this.formatContent(r.content, r.content_sched, r.sched_date, search)}</td></tr>`;
+  }
+
+  /** LawTable.formatContent와 동일: 본문 박스 + 시행예정 diff 박스. */
+  private formatContent(text: string | null, scheduledText: string | null, scheduledDate: string | null, searchText: string): string {
+    const highlight = (s: string): string => {
+      if (!searchText) return s;
+      const safe = searchText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      return s.replace(new RegExp(safe, 'gi'), (m) => `<span class="text-danger fw-bold">${m}</span>`);
+    };
+
     const parts: string[] = [];
-    if (r.content) {
-      parts.push(
-        `<div class="card mb-2"><div class="card-body p-2 small">${this.hl(r.content, search)}</div></div>`
-      );
+
+    if (text) {
+      const c = highlight(this.esc(text)).replace(/\n/g, '<br>');
+      parts.push(`<div class="box-item small p-2 m-0">${c}</div>`);
     }
-    if (r.content_sched) {
-      const label = r.sched_date ? `시행예정 ${this.esc(r.sched_date)}` : '시행예정';
-      parts.push(
-        `<div class="card mb-2 border-info"><div class="card-header py-1 small text-info">${label}</div>` +
-        `<div class="card-body p-2 small">${this.hl(r.content_sched, search)}</div></div>`
-      );
+
+    if (scheduledText) {
+      let inner: string;
+      if (text) {
+        const { diff_match_patch, DIFF_DELETE, DIFF_INSERT } = require('diff-match-patch');
+        const dmp = new diff_match_patch();
+        const diffs = dmp.diff_main(text, scheduledText);
+        dmp.diff_cleanupSemantic(diffs);
+        inner = '';
+        for (const [op, data] of diffs as [number, string][]) {
+          const seg = highlight(this.esc(data)).replace(/\n/g, '<br>');
+          if (op === DIFF_DELETE) inner += `<del class="law-del">${seg}</del>`;
+          else if (op === DIFF_INSERT) inner += `<ins class="law-ins">${seg}</ins>`;
+          else inner += seg;
+        }
+      } else {
+        inner = highlight(this.esc(scheduledText)).replace(/\n/g, '<br>');
+      }
+      const schedLabel = scheduledDate ? `시행예정 ${this.esc(scheduledDate)}` : '시행예정';
+      parts.push(`<div class="box-item small p-2 m-0 box-item--scheduled" data-sched-label="${schedLabel}">${inner}</div>`);
     }
+
     return parts.join('');
-  }
-
-  private showUpsell(): void {
-    const msg = this.authenticated
-      ? 'PRO 전용 기능입니다. 관리자에게 PRO 전환을 문의해 주세요.'
-      : '가입하면 PRO 기능을 베타 기간 무료로 이용하실 수 있습니다.';
-    this.toast.showToast(msg);
-    if (!this.authenticated) {
-      setTimeout(() => { location.href = 'login.html'; }, 1200);
-    }
-  }
-
-  // \n→<br> + 검색어 하이라이트(이스케이프 후)
-  private hl(text: string, search: string): string {
-    let s = this.esc(text);
-    if (search) {
-      const safe = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      s = s.replace(new RegExp(safe, 'gi'), (m) => `<span class="text-danger fw-bold">${m}</span>`);
-    }
-    return s.replace(/\n/g, '<br>');
   }
 
   private esc(s: string): string {

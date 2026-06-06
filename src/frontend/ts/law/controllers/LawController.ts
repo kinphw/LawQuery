@@ -151,16 +151,12 @@ export class LawController implements ILawController {
 
     async initialize(): Promise<void> {
 
-        // DB에서 법령명 메타 로드 → LawConfig 하드코딩 대체 (무료/PRO 공통)
+        // DB에서 법령명 메타 로드 → LawConfig 하드코딩 대체 (단일/연계 공통)
         const meta = await this.modelFetchMeta.getMeta();
-
-        // 등급 분기: 비PRO(비회원·FREE)는 단일 단위 무료뷰. PRO만 5단 연계표.
         const me = await getMe();
-        if (!isPro(me)) {
-            await new LawUnitView(meta, me.authenticated).start();
-            return;
-        }
+        const pro = isPro(me);
 
+        // 공통: 법령명/현재법령 박스/별표 원규정 표시명
         if (meta.length > 0) {
             this.view.setLawNames(meta.map(m => m.full_name));
             const label = meta.find(m => m.origin === 'a')?.full_name.split('\n')[0] ?? '';
@@ -172,6 +168,59 @@ export class LawController implements ILawController {
             CurrentLawBox.update(); // fallback
         }
 
+        // 헤더는 모드와 무관하게 1회 (토글바가 그 아래 위치)
+        this.view.renderHeaderOnly();
+
+        // 조회 방식 결정: URL ?view= → 없으면 PRO=연계(linked), 비PRO=단일(unit)
+        const params = new URLSearchParams(window.location.search);
+        let view = params.get('view');
+        if (view !== 'unit' && view !== 'linked') view = pro ? 'linked' : 'unit';
+
+        this.renderViewToggle(view as 'unit' | 'linked', pro);
+
+        if (view === 'unit') {
+            await this.showUnitMode(meta);
+        } else if (pro) {
+            await this.showLinkedMode();
+        } else {
+            this.showLinkedLocked(me.authenticated);
+        }
+    }
+
+    /** 상단 조회방식 토글(단일 ↔ 연계표). 전환은 ?view= 갱신 후 리로드(이벤트 생명주기 단순화). */
+    private renderViewToggle(current: 'unit' | 'linked', pro: boolean): void {
+        const host = document.getElementById('lawViewToggleHost');
+        if (!host) return;
+        const lock = pro ? '' : ' <i class="fas fa-lock"></i>';
+        host.innerHTML = `
+            <div class="d-flex justify-content-center">
+                <div class="btn-group" role="group" aria-label="조회 방식">
+                    <button type="button" class="btn btn-sm ${current === 'unit' ? 'btn-dark' : 'btn-outline-dark'} lq-view-btn" data-view="unit">단일 조회</button>
+                    <button type="button" class="btn btn-sm ${current === 'linked' ? 'btn-dark' : 'btn-outline-dark'} lq-view-btn" data-view="linked">연계표${lock}</button>
+                </div>
+            </div>`;
+        host.querySelectorAll('.lq-view-btn').forEach((btn) => {
+            btn.addEventListener('click', () => {
+                const next = (btn as HTMLElement).dataset.view!;
+                if (next === current) return;
+                const p = new URLSearchParams(window.location.search);
+                p.set('view', next);
+                window.location.search = p.toString(); // 리로드 → initialize가 해당 모드로 렌더
+            });
+        });
+    }
+
+    /** 단일 조회 모드(모든 등급 무료). 연계 전용 정적 요소는 숨긴다. */
+    private async showUnitMode(meta: import("../models/LawFetchMetaModel").LawMeta[]): Promise<void> {
+        this.hideEl('penaltyBtn');
+        this.hideEl('annexBtn');
+        this.hideEl('lawArticleCard');
+        const unitView = new LawUnitView(meta);
+        await unitView.start();
+    }
+
+    /** 연계표 모드(PRO). 기존 5단 연계 조회 흐름. */
+    private async showLinkedMode(): Promise<void> {
         // 초기 벌칙 id_a 로드 : 250505
         this.dataManager.setPenaltyIds(await this.modelFetchPenaltyIds.getPenaltyIds());
         this.view.setPenaltyIds(this.dataManager.getPenaltyIds());
@@ -184,29 +233,44 @@ export class LawController implements ILawController {
         this.view.setAnnexIds(await this.modelFetchAnnexIds.getAnnexIds());
 
         // 초기 데이터 로드 및 렌더링
-        // const results = await this.model.getAllLaws();        
-        // Store initial results
-        // await this.dataManager.setAllLaws(); // 결합도 제거! 위임없이 컨트롤러 본연의 역할 수행        
         this.dataManager.setCurrentResults(await this.modelFetchAll.getAllLaws());
         this.view.render(this.dataManager.getCurrentResults());
 
-
         // 체크박스 렌더링
-        // const lawTitles = await this.model.getLawTitles();
         this.dataManager.setLawTitles(await this.modelFetchTitle.getLawTitles());
-        // await this.dataManager.setLawTitles();
-
-        // document.getElementById('lawCheckboxes')!.innerHTML = 
-        // this.view.lawTable.renderLawCheckboxes(this.dataManager.lawTitles);
-        // this.view.lawTable.renderLawCheckboxes(this.dataManager.getLawTitles());
-
         this.view.renderLawCheckboxes(this.dataManager.getLawTitles());
-        // 이벤트 바인딩을 컨트롤러에서 일괄 처리
-        // this.eventManager.bindEvents();
-        // 모든 이벤트매니저의 이벤트 바인딩 실행
-        // this.eventManagers.forEach(em => em.bindEvents());
-        this.bindAllEvents();
 
+        // 이벤트 바인딩 일괄 처리
+        this.bindAllEvents();
+    }
+
+    /** 연계표를 비PRO가 선택했을 때: 잠금 화면 + 가입/문의 유도. */
+    private showLinkedLocked(authenticated: boolean): void {
+        this.hideEl('penaltyBtn');
+        this.hideEl('annexBtn');
+        this.hideEl('lawArticleCard');
+        this.hideEl('lawSearchCard');
+        const cta = authenticated
+            ? '<span class="text-muted">PRO 등급에서 이용 가능합니다. 관리자에게 문의해 주세요.</span>'
+            : '<a href="login.html" class="btn btn-primary btn-lg">가입하고 무료로 PRO 베타 이용 →</a>';
+        const results = document.getElementById('results');
+        if (results) results.innerHTML = `
+            <div class="container">
+                <div class="text-center p-5">
+                    <div class="display-4 mb-3"><i class="fas fa-lock text-secondary"></i></div>
+                    <h4 class="mb-2">5단 연계표는 PRO 전용입니다</h4>
+                    <p class="text-muted mb-4">
+                        법·시행령·감독규정·시행세칙·별표를 한 줄로 연결해 보는 킬 기능입니다.<br>
+                        <strong>단일 조회</strong>는 위 토글에서 무료로 이용하실 수 있습니다.
+                    </p>
+                    <div>${cta}</div>
+                </div>
+            </div>`;
+    }
+
+    private hideEl(id: string): void {
+        const el = document.getElementById(id);
+        if (el) el.classList.add('d-none');
     }
 
     // 이벤트매니저에서 호출하기 위한 public 메서드
