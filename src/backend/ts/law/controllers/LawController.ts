@@ -112,8 +112,8 @@ export class LawController extends BaseLawController<LawModel> {
   async getUnit(req: Request, res: Response): Promise<void> {
     const dbName: string = req.query.law as string;
     const origin = (req.query.origin as string || '').toLowerCase();
-    if (!['a', 'e', 's', 'r'].includes(origin)) {
-      res.status(400).json({ success: false, error: 'origin은 a/e/s/r 중 하나여야 합니다.' });
+    if (!['a', 'e', 's', 'r', 'b'].includes(origin)) {
+      res.status(400).json({ success: false, error: 'origin은 a/e/s/r/b 중 하나여야 합니다.' });
       return;
     }
     const dbContext = this.getDbContext(dbName);

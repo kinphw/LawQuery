@@ -250,6 +250,7 @@ export class LawModel extends LawBaseModel {
       e: { tbl: 'db_e', id: 'id_e', content: 'content_e', sched: 'content_e_sched' },
       s: { tbl: 'db_s', id: 'id_s', content: 'content_s', sched: 'content_s_sched' },
       r: { tbl: 'db_r', id: 'id_r', content: 'content_r', sched: 'content_r_sched' },
+      b: { tbl: 'db_b', id: 'id_b', content: 'content_b', sched: 'content_b_sched' }, // 5단째(여신/신정=시행세칙)
     };
     const m = map[origin];
     if (!m) return [];

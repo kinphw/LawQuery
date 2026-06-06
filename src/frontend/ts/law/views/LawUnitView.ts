@@ -20,14 +20,15 @@ export class LawUnitView {
   private currentRows: LawUnitRow[] = [];
   private textSize = ''; // '' | 'fs-5' | 'small' — 연계표와 동일한 크기 클래스
 
-  // /unit이 지원하는 단위(db_a/e/s/r). 별표/시행세칙(b, step5)은 연계표에서만.
-  private static readonly UNIT_ORIGINS = ['a', 'e', 's', 'r'];
+  // /unit이 지원하는 단위(db_a/e/s/r/b). b(5단째)는 법령마다 다름(여신/신정=시행세칙).
+  // 실제 노출은 db_meta에 존재하는 origin만 → 4단(전금) DB엔 b가 없어 자동 제외.
+  private static readonly UNIT_ORIGINS = ['a', 'e', 's', 'r', 'b'];
   // 연계표 LawTable.COL_CLASS와 동일한 컬럼별 색/스타일을 단일뷰에도 적용
   private static readonly COL_CLASS: Record<string, string> = {
-    a: 'law-title', e: 'decree-title', s: 'regulation-title', r: 'rule-title',
+    a: 'law-title', e: 'decree-title', s: 'regulation-title', r: 'rule-title', b: 'book-title',
   };
   private static readonly FALLBACK_LABEL: Record<string, string> = {
-    a: '법', e: '시행령', s: '감독규정', r: '시행세칙',
+    a: '법', e: '시행령', s: '감독규정', r: '시행세칙', b: '시행세칙',
   };
 
   constructor(meta: LawMeta[]) {
