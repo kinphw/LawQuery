@@ -5,6 +5,15 @@ export type MemberStatus = 'pending' | 'approved' | 'rejected' | 'revoked';
 export type MemberRole = 'user' | 'admin';
 export type MemberPlan = 'free' | 'pro_beta' | 'pro';
 
+/**
+ * 만료를 반영한 실효 등급. 만료된 pro/pro_beta는 free로 취급.
+ * (베타엔 plan_expires_at=NULL이라 항상 원래 plan 그대로 → 동작 변화 없음)
+ */
+export function effectivePlan(m: Pick<Member, 'plan' | 'plan_expired'>): MemberPlan {
+  // plan_expired는 드라이버에 따라 1/0 또는 '1'/'0'일 수 있어 숫자로 안전 비교.
+  return Number(m.plan_expired) === 1 ? 'free' : m.plan;
+}
+
 export interface Member {
   id: number;
   login_id: string;
@@ -15,6 +24,8 @@ export interface Member {
   status: MemberStatus;
   role: MemberRole;
   plan: MemberPlan;
+  plan_expires_at: string | null; // PRO 만료 시각(KST). NULL = 무기한(베타). 정식 출시 시 30일 트라이얼에 사용.
+  plan_expired?: number;          // findById 계산 컬럼: 만료됐으면 1 (NOW() 기준, DB 시각으로 비교 → TZ 안전)
   device_key: string | null;
   session_token: string | null;
   created_at: string;
@@ -68,8 +79,9 @@ export class MemberModel {
   }
 
   async findById(id: number): Promise<Member | null> {
+    // plan_expired는 DB 시각(NOW())으로 비교해 TZ 문제 회피. 게이트/me가 실효 등급 계산에 사용.
     const rows = await this.db.query<Member>(
-      'SELECT * FROM member WHERE id = ? LIMIT 1',
+      'SELECT *, (plan_expires_at IS NOT NULL AND plan_expires_at <= NOW()) AS plan_expired FROM member WHERE id = ? LIMIT 1',
       [id]
     );
     return rows[0] ?? null;
@@ -90,13 +102,14 @@ export class MemberModel {
     displayName: string | null,
     role: MemberRole = 'user',
     status: MemberStatus = 'approved',
-    plan: 'free' | 'pro_beta' | 'pro' = 'pro_beta',
-    occupation: string | null = null
+    plan: MemberPlan = 'pro_beta',
+    occupation: string | null = null,
+    planExpiresAt: string | null = null // 베타=NULL(무기한). 정식 출시 때 now()+30일로 넘기면 트라이얼.
   ): Promise<number> {
     const result: any = await this.db.query(
-      `INSERT INTO member (login_id, password_hash, display_name, occupation, signup_source, status, role, plan)
-       VALUES (?, ?, ?, ?, 'web', ?, ?, ?)`,
-      [loginId, passwordHash, displayName, occupation, status, role, plan]
+      `INSERT INTO member (login_id, password_hash, display_name, occupation, signup_source, status, role, plan, plan_expires_at)
+       VALUES (?, ?, ?, ?, 'web', ?, ?, ?, ?)`,
+      [loginId, passwordHash, displayName, occupation, status, role, plan, planExpiresAt]
     );
     return (result as any).insertId ?? (result as any)[0]?.insertId;
   }
@@ -139,9 +152,9 @@ export class MemberModel {
     await this.db.query('UPDATE member SET password_hash = ? WHERE id = ?', [passwordHash, id]);
   }
 
-  /** 등급(plan) 변경 — 관리자 수동 부여(free↔pro_beta↔pro). */
+  /** 등급(plan) 변경 — 관리자 수동 부여(free↔pro_beta↔pro). 관리자 부여는 만료 없이 영구(만료시각 초기화). */
   async updatePlan(id: number, plan: MemberPlan): Promise<void> {
-    await this.db.query('UPDATE member SET plan = ? WHERE id = ?', [plan, id]);
+    await this.db.query('UPDATE member SET plan = ?, plan_expires_at = NULL WHERE id = ?', [plan, id]);
   }
 
   /** 회원 삭제. 활동 로그는 보존(member_id만 남고 조인 시 이름이 비게 됨). */

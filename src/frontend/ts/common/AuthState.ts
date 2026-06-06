@@ -9,7 +9,8 @@ export interface MeInfo {
   authenticated: boolean;
   status?: string;
   role?: 'user' | 'admin';
-  plan?: 'free' | 'pro_beta' | 'pro';
+  plan?: 'free' | 'pro_beta' | 'pro'; // 서버가 만료 반영한 실효 등급
+  planExpiresAt?: string | null;     // PRO 만료 시각(현재 베타엔 null). 향후 "n일 남음" 표시용
   loginId?: string;
   displayName?: string;
   source?: 'web' | 'app';

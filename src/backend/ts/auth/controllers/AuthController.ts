@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
-import { MemberModel } from '../models/MemberModel';
+import { MemberModel, effectivePlan } from '../models/MemberModel';
 import { AccessLogModel } from '../models/AccessLogModel';
 import { SettingModel } from '../models/SettingModel';
 import { signToken, verifyToken, newSessionToken, AUTH_COOKIE, cookieOptions } from '../utils/jwt';
@@ -77,7 +77,10 @@ export class AuthController {
       }
 
       const hash = await bcrypt.hash(password, 10);
-      // 무료 베타: 가입 즉시 자동 승인 + plan=pro_beta(킬 기능 베타 개방). 악용 시 관리자 사후 정지.
+      // 무료 베타: 가입 즉시 자동 승인 + plan=pro_beta 무기한(킬 기능 베타 개방). 악용 시 관리자 사후 정지.
+      // ▶ 정식 출시(결제 오픈) 시 30일 트라이얼 전환: 아래 8번째 인자로 만료시각을 넘기면 됨.
+      //   예) const expires = new Date(Date.now() + 30*864e5).toISOString().slice(0,19).replace('T',' ');
+      //       createWebMember(..., occupation, expires)
       const id = await this.model.createWebMember(
         loginId,
         hash,
@@ -86,6 +89,7 @@ export class AuthController {
         'approved',
         'pro_beta',
         occupation
+        // , planExpiresAt  ← 출시 때 활성화
       );
 
       // 가입 즉시 로그인 처리(관리자/일반 공통)
@@ -254,7 +258,8 @@ export class AuthController {
         authenticated: member.status === 'approved',
         status: member.status,
         role: member.role,
-        plan: member.plan,
+        plan: effectivePlan(member), // 만료 반영 실효 등급(베타엔 원래 plan과 동일)
+        planExpiresAt: member.plan_expires_at, // 프론트 "n일 남음" 표시용(현재 NULL)
         loginId: member.login_id,
         displayName: member.display_name,
         source: member.signup_source,

@@ -170,6 +170,8 @@
           });
           const data = await r.json();
           if (data.success && data.status === 'approved') {
+            // 가입 직후 1회 PRO 베타 온보딩을 다음 화면(법령)에서 띄우도록 플래그
+            try { localStorage.setItem('lq_onboard_pro', '1'); } catch (e) { /* noop */ }
             go();
           } else if (data.success) {
             showAlert(data.message || '가입 신청이 완료되었습니다. 승인을 기다려 주세요.', 'success');

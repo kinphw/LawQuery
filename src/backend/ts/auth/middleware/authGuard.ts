@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { verifyToken, signToken, AUTH_COOKIE, cookieOptions } from '../utils/jwt';
-import { MemberModel, Member } from '../models/MemberModel';
+import { MemberModel, Member, effectivePlan } from '../models/MemberModel';
 
 export type MemberPlan = 'free' | 'pro_beta' | 'pro';
 
@@ -50,7 +50,8 @@ async function resolveMember(req: Request, res: Response): Promise<
   const fresh = signToken({ uid: member.id, role: member.role, sid: payload.sid });
   res.cookie(AUTH_COOKIE, fresh, cookieOptions());
 
-  req.member = { id: member.id, role: member.role, status: member.status, plan: member.plan };
+  // 만료 반영 실효 등급(베타엔 NULL이라 원래 plan 그대로). proGuard가 이 값으로 판정.
+  req.member = { id: member.id, role: member.role, status: member.status, plan: effectivePlan(member) };
   return { ok: true, member };
 }
 

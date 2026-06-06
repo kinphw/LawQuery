@@ -192,13 +192,19 @@ export class LawController implements ILawController {
         const host = document.getElementById('lawViewToggleHost');
         if (!host) return;
         const lock = pro ? '' : ' <i class="fas fa-lock"></i>';
+        // 연계표는 PRO 기능 → 잠금 여부와 무관하게 PRO 뱃지로 "이건 PRO" 각인
+        const proTag = '<span class="badge ms-1" style="background:#6f42c1;color:#fff;font-size:.6rem;vertical-align:middle">PRO</span>';
+        // PRO가 연계표를 쓰는 중이면 "베타 무료/추후 유료" 인지 문구
+        const note = (current === 'linked' && pro)
+            ? `<div class="text-center mt-2"><span class="badge" style="background:#6f42c1;color:#fff">PRO</span> <span class="text-muted small">연계표·벌칙·별표는 PRO 기능 — 베타 기간 무료 (정식 출시 시 유료 전환 예정)</span></div>`
+            : '';
         host.innerHTML = `
             <div class="d-flex justify-content-center">
                 <div class="btn-group" role="group" aria-label="조회 방식">
-                    <button type="button" class="btn btn-sm ${current === 'unit' ? 'btn-dark' : 'btn-outline-dark'} lq-view-btn" data-view="unit">단일 조회</button>
-                    <button type="button" class="btn btn-sm ${current === 'linked' ? 'btn-dark' : 'btn-outline-dark'} lq-view-btn" data-view="linked">연계표${lock}</button>
+                    <button type="button" class="btn btn-sm ${current === 'unit' ? 'btn-dark' : 'btn-outline-dark'} lq-view-btn" data-view="unit">개별 조회</button>
+                    <button type="button" class="btn btn-sm ${current === 'linked' ? 'btn-dark' : 'btn-outline-dark'} lq-view-btn" data-view="linked">연계표${proTag}${lock}</button>
                 </div>
-            </div>`;
+            </div>${note}`;
         host.querySelectorAll('.lq-view-btn').forEach((btn) => {
             btn.addEventListener('click', () => {
                 const next = (btn as HTMLElement).dataset.view!;
@@ -260,8 +266,8 @@ export class LawController implements ILawController {
                     <div class="display-4 mb-3"><i class="fas fa-lock text-secondary"></i></div>
                     <h4 class="mb-2">5단 연계표는 PRO 전용입니다</h4>
                     <p class="text-muted mb-4">
-                        법·시행령·감독규정·시행세칙·별표를 한 줄로 연결해 보는 킬 기능입니다.<br>
-                        <strong>단일 조회</strong>는 위 토글에서 무료로 이용하실 수 있습니다.
+                        법·시행령·감독규정·시행세칙·별표를 한 줄로 연결해 보는 기능입니다.<br>
+                        <strong>단일 법규 개별조회</strong>는 위 토글에서 회원가입없이 이용하실 수 있습니다.
                     </p>
                     <div>${cta}</div>
                 </div>

@@ -203,6 +203,11 @@ export class AdminController {
         res.status(404).json({ success: false, error: '회원을 찾을 수 없습니다.' });
         return;
       }
+      // 관리자 계정 등급은 강제 보호(삭제·정지와 동일). 항상 PRO 유지.
+      if (target.role === 'admin') {
+        res.status(400).json({ success: false, error: '관리자 계정의 등급은 변경할 수 없습니다.' });
+        return;
+      }
       await this.model.updatePlan(id, plan);
       res.json({ success: true, id, plan });
     } catch (e) {

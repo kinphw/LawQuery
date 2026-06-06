@@ -51,6 +51,8 @@ export class SearchController implements ISearchController {
       this.view.renderLock(me.authenticated);
       return;
     }
+    // PRO 사용 중 — "베타 무료/추후 유료" 인지 문구
+    this.view.showProBetaNote();
 
     // 초기 데이터 로드
     this.view.showLoading();

@@ -65,9 +65,18 @@
 - 런타임: `/law/unit` 200 / 잘못된 origin 400 / `/law/all`·`/interpretation/initial` 비인증 401 / `setPlan` 라우트 401(존재).
 - ⚠️ 프론트 **브라우저 시각 검증은 미실시**(빌드/타입만 확인). 배포 전 비회원·PRO 화면 눈으로 확인 권장.
 
-## ⚠️ 운영 배포 시 필요 (커밋1+2 다 끝나고)
+## 추가 작업 (커밋3: PRO 인지 레이어 + 트라이얼 인프라)
 
-- 운영 DB ALTER (root/genius): `member.plan ENUM` 확장 + `occupation` 칼럼 추가
+- **PRO 인지 레이어**: 연계표 토글 PRO 뱃지 + linked 모드 "베타무료/추후유료" 노트, 유권해석 PRO 노트([SearchView.showProBetaNote](../src/frontend/ts/interpretation/views/SearchView.ts)), 가입 직후 1회 온보딩 모달([auth-gate.js](../auth-gate.js) `maybeShowOnboarding`, login.html이 `lq_onboard_pro` 플래그), 내 계정 등급 표시([account.html](../account.html)). **가격은 비노출(앱 승인 안전선).**
+- **관리자 등급 토글**: prompt → 인라인 `<select>`(FREE/PRO베타/PRO 즉시 변경). 관리자 부여는 `plan_expires_at=NULL`로 영구.
+- **30일 트라이얼 인프라(지금은 비활성, 출시 때 켬)**: `member.plan_expires_at DATETIME NULL` 추가. `findById`가 `plan_expired` 계산 컬럼(NOW() 비교, TZ안전) 반환 → [effectivePlan](../src/backend/ts/auth/models/MemberModel.ts)이 만료 시 free 취급. proGuard·me 모두 실효 등급 사용. **베타엔 가입 시 expires=NULL(무기한)이라 동작 변화 없음.**
+  - ▶ **정식 출시 전환**: [AuthController.register](../src/backend/ts/auth/controllers/AuthController.ts)의 `createWebMember` 8번째 인자로 `now()+30일` 만료시각 전달 한 줄이면 30일 트라이얼 가동.
+
+## ⚠️ 운영 배포 시 필요 (다 끝나고)
+
+- 운영 DB ALTER (root/genius):
+  - `member.plan` ENUM(`free`,`pro_beta`,`pro`) 확장 + `occupation VARCHAR(30)` 추가
+  - `ALTER TABLE member ADD COLUMN plan_expires_at DATETIME NULL AFTER plan;` (★ 신규, 로컬 dev엔 적용 완료)
 - main 머지 → deploy.sh
 - 기존 운영 회원 plan을 pro_beta로 UPDATE (베타라 다 열어줌)
 
