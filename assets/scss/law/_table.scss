@@ -36,6 +36,23 @@
     z-index: 999;  /* Lower than floating controls */
   }
 
+  // ── 단일 조회(1컬럼) 전용: 모바일에서도 가로 스크롤 없이 폭 100% ──
+  // 연계표는 다단이라 모바일에서 횡스크롤(min-width:720)이 불가피하지만,
+  // 단일뷰는 한 단이므로 화면 폭에 맞춰 줄바꿈으로 읽히게 한다.
+  .law-table--single {
+    min-width: 0 !important;   // _responsive.scss의 portrait min-width:720 무력화
+    width: 100% !important;
+    table-layout: fixed;
+
+    th, td {
+      word-break: break-word;
+      overflow-wrap: anywhere;
+      // 단일뷰는 첫 열 고정(sticky) 불필요 → 해제
+      position: static !important;
+      box-shadow: none !important;
+    }
+  }
+
 // 벌칙 테이블 공통 스타일
 .penalty-table {
   border-collapse: collapse !important;

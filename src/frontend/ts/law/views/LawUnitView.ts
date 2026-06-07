@@ -174,8 +174,9 @@ export class LawUnitView {
 
     const body = rows.map((r) => this.renderRow(r, colClass, search)).join('');
 
+    // law-table--single: 1컬럼이라 모바일에서 가로스크롤 없이 폭 100%로 (연계표와 톤은 동일)
     results.innerHTML =
-      `<div class="table-responsive"><table class="table table-bordered law-table">${thead}<tbody>${body}</tbody></table></div>`;
+      `<div class="table-responsive"><table class="table table-bordered law-table law-table--single">${thead}<tbody>${body}</tbody></table></div>`;
   }
 
   private renderRow(r: LawUnitRow, colClass: string, search: string): string {

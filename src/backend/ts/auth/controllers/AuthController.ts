@@ -392,51 +392,5 @@ export class AuthController {
     }
   };
 
-  /**
-   * 앱 자동진입: 앱이 보낸 비밀토큰(t)을 검증.
-   * 통과 시 deviceKey 기준으로 익명계정을 찾거나 새로 만들고(approved) JWT 발급.
-   */
-  appEnter = async (req: Request, res: Response): Promise<void> => {
-    try {
-      const t = (req.body?.t ?? '').toString();
-      const deviceKey = (req.body?.deviceKey ?? '').toString().trim();
-
-      if (!t || t !== (process.env.APP_TOKEN || '')) {
-        res.status(401).json({ success: false, error: '유효하지 않은 앱 토큰입니다.' });
-        return;
-      }
-      if (!deviceKey || deviceKey.length < 8 || deviceKey.length > 64) {
-        res.status(400).json({ success: false, error: '잘못된 기기 식별자입니다.' });
-        return;
-      }
-
-      let member = await this.model.findByDeviceKey(deviceKey);
-      if (!member) {
-        const appLoginId = `device_${deviceKey}`;
-        const id = await this.model.createAppMember(appLoginId, deviceKey);
-        member = await this.model.findById(id);
-      }
-      if (!member) {
-        res.status(500).json({ success: false, error: '계정 생성에 실패했습니다.' });
-        return;
-      }
-
-      // 앱 계정이 혹시 정지되었으면 차단
-      if (member.status !== 'approved') {
-        res.status(403).json({ success: false, error: '이용이 제한된 계정입니다.', status: member.status });
-        return;
-      }
-
-      await this.model.touchLogin(member.id);
-      await this.logModel.record(member.id, member.login_id, 'app_enter', clientIp(req), req.headers['user-agent'] as string || null);
-      const sid = newSessionToken();
-      await this.model.setSessionToken(member.id, sid);
-      const token = signToken({ uid: member.id, role: member.role, sid });
-      res.cookie(AUTH_COOKIE, token, cookieOptions());
-      res.json({ success: true, role: member.role });
-    } catch (e) {
-      console.error('appEnter 오류:', e);
-      res.status(500).json({ success: false, error: '앱 진입 처리 중 오류가 발생했습니다.' });
-    }
-  };
+  // (제거됨) 앱 자동진입/자동가입(appEnter). 앱도 웹과 동일하게 이메일 가입만 사용한다.
 }

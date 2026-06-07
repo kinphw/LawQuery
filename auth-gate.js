@@ -8,7 +8,7 @@
  *     무료 단일뷰 / PRO 연계표를 분기한다(중복 fetch 방지).
  *   - 보호 API(PRO 전용)가 401/403을 줘도 더 이상 로그인으로 강제 이동하지 않는다.
  *     잠금/가입 유도 UI는 각 화면(컨트롤러)이 직접 처리한다.
- *   - 앱(TWA)은 저장된 토큰(lq_app_token)으로 세션 만료 시 조용히 자동 재진입한다.
+ *   - 앱(TWA)도 자동가입 없이 웹과 동일하게 명시적 이메일 가입만 사용한다(app-enter 제거).
  *   - account.html·admin.html 등 "로그인 필수" 페이지는 자체 me 체크로 보호한다.
  */
 (function () {
@@ -169,43 +169,8 @@
     else document.addEventListener('DOMContentLoaded', show);
   }
 
-  // 앱(저장된 토큰 보유)이면 세션 만료 시 조용히 자동 재진입.
-  function appReentry() {
-    var appToken = localStorage.getItem('lq_app_token');
-    if (!appToken) return false;
-    location.replace(location.pathname + '?src=app&t=' + encodeURIComponent(appToken));
-    return true;
-  }
-
   var origFetch = window.fetch.bind(window);
-  var reentering = false;
-
-  // 2) fetch 인터셉터: 앱 세션 만료 자동 재진입만 담당.
-  //    (웹은 더 이상 401/403에 로그인으로 강제 이동하지 않는다 — 화면별 잠금 UI가 처리)
-  window.fetch = function (input, init) {
-    return origFetch(input, init).then(function (res) {
-      try {
-        var url = typeof input === 'string' ? input : (input && input.url) || '';
-        var isApi = url.indexOf('/api/') !== -1;
-        var isAuthApi = url.indexOf('/api/auth/') !== -1;
-        if (isApi && !isAuthApi && res.status === 401 && !reentering) {
-          if (localStorage.getItem('lq_app_token')) { reentering = true; appReentry(); }
-        }
-      } catch (e) { /* noop */ }
-      return res;
-    });
-  };
-
-  function getDeviceKey() {
-    var k = localStorage.getItem('lq_device_key');
-    if (!k) {
-      var arr = new Uint8Array(16);
-      (window.crypto || window.msCrypto).getRandomValues(arr);
-      k = Array.prototype.map.call(arr, function (b) { return ('0' + b.toString(16)).slice(-2); }).join('');
-      localStorage.setItem('lq_device_key', k);
-    }
-    return k;
-  }
+  // (앱 자동진입/자동가입 제거됨) 웹·앱 모두 명시적 이메일 가입만 사용한다.
 
   // 관리자 지정 배너 표시 (모든 페이지 상단). 로그인 여부와 무관.
   function showBanner() {
@@ -247,28 +212,7 @@
     } catch (e) { /* noop */ }
   }
 
-  var params = new URLSearchParams(location.search);
-
-  // 3-A) 앱 자동진입
-  if (params.get('src') === 'app' && params.get('t')) {
-    reentering = true; // 처리 끝까지 화면 숨김 유지
-    var appToken = params.get('t');
-    try { localStorage.setItem('lq_app_token', appToken); } catch (e) { /* noop */ }
-    origFetch('/api/auth/app-enter', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ t: appToken, deviceKey: getDeviceKey() }),
-    })
-      .then(function (r) { return r.json(); })
-      .then(function (data) {
-        if (data && data.success) location.replace(location.pathname); // 깨끗한 URL로 재시작
-        else location.replace(LOGIN);
-      })
-      .catch(function () { location.replace(LOGIN); });
-    return;
-  }
-
-  // 일반 진입: 접근 기록 + 배너
+  // 진입: 접근 기록 + 배너 (앱이든 웹이든 동일 — 자동가입 없음)
   recordVisit();
   if (document.body) showBanner();
   else document.addEventListener('DOMContentLoaded', showBanner);
