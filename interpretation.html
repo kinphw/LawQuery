@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#212529" />
+  <title>법령해석조회 - LawQuery</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="apple-touch-icon" href="assets/icons/icon-192.png" />
+  <!-- 부트스트랩(로컬)을 사용한다면 -->
+  <link rel="stylesheet" href="assets/vendor/bootstrap.min.css" />
+
+  <!-- 폰트어썸(로컬)을 사용한다면 -->
+  <link rel="stylesheet" href="assets/vendor/fontawesome/css/fontawesome.min.css" />
+  <link rel="stylesheet" href="assets/vendor/fontawesome/css/all.min.css" />
+
+  <link rel="stylesheet" href="assets/css/style.css" />
+  <!-- 인증 게이트: 콘텐츠 paint 전에 인증을 먼저 확인(깜빡임 방지)하려고 head에서 동기 로드 -->
+  <script src="auth-gate.js"></script>
+</head>
+<!-- <body class="p-3"> -->
+<body>
+    <div id="header"></div>  <!-- 헤더가 삽입될 자리 -->
+
+    <!-- 검색 영역 위에 추가 -->
+    <div class="floating-controls p-0">
+      <div class="btn-group" role="group" aria-label="Text size options">
+          <input type="radio" class="visually-hidden" name="textSize" id="sizeDefault" value="">
+          <label class="btn btn-outline-secondary btn-sm" for="sizeDefault">크게</label>
+  
+          <input type="radio" class="visually-hidden" name="textSize" id="sizeSmall" value="small" checked>
+          <label class="btn btn-outline-secondary btn-sm" for="sizeSmall">보통</label>
+  
+          <input type="radio" class="visually-hidden" name="textSize" id="sizeXS" value="text-xs">
+          <label class="btn btn-outline-secondary btn-sm" for="sizeXS">작게</label>
+      </div>
+    </div>
+
+    <div class="container">
+
+      <!-- 검색 영역 -->
+      <form id="searchForm" class="row g-3 mb-2">
+        <!-- (1) 구분 -->
+        <div class="col-auto text-center">
+          <label for="typeSelect" class="form-label mb-0">구분</label>
+          <select id="typeSelect" class="form-select">
+            <option value="전체">전체</option>
+            <option value="비조치의견서">비조치의견서</option>
+            <option value="법령해석">법령해석</option>
+            <option value="현장건의 과제">현장건의 과제</option> <!-- 250331 추가 -->            
+          </select>
+        </div>
+
+        <!-- (2) 일련번호 -->
+        <div class="col-auto text-center">
+          <label for="serialInput" class="form-label mb-0">일련번호</label>
+          <input type="text" class="form-control" id="serialInput" placeholder="ex) 250007">
+        </div>
+
+        <!-- (3) 검색항목(질의요지/회답/이유/전체) 선택 -->
+        <div class="col-auto text-center">
+          <label for="fieldSelect" class="form-label mb-0">검색항목</label>
+          <select id="fieldSelect" class="form-select">
+            <option value="전체">전체</option>
+            <option value="제목">제목</option>
+            <option value="질의요지">질의요지</option>
+            <option value="회답">회답</option>
+            <option value="이유">이유</option>
+          </select>
+        </div>
+
+        <!-- (4) 검색어 입력 -->
+        <div class="col-auto text-center">
+          <label for="keywordInput" class="form-label mb-0">내용</label>
+          <input type="text" class="form-control" id="keywordInput" placeholder="내용을 입력하세요">
+        </div>
+
+        <div class="row">
+          <!-- (5) 날짜 검색 -->
+          <div class="col-auto text-center">
+            <label for="startDateInput" class="form-label mb-0">시작 날짜</label>
+            <input type="date" class="form-control" id="startDateInput">
+          </div>
+
+          <div class="col-auto text-center">
+            <label for="endDateInput" class="form-label mb-0">종료 날짜</label>
+            <input type="date" class="form-control" id="endDateInput">
+          </div>        
+
+          <div class="col-auto d-flex align-items-end">
+            <button type="button" id="searchBtn" class="btn btn-primary">검색</button>
+          </div>
+
+          <div class="col-auto d-flex align-items-end">
+            <button type="button" id="copyAllBtn" class="btn btn-outline-primary">전체 복사</button>
+          </div>
+        </div>
+      </form>
+
+      <!-- 검색 결과 표시 영역 -->
+      <div id="results"></div>
+    </div>
+
+    <!-- Bootstrap JS (필요하다면) -->
+    <script src="assets/vendor/bootstrap.bundle.min.js"></script>
+
+    <!-- SQL.js 관련 스크립트 -->
+    <!-- <script src="assets/vendor/sql-wasm-b64.js"></script>   -->
+    <!-- 이 파일을 먼저 로드 -->
+    <script src="assets/vendor/sql-wasm.js"></script>
+    
+    <!-- 데이터베이스 로드 : 여기서 데이터베이스(파일)을 특정 -->
+    <!-- <script src="data/db_i.js"></script>   직접 db파일 로드 -->
+
+    <!-- 검색/렌더링 로직 -->
+    <!-- <script src="src/lawQuery.js"></script> -->
+
+    <!-- 애플리케이션 코드 -->
+    <!-- <script src="src/frontend/js/interpretation/models/SearchDatabase.js"></script>
+    <script src="src/frontend/js/interpretation/models/SearchModel.js"></script>
+    <script src="src/frontend/js/common/components/Header.js"></script>
+    <script src="src/frontend/js/interpretation/views/components/SearchForm.js"></script>
+    <script src="src/frontend/js/interpretation/views/components/SearchResultTable.js"></script>
+    <script src="src/frontend/js/common/components/ToastManager.js"></script>  
+    <script src="src/frontend/js/interpretation/views/SearchView.js"></script>
+    <script src="src/frontend/js/interpretation/controllers/SearchController.js"></script>
+    <script src="src/frontend/js/app.js"></script> -->
+    <!-- <script type="module" src="src/frontend/js/entry/interpretation.js"> </script> -->
+    <script src="dist/interpretation.bundle.js" type="module"></script>
+
+    <!-- PWA: Service Worker 등록 -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function () {
+          navigator.serviceWorker.register('service-worker.js').catch(function (e) {
+            console.error('SW 등록 실패:', e);
+          });
+        });
+      }
+    </script>
+
+    
+
+    <!-- 공통 모달 (body 하단) -->
+    <div class="modal fade" id="commonModal" tabindex="-1" aria-labelledby="commonModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="commonModalLabel">알림</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="닫기"></button>
+          </div>
+          <div class="modal-body">
+            <!-- 내용이 JS로 삽입됨 -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+</body>
+</html>

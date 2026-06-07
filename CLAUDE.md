@@ -5,6 +5,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## 프로젝트 개요
 
 **LawQuery** — 전자금융거래법 등 금융법령, 유권해석, 비조치의견서 검색·조회 웹 애플리케이션.
+모브랜드(가칭 Kinphw Query) 아래 동등 서비스로 확장 예정: LawQuery + **AccountingQuery**(회계기준·BC, 예정).
+
+### ★ 제품·수익 전략 → [docs/STRATEGY.md](docs/STRATEGY.md) 필독
+- **본질은 "검색"이 아니라 "전문가 큐레이션 + 연계뷰"** (검색은 무료여야 함)
+- **킬 기능(pro)**: 법령 **5단 연계표**·별표팝업·법령해석검색 / 회계 **기준서↔BC 2단뷰**
+- **미끼(free)**: 법령 본문·기준서 본문 조회만
+- **게이팅(free/pro)은 지금 구현, 결제(웹 PG)는 활성 100명 검증 후.** plan은 우선 관리자 수동 부여
+- 가격: 월 4,900 → 7,900~9,900 (1,000원은 폐기). 미래 핵심 수익 = **팀 라이선스(B2B)**
+- 결제는 넷플릭스식(앱=뷰어, 웹에서 PG). member.plan ENUM(free/pro) 이미 추가됨
 
 ### 약어 규칙 (도메인 핵심)
 | 용어 | 영어 | 약자 | DB명 |
@@ -43,10 +52,12 @@ npm run typecheck:watch
 ### 전체 구조
 
 ```
-프론트엔드 (브라우저)          백엔드 (Node.js/Express)       DB
-law.html / index.html  ──→   /api/law/*     ──→   ldb_j / ldb_y (MySQL)
-                       ──→   /api/interpretation/*  ──→   ldb_i (MySQL)
+프론트엔드 (브라우저)               백엔드 (Node.js/Express)       DB
+index.html(법령=시작화면)    ──→   /api/law/*     ──→   ldb_j / ldb_y (MySQL)
+interpretation.html(유권해석) ──→   /api/interpretation/*  ──→   ldb_i (MySQL)
 ```
+
+> **시작화면 = 법령(index.html).** 무료 본문이 미끼이므로 루트(`/`)·앱 start_url·로그인 후 모두 법령으로 진입. 유권해석은 `interpretation.html`(PRO 전용). `index.html`은 `law.bundle.js`, `interpretation.html`은 `interpretation.bundle.js`를 로드.
 
 빌드 결과물: `dist/law.bundle.js`, `dist/interpretation.bundle.js`
 프론트엔드 진입점: `src/frontend/ts/entry/law.ts`, `src/frontend/ts/entry/interpretation.ts`

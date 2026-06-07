@@ -27,10 +27,10 @@ export class Header {
                 </div>
             </div>    
             <div>
-                <button class="btn ${currentPage === 'law' ? 'btn-primary' : 'btn-secondary'} me-2" 
-                    onclick="location.href='law.html'">법률조회</button>
-                <button class="btn ${currentPage === 'interpretation' ? 'btn-primary' : 'btn-secondary'}" 
-                    onclick="location.href='index.html'">유권해석조회</button>
+                <button class="btn ${currentPage === 'law' ? 'btn-primary' : 'btn-secondary'} me-2"
+                    onclick="location.href='index.html'">법률조회</button>
+                <button class="btn ${currentPage === 'interpretation' ? 'btn-primary' : 'btn-secondary'}"
+                    onclick="location.href='interpretation.html'">유권해석조회</button>
             </div>
         </header>`;
 

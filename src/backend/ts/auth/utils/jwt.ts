@@ -8,10 +8,11 @@ export interface JwtPayload {
 }
 
 const SECRET = process.env.JWT_SECRET || 'dev-secret';
-// 무활동 만료(슬라이딩): 토큰 수명을 짧게 두고 매 요청마다 갱신한다.
-const EXPIRES = process.env.JWT_EXPIRES || '10m';
+// 무활동 만료(슬라이딩): 매 인증요청마다 토큰을 갱신 → "이 기간 동안 활동이 없으면 로그아웃".
+// 활동 중이면 계속 연장되므로, 사실상 "○○ 이상 미접속 시 자동 로그아웃" 의미. 기본 30분.
+const EXPIRES = process.env.JWT_EXPIRES || '30m';
 
-// 쿠키 maxAge(ms). JWT 수명과 맞춘다. 기본 10분.
+// 쿠키 maxAge(ms). JWT 수명과 맞춘다. 기본 30분.
 const COOKIE_MAX_AGE_MS = (() => {
   const m = /^(\d+)m$/.exec(EXPIRES);
   const h = /^(\d+)h$/.exec(EXPIRES);

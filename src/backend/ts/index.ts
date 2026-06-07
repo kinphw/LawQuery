@@ -7,7 +7,6 @@ import { LawHandler } from './handlers/LawHandler';
 import { InterpretationHandler } from './handlers/InterpretationHandler';
 import { AuthHandler } from './handlers/AuthHandler';
 import { BoardHandler } from './handlers/BoardHandler';
-import { authGuard } from './auth/middleware/authGuard';
 
 // .env 로드 (DbContext보다 먼저 환경변수가 필요하므로 진입점에서 1회 로드)
 dotenv.config({ path: path.join(process.cwd(), '.env') });
@@ -32,9 +31,10 @@ const authHandler = new AuthHandler();
 // 인증 라우터 (게이트 밖)
 app.use('/api', authHandler.router);
 
-// 보호 라우터 (로그인 + 승인 필요)
-app.use('/api/law', authGuard, lawHandler.router);
-app.use('/api/interpretation', authGuard, interpretationHandler.router);
+// 법령/유권해석: 게이트는 각 핸들러 내부에서 엔드포인트별로 적용
+//  - 무료(optionalAuth): 단일 법령 본문·메타  /  PRO(proGuard): 연계표·벌칙·참조·별표·유권해석
+app.use('/api/law', lawHandler.router);
+app.use('/api/interpretation', interpretationHandler.router);
 app.use('/api/board', new BoardHandler().router); // 게시판(내부에서 authGuard 적용)
 
 // 404 처리

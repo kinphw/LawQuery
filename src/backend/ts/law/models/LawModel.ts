@@ -239,6 +239,30 @@ export class LawModel extends LawBaseModel {
     return rows;
   }
 
+  /**
+   * 단일 단위(법/시행령/감독규정/시행세칙) 전체 조회 — 연계 없이 한 단의 모든 조문을 seq 순으로.
+   * 무료 기능: 하위규정이 분산돼 외부에서 통째 보기 어려운 걸 한 화면에. (origin: a/e/s/r)
+   */
+  async getSingleUnit(dbContext: DbContext, origin: string): Promise<any[]> {
+    this.setDbContext(dbContext);
+    const map: Record<string, { tbl: string; id: string; content: string; sched: string }> = {
+      a: { tbl: 'db_a', id: 'id_a', content: 'content_a', sched: 'content_a_sched' },
+      e: { tbl: 'db_e', id: 'id_e', content: 'content_e', sched: 'content_e_sched' },
+      s: { tbl: 'db_s', id: 'id_s', content: 'content_s', sched: 'content_s_sched' },
+      r: { tbl: 'db_r', id: 'id_r', content: 'content_r', sched: 'content_r_sched' },
+      b: { tbl: 'db_b', id: 'id_b', content: 'content_b', sched: 'content_b_sched' }, // 5단째(여신/신정=시행세칙)
+    };
+    const m = map[origin];
+    if (!m) return [];
+    // 법(db_a)은 제목행(id_a IS NULL, title_a)도 포함해 구조를 살린다. 나머지는 id 있는 조문만.
+    const query = origin === 'a'
+      ? `SELECT seq, id_a AS id, title_a AS title, content_a AS content, content_a_sched AS content_sched, sched_date
+         FROM db_a WHERE content_a IS NOT NULL OR title_a IS NOT NULL ORDER BY seq`
+      : `SELECT seq, ${m.id} AS id, ${m.content} AS content, ${m.sched} AS content_sched, sched_date
+         FROM ${m.tbl} WHERE ${m.content} IS NOT NULL ORDER BY seq`;
+    return this.db.query<any>(query);
+  }
+
 
   async getLawByIds(dbContext: DbContext, step: number, lawIds: string[]): Promise<LawResult[]> {
 

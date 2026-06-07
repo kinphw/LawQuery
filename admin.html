@@ -61,7 +61,7 @@
             <thead class="table-dark">
               <tr>
                 <th>ID</th><th>아이디</th><th>이름</th><th>경로</th>
-                <th>상태</th><th>권한</th><th>가입일</th><th>최근로그인</th><th>처리</th>
+                <th>상태</th><th>권한</th><th>등급</th><th>가입일</th><th>최근로그인</th><th>처리</th>
               </tr>
             </thead>
             <tbody id="memberTbody">
@@ -232,11 +232,11 @@
 
       async function loadMembers() {
         const tbody = $('memberTbody');
-        tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted">불러오는 중...</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="10" class="text-center text-muted">불러오는 중...</td></tr>';
         const qs = currentStatus ? `?status=${currentStatus}` : '';
         const data = await (await fetch(`/api/admin/members${qs}`)).json();
-        if (!data.success) { tbody.innerHTML = `<tr><td colspan="9" class="text-danger text-center">${esc(data.error)}</td></tr>`; return; }
-        if (!data.members.length) { tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted">없음</td></tr>'; return; }
+        if (!data.success) { tbody.innerHTML = `<tr><td colspan="10" class="text-danger text-center">${esc(data.error)}</td></tr>`; return; }
+        if (!data.members.length) { tbody.innerHTML = '<tr><td colspan="10" class="text-center text-muted">없음</td></tr>'; return; }
 
         tbody.innerHTML = data.members.map((m) => {
           const a = [];
@@ -248,6 +248,14 @@
           a.push(`<button class="btn btn-outline-primary btn-sm rename-btn" data-id="${m.id}" data-name="${esc(m.display_name)}">이름</button>`);
           if (m.signup_source !== 'app') a.push(`<button class="btn btn-outline-warning btn-sm pw-btn" data-id="${m.id}" data-lid="${esc(m.login_id)}">비번</button>`);
           if (m.role !== 'admin') a.push(`<button class="btn btn-danger btn-sm del-btn" data-id="${m.id}" data-lid="${esc(m.login_id)}">삭제</button>`);
+          // 등급: 관리자는 강제 고정(셀렉트 없이 표시), 일반회원만 인라인 셀렉트로 변경
+          const planLabel = { free: 'FREE', pro: 'PRO' }[m.plan] || esc(m.plan);
+          const planCell = m.role === 'admin'
+            ? `<span class="badge ${m.plan === 'free' ? 'bg-secondary' : 'bg-success'}">${planLabel}</span> <span class="text-muted small">관리자 고정</span>`
+            : `<select class="form-select form-select-sm plan-sel" data-id="${m.id}" data-cur="${m.plan}" style="width:auto;display:inline-block">
+                <option value="free"${m.plan === 'free' ? ' selected' : ''}>FREE</option>
+                <option value="pro"${m.plan === 'pro' ? ' selected' : ''}>PRO</option>
+              </select>`;
           return `<tr>
             <td>${m.id}</td>
             <td class="small">${esc(m.login_id)}</td>
@@ -255,6 +263,7 @@
             <td><span class="badge bg-${m.signup_source === 'app' ? 'info' : 'light text-dark'}">${m.signup_source}</span></td>
             <td>${STATUS_BADGE[m.status] || m.status}</td>
             <td>${m.role}</td>
+            <td>${planCell}</td>
             <td class="small">${(m.created_at || '').slice(0, 10)}</td>
             <td class="small">${(m.last_login_at || '').slice(0, 10) || '-'}</td>
             <td><div class="actions text-nowrap">${a.join(' ') || '-'}</div></td>
@@ -272,6 +281,14 @@
           b.disabled = true;
           const d = await (await fetch(`/api/admin/members/${b.dataset.id}/name`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ displayName: t }) })).json();
           d.success ? loadMembers() : (alert(d.error || '실패'), b.disabled = false);
+        }));
+        tbody.querySelectorAll('.plan-sel').forEach((sel) => sel.addEventListener('change', async () => {
+          const t = sel.value, cur = sel.dataset.cur;
+          if (t === cur) return;
+          sel.disabled = true;
+          const d = await (await fetch(`/api/admin/members/${sel.dataset.id}/plan`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ plan: t }) })).json();
+          if (d.success) { sel.dataset.cur = t; } else { alert(d.error || '실패'); sel.value = cur; }
+          sel.disabled = false;
         }));
         tbody.querySelectorAll('.pw-btn').forEach((b) => b.addEventListener('click', async () => {
           const np = prompt(`[${b.dataset.lid}] 새 비밀번호 (영문·숫자 6~30자)`);
