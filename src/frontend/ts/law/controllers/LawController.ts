@@ -258,7 +258,7 @@ export class LawController implements ILawController {
         this.hideEl('lawSearchCard');
         const cta = authenticated
             ? '<span class="text-muted">PRO 등급에서 이용 가능합니다. 관리자에게 문의해 주세요.</span>'
-            : '<a href="login.html" class="btn btn-primary btn-lg">가입하고 무료로 PRO 베타 이용 →</a>';
+            : '<a href="login.html" class="btn btn-primary btn-lg">가입하고 PRO 베타 이용 →</a>';
         const results = document.getElementById('results');
         if (results) results.innerHTML = `
             <div class="container">

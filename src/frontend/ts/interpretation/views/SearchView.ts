@@ -93,7 +93,7 @@ export class SearchView {
     if (!this.resultsContainer) return;
     const cta = authenticated
       ? '<span class="text-muted">PRO 등급에서 이용 가능합니다. 관리자에게 문의해 주세요.</span>'
-      : '<a href="login.html" class="btn btn-primary btn-lg">가입하고 무료로 PRO 베타 이용 →</a>';
+      : '<a href="login.html" class="btn btn-primary btn-lg">가입하고 PRO 베타 이용 →</a>';
     this.resultsContainer.innerHTML = `
       <div class="text-center p-5">
         <div class="display-4 mb-3"><i class="fas fa-lock text-secondary"></i></div>
