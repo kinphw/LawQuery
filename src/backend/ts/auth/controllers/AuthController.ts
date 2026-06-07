@@ -76,6 +76,11 @@ export class AuthController {
         res.status(400).json({ success: false, error: '비밀번호는 영문·숫자 6~30자로 입력해 주세요.' });
         return;
       }
+      // 운영에서 메일 미설정이면 가입을 진행하지 않고 명확히 에러(가짜 성공·고아 pending 방지)
+      if (!isMailConfigured() && process.env.NODE_ENV === 'production') {
+        res.status(503).json({ success: false, error: '현재 인증 메일을 보낼 수 없습니다. 잠시 후 다시 시도해 주세요.' });
+        return;
+      }
 
       const hash = await bcrypt.hash(password, 10);
       const existing = await this.model.findByLoginId(loginId);
@@ -182,6 +187,10 @@ export class AuthController {
         res.status(400).json({ success: false, error: '이미 인증된 계정입니다.' });
         return;
       }
+      if (!isMailConfigured() && process.env.NODE_ENV === 'production') {
+        res.status(503).json({ success: false, error: '현재 인증 메일을 보낼 수 없습니다. 잠시 후 다시 시도해 주세요.' });
+        return;
+      }
       const v = await this.model.getVerification(member.id);
       if (v && Number(v.resendBlocked)) {
         res.status(429).json({ success: false, error: '잠시 후 다시 시도해 주세요.' });
@@ -218,11 +227,21 @@ export class AuthController {
         res.status(401).json({ success: false, error: '이메일 또는 비밀번호가 올바르지 않습니다.' });
         return;
       }
+      // 비밀번호는 맞지만 이메일 미인증(pending) → 인증 단계로 유도(나중에 재시도 가능)
+      if (member.status === 'pending') {
+        res.status(403).json({
+          success: false,
+          status: 'pending',
+          needVerify: true,
+          email: member.login_id,
+          error: '이메일 인증이 필요합니다. 인증번호를 입력해 주세요.',
+        });
+        return;
+      }
       if (member.status !== 'approved') {
         await this.logModel.record(member.id, member.login_id, 'login_fail', clientIp(req), ua);
         const msg =
-          member.status === 'pending' ? '아직 승인 대기 중입니다.'
-          : member.status === 'rejected' ? '가입이 거부된 계정입니다.'
+          member.status === 'rejected' ? '가입이 거부된 계정입니다.'
           : '이용이 정지된 계정입니다.';
         res.status(403).json({ success: false, error: msg, status: member.status });
         return;

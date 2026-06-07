@@ -196,7 +196,7 @@
 
       $('backToRegister').addEventListener('click', backToRegisterView);
 
-      $('resendBtn').addEventListener('click', async () => {
+      async function doResend() {
         clearAlert();
         try {
           const r = await fetch('/api/auth/resend', {
@@ -204,10 +204,14 @@
             body: JSON.stringify({ loginId: pendingEmail }),
           });
           const data = await r.json();
-          if (data.success) { showAlert('인증번호를 다시 보냈습니다.', 'success'); startResendCooldown(60); }
-          else { showAlert(data.error || '재전송에 실패했습니다.'); }
+          if (data.success) {
+            if (data.devCode) showAlert('⚠️ 개발 모드: 메일 미발송. 인증번호 ' + data.devCode, 'warning');
+            else showAlert('인증번호를 보냈습니다.', 'success');
+            startResendCooldown(60);
+          } else { showAlert(data.error || '재전송에 실패했습니다.'); }
         } catch { showAlert('서버 연결에 실패했습니다.'); }
-      });
+      }
+      $('resendBtn').addEventListener('click', doResend);
 
       $('verifyForm').addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -245,6 +249,11 @@
           });
           const data = await r.json();
           if (data.success) { go(); }
+          else if (data.needVerify) {
+            // 미인증 계정 → 인증 단계로 보내고 새 인증번호 발송(나중에 재시도 경로)
+            showVerify((data.email || $('loginEmail').value).trim().toLowerCase());
+            doResend();
+          }
           else { showAlert(data.error || '로그인에 실패했습니다.'); }
         } catch { showAlert('서버 연결에 실패했습니다.'); }
       });
@@ -267,6 +276,8 @@
           if (data.success && data.status === 'pending') {
             // 인증번호 입력 단계로 전환
             showVerify((data.email || $('regEmail').value).trim().toLowerCase());
+            // 개발 모드(메일 미설정): 실제 발송이 아님을 명확히 표시 + 코드 노출
+            if (data.devCode) showAlert('⚠️ 개발 모드: 메일이 실제로 발송되지 않았습니다. 인증번호 ' + data.devCode, 'warning');
           } else if (data.success && data.status === 'approved') {
             // (구버전 호환) 즉시 승인된 경우
             try { localStorage.setItem('lq_onboard_pro', '1'); } catch (e) { /* noop */ }

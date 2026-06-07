@@ -29,12 +29,19 @@ export function isMailConfigured(): boolean {
   return !!(process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD);
 }
 
-/** 인증번호 메일 발송. 미설정이면 콘솔 출력(dev) 후 true 반환. 실패 시 false. */
+/**
+ * 인증번호 메일 발송. 성공 true / 실패 false.
+ * - 미설정 + 운영(production): false (가짜 성공 금지 → 호출부가 에러 처리)
+ * - 미설정 + 개발: 콘솔에 코드 출력 후 true (dev 편의, devCode로도 노출됨)
+ */
 export async function sendVerifyCode(to: string, code: string): Promise<boolean> {
   const tx = getTransporter();
   if (!tx) {
-    // 개발 편의: 메일 미설정 시 코드를 콘솔에 출력해 흐름 테스트 가능
-    console.log(`[mailer:DEV] 인증번호 발송 생략(GMAIL 미설정) → ${to} : ${code}`);
+    if (process.env.NODE_ENV === 'production') {
+      console.error('[mailer] GMAIL 미설정 — 운영에서 메일 발송 불가(GMAIL_USER/GMAIL_APP_PASSWORD 확인)');
+      return false;
+    }
+    console.log(`[mailer:DEV] 메일 미설정 → ${to} 인증번호: ${code}`);
     return true;
   }
   try {
