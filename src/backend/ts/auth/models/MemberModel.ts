@@ -91,14 +91,6 @@ export class MemberModel {
     return rows[0] ?? null;
   }
 
-  async findByDeviceKey(deviceKey: string): Promise<Member | null> {
-    const rows = await this.db.query<Member>(
-      'SELECT * FROM member WHERE device_key = ? LIMIT 1',
-      [deviceKey]
-    );
-    return rows[0] ?? null;
-  }
-
   /** 웹 가입. 무료 베타라 plan 기본 pro(가입 즉시 킬 기능 개방, 만료 없음). */
   async createWebMember(
     loginId: string,
@@ -114,16 +106,6 @@ export class MemberModel {
       `INSERT INTO member (login_id, password_hash, display_name, occupation, signup_source, status, role, plan, plan_expires_at)
        VALUES (?, ?, ?, ?, 'web', ?, ?, ?, ?)`,
       [loginId, passwordHash, displayName, occupation, status, role, plan, planExpiresAt]
-    );
-    return (result as any).insertId ?? (result as any)[0]?.insertId;
-  }
-
-  /** 앱 자동가입: 익명, status=approved 즉시 */
-  async createAppMember(loginId: string, deviceKey: string): Promise<number> {
-    const result: any = await this.db.query(
-      `INSERT INTO member (login_id, password_hash, display_name, signup_source, status, role, device_key, approved_at)
-       VALUES (?, NULL, NULL, 'app', 'approved', 'user', ?, NOW())`,
-      [loginId, deviceKey]
     );
     return (result as any).insertId ?? (result as any)[0]?.insertId;
   }
