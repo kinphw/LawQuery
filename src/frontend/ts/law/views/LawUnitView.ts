@@ -9,7 +9,7 @@ import type { LawMeta } from '../models/LawFetchMetaModel';
  * 디자인도 연계표를 정답으로 삼아 동일한 마크업(law-table / law-box / box-item,
  * 시행예정 diff 박스)을 그대로 사용해 일관성을 맞춘다.
  *
- * 데이터는 무료 API /api/law/unit (origin a/e/s/r)에서 받는다.
+ * 데이터는 회원가입 없이 접근 가능한 /api/law/unit (origin a/e/s/r)에서 받는다.
  */
 export class LawUnitView {
   private toast = new ToastManager();

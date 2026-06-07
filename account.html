@@ -90,13 +90,13 @@
           if (!me.authenticated) { location.href = 'login.html?next=account.html'; return; }
           $('accEmail').textContent = me.loginId || '-';
           $('accMeta').textContent = `${me.source === 'app' ? '앱' : '웹'} / ${me.role === 'admin' ? '관리자' : '일반'}`;
-          // 등급 표시 (PRO 인지: 베타 무료/추후 유료)
+          // 등급 표시 (PRO 전용 / BETA 전체 공개)
           const planMap = { pro: 'PRO', free: 'FREE' };
           const planLabel = planMap[me.plan] || me.plan || '-';
           const planBg = me.plan === 'pro' ? '#6f42c1' : '#6c757d';
           $('accPlan').innerHTML =
             `<span class="badge" style="background:${planBg};color:#fff">${planLabel}</span>` +
-            (me.plan === 'pro' ? ' <span class="text-muted small">베타 기간 무료 (정식 출시 시 유료 전환 예정)</span>' : '');
+            (me.plan === 'pro' ? ' <span class="text-muted small">BETA 기간 전체 공개 중</span>' : '');
           if (me.displayName) $('displayName').value = me.displayName;
           // 앱 익명계정은 비번이 없으므로 비번 변경 카드 숨김
           if (me.source === 'app') $('pwCard').classList.add('d-none');

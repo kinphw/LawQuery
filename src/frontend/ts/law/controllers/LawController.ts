@@ -194,9 +194,9 @@ export class LawController implements ILawController {
         const lock = pro ? '' : ' <i class="fas fa-lock"></i>';
         // 연계표는 PRO 기능 → 잠금 여부와 무관하게 PRO 뱃지로 "이건 PRO" 각인
         const proTag = '<span class="badge ms-1" style="background:#6f42c1;color:#fff;font-size:.6rem;vertical-align:middle">PRO</span>';
-        // PRO가 연계표를 쓰는 중이면 "베타 무료/추후 유료" 인지 문구
+        // PRO가 연계표를 쓰는 중이면 "PRO 전용 · BETA 전체 공개" 안내
         const note = (current === 'linked' && pro)
-            ? `<div class="text-center mt-2"><span class="badge" style="background:#6f42c1;color:#fff">PRO</span> <span class="text-muted small">연계표·벌칙·별표는 PRO 기능 — 베타 기간 무료 (정식 출시 시 유료 전환 예정)</span></div>`
+            ? `<div class="text-center mt-2"><span class="badge" style="background:#6f42c1;color:#fff">PRO</span> <span class="text-muted small">연계표·벌칙·별표는 PRO 전용 · BETA 기간 전체 공개 중</span></div>`
             : '';
         host.innerHTML = `
             <div class="d-flex justify-content-center">
@@ -216,7 +216,7 @@ export class LawController implements ILawController {
         });
     }
 
-    /** 단일 조회 모드(모든 등급 무료). 연계 전용 정적 요소는 숨긴다. */
+    /** 단일 조회 모드(회원가입 없이 이용). 연계 전용 정적 요소는 숨긴다. */
     private async showUnitMode(meta: import("../models/LawFetchMetaModel").LawMeta[]): Promise<void> {
         this.hideEl('penaltyBtn');
         this.hideEl('annexBtn');
