@@ -1,0 +1,13 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "kr.kro.kinphw.lq",
+      "sha256_cert_fingerprints": [
+        "37:AE:9B:ED:A9:3C:1B:F5:EB:8F:33:E7:E5:91:7A:BA:FC:49:67:26:4D:9A:48:91:F5:33:EE:C6:1B:40:46:EE",
+        "ED:40:1A:88:5C:4D:78:00:F3:C1:C9:6F:91:BC:D4:87:02:BF:7F:C6:6A:0F:22:B7:9F:9A:30:7F:38:24:35:F9"
+      ]
+    }
+  }
+]
