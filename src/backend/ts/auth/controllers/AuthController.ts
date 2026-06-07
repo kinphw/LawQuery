@@ -76,35 +76,48 @@ export class AuthController {
         res.status(400).json({ success: false, error: '비밀번호는 영문·숫자 6~30자로 입력해 주세요.' });
         return;
       }
-      // 운영에서 메일 미설정이면 가입을 진행하지 않고 명확히 에러(가짜 성공·고아 pending 방지)
-      if (!isMailConfigured() && process.env.NODE_ENV === 'production') {
+      const hash = await bcrypt.hash(password, 10);
+      const existing = await this.model.findByLoginId(loginId);
+      if (existing && existing.status === 'approved') {
+        res.status(409).json({ success: false, error: '이미 가입된 이메일입니다.' });
+        return;
+      }
+
+      // 최초 계정(회원 0명, 신규)은 부트스트랩 관리자 → 이메일 인증 면제 + 즉시 승인/로그인.
+      // (메일 미설정으로 최초 관리자가 잠기는 닭-달걀 문제 방지)
+      const isFirstAdmin = !existing && (await this.model.countMembers()) === 0;
+
+      // 운영에서 메일 미설정이면 일반 가입은 차단(가짜 성공·고아 pending 방지). 단, 최초 관리자는 통과.
+      if (!isFirstAdmin && !isMailConfigured() && process.env.NODE_ENV === 'production') {
         res.status(503).json({ success: false, error: '현재 인증 메일을 보낼 수 없습니다. 잠시 후 다시 시도해 주세요.' });
         return;
       }
 
-      const hash = await bcrypt.hash(password, 10);
-      const existing = await this.model.findByLoginId(loginId);
+      if (isFirstAdmin) {
+        // plan=pro_beta 무기한(베타). ▶ 정식 출시 시 30일 트라이얼은 일반 가입에만 적용.
+        const id = await this.model.createWebMember(
+          loginId, hash, displayName, 'admin', 'approved', 'pro_beta', occupation
+        );
+        const sid = newSessionToken();
+        await this.model.setSessionToken(id, sid);
+        const token = signToken({ uid: id, role: 'admin', sid });
+        res.cookie(AUTH_COOKIE, token, cookieOptions());
+        res.json({ success: true, status: 'approved', role: 'admin' });
+        return;
+      }
 
       let memberId: number;
       if (existing) {
-        // 이미 인증 완료된 이메일은 가입 불가, 미인증(pending)이면 재시도 허용(정보 갱신 후 코드 재발송)
-        if (existing.status === 'approved') {
-          res.status(409).json({ success: false, error: '이미 가입된 이메일입니다.' });
-          return;
-        }
+        // 미인증(pending) 재시도 → 정보 갱신 후 코드 재발송
         memberId = existing.id;
         await this.model.refreshPendingSignup(existing.id, hash, displayName, occupation);
       } else {
-        // 최초 가입자(회원 0명)는 관리자. plan=pro_beta 무기한(베타).
-        // status=pending → 이메일 인증(verify) 성공 시 approved.
-        // ▶ 정식 출시 시 30일 트라이얼: createWebMember 8번째 인자로 now()+30일 전달.
-        const isAdmin = (await this.model.countMembers()) === 0;
-        if (!isAdmin && !(await this.settingModel.isSignupEnabled())) {
+        if (!(await this.settingModel.isSignupEnabled())) {
           res.status(403).json({ success: false, error: '현재 신규 가입이 중단되었습니다.' });
           return;
         }
         memberId = await this.model.createWebMember(
-          loginId, hash, displayName, isAdmin ? 'admin' : 'user', 'pending', 'pro_beta', occupation
+          loginId, hash, displayName, 'user', 'pending', 'pro_beta', occupation
         );
       }
 
