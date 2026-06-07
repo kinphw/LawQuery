@@ -87,6 +87,7 @@
   - 인증 컬럼: `ALTER TABLE member ADD COLUMN verify_code_hash VARCHAR(255) NULL, ADD COLUMN verify_expires_at DATETIME NULL, ADD COLUMN verify_attempts INT NOT NULL DEFAULT 0, ADD COLUMN verify_sent_at DATETIME NULL;` (로컬 dev 적용 완료)
   - ★ 등급 단순화(pro_beta 제거): `UPDATE member SET plan='pro' WHERE plan='pro_beta'; ALTER TABLE member MODIFY plan ENUM('free','pro') NOT NULL DEFAULT 'free';` (로컬 dev 적용 완료. 순서 중요 — UPDATE 먼저)
 - **`.env`에 `GMAIL_USER`/`GMAIL_APP_PASSWORD` 설정** (안 하면 인증메일이 안 가서 신규가입 불가) + 운영 `NODE_ENV=production`(devCode 노출 차단)
+- 운영 `.env`의 `JWT_EXPIRES`도 `30m`로(무활동 로그아웃 30분, 슬라이딩). (코드 기본값도 30m)
 - deploy 시 **`npm install`**(nodemailer 신규 의존성) 필요 — deploy.sh가 install 안 하면 추가
 - main 머지 → deploy.sh
 - 기존 운영 회원 plan을 `pro`로 UPDATE (베타라 다 열어줌). 기존 회원은 이미 approved라 인증 불필요
