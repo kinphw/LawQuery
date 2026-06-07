@@ -129,13 +129,13 @@
         '<span class="lq-userbar__actions">' +
           '<a href="board.html" class="lq-userbar__link">건의사항</a>' +
           '<a href="' + LOGIN + '?next=' + next + '" class="lq-userbar__link">로그인</a>' +
-          '<a href="' + LOGIN + '?next=' + next + '" class="lq-userbar__cta">가입(무료)</a>' +
+          '<a href="' + LOGIN + '?next=' + next + '" class="lq-userbar__cta">가입</a>' +
         '</span>' +
       '</div>';
     exposeUserbarHeight(host);
   }
 
-  // 가입 직후 1회 온보딩: "PRO 전 기능 베타 무료" 인지. login.html이 가입 성공 시 플래그를 심는다.
+  // 가입 직후 1회 온보딩: "PRO 전 기능 BETA 전체 공개" 안내. login.html이 가입 성공 시 플래그를 심는다.
   function maybeShowOnboarding(me) {
     var FLAG = 'lq_onboard_pro';
     try { if (!localStorage.getItem(FLAG)) return; } catch (e) { return; }
@@ -153,11 +153,10 @@
         '<div style="max-width:420px;background:#fff;border-radius:.6rem;padding:1.5rem;' +
           'text-align:center;box-shadow:0 8px 30px rgba(0,0,0,.25)">' +
           '<div style="font-size:2rem">🎉</div>' +
-          '<h5 style="margin:.5rem 0 .25rem">가입 완료 — PRO 베타 활성화</h5>' +
+          '<h5 style="margin:.5rem 0 .25rem">가입 완료 — PRO 전체 공개(BETA)</h5>' +
           '<p style="color:#555;font-size:.92rem;margin:0 0 1rem">' +
-            '<strong>5단 연계표·유권해석·벌칙·별표</strong> 등 모든 <strong>PRO 기능</strong>을 ' +
-            '<strong>베타 기간 무료</strong>로 이용하실 수 있어요.<br>' +
-            '정식 출시 시 유료 전환 예정입니다.</p>' +
+            '<strong>5단 연계표·유권해석·벌칙·별표</strong> 등 <strong>모든 PRO 기능</strong>을 ' +
+            '지금 바로 이용하실 수 있어요.<br>BETA 기간 전체 공개 중입니다.</p>' +
           '<button id="lq-onboard-ok" style="background:#6f42c1;color:#fff;border:0;' +
             'border-radius:.4rem;padding:.5rem 1.4rem;font-size:.95rem;cursor:pointer">시작하기</button>' +
         '</div>';
