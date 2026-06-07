@@ -72,13 +72,23 @@
 - **30일 트라이얼 인프라(지금은 비활성, 출시 때 켬)**: `member.plan_expires_at DATETIME NULL` 추가. `findById`가 `plan_expired` 계산 컬럼(NOW() 비교, TZ안전) 반환 → [effectivePlan](../src/backend/ts/auth/models/MemberModel.ts)이 만료 시 free 취급. proGuard·me 모두 실효 등급 사용. **베타엔 가입 시 expires=NULL(무기한)이라 동작 변화 없음.**
   - ▶ **정식 출시 전환**: [AuthController.register](../src/backend/ts/auth/controllers/AuthController.ts)의 `createWebMember` 8번째 인자로 `now()+30일` 만료시각 전달 한 줄이면 30일 트라이얼 가동.
 
+## 이메일 인증(가입 2단계) — 추가됨
+
+- 가입 = 이메일 기반. register는 `status='pending'` 생성 + 6자리 인증번호 메일 발송 → `/api/auth/verify`(코드 확인) 성공 시 `approved`+자동로그인. `/api/auth/resend`(60초 쿨다운).
+- 발송: **Gmail SMTP**([mailer.ts](../src/backend/ts/auth/utils/mailer.ts), nodemailer). `.env`에 `GMAIL_USER`/`GMAIL_APP_PASSWORD`(구글 앱비밀번호) 설정 필요. **미설정 시 dev는 콘솔/응답 `devCode`로 코드 노출**(운영·메일설정 시 미노출).
+- 코드: bcrypt 해시 저장, 10분 만료, 시도 5회 제한, 재전송 60초 쿨다운(전부 DB NOW() 기준 → TZ 안전).
+- 검증(dev e2e): 잘못된 이메일 400 / 정상 register→pending+devCode / 틀린코드 "남은시도" / 올바른코드→approved+Set-Cookie 확인.
+
 ## ⚠️ 운영 배포 시 필요 (다 끝나고)
 
 - 운영 DB ALTER (root/genius):
   - `member.plan` ENUM(`free`,`pro_beta`,`pro`) 확장 + `occupation VARCHAR(30)` 추가
-  - `ALTER TABLE member ADD COLUMN plan_expires_at DATETIME NULL AFTER plan;` (★ 신규, 로컬 dev엔 적용 완료)
+  - `ALTER TABLE member ADD COLUMN plan_expires_at DATETIME NULL AFTER plan;` (로컬 dev 적용 완료)
+  - ★ 인증 컬럼: `ALTER TABLE member ADD COLUMN verify_code_hash VARCHAR(255) NULL, ADD COLUMN verify_expires_at DATETIME NULL, ADD COLUMN verify_attempts INT NOT NULL DEFAULT 0, ADD COLUMN verify_sent_at DATETIME NULL;` (로컬 dev 적용 완료)
+- **`.env`에 `GMAIL_USER`/`GMAIL_APP_PASSWORD` 설정** (안 하면 인증메일이 안 가서 신규가입 불가) + 운영 `NODE_ENV=production`(devCode 노출 차단)
+- deploy 시 **`npm install`**(nodemailer 신규 의존성) 필요 — deploy.sh가 install 안 하면 추가
 - main 머지 → deploy.sh
-- 기존 운영 회원 plan을 pro_beta로 UPDATE (베타라 다 열어줌)
+- 기존 운영 회원 plan을 pro_beta로 UPDATE (베타라 다 열어줌). 기존 회원은 이미 approved라 인증 불필요
 
 ## 기술 메모
 

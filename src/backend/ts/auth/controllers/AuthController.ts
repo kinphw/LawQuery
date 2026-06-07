@@ -4,6 +4,8 @@ import { MemberModel, effectivePlan } from '../models/MemberModel';
 import { AccessLogModel } from '../models/AccessLogModel';
 import { SettingModel } from '../models/SettingModel';
 import { signToken, verifyToken, newSessionToken, AUTH_COOKIE, cookieOptions } from '../utils/jwt';
+import crypto from 'crypto';
+import { sendVerifyCode, isMailConfigured } from '../utils/mailer';
 
 // 로그인 ID = 이메일(회원 확대용). 간단 형식 검증(인증메일 단계는 없음).
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -41,7 +43,21 @@ export class AuthController {
     }
   };
 
-  /** 웹 회원가입: status=pending. 단, ADMIN_EMAIL과 일치하면 admin+approved 자동. */
+  /** 6자리 인증번호 생성 → 해시 저장 + 메일 발송. 성공 시 코드 반환, 실패 시 null. (register/resend 공용) */
+  private sendCode = async (memberId: number, email: string): Promise<string | null> => {
+    const code = String(crypto.randomInt(0, 1000000)).padStart(6, '0');
+    const codeHash = await bcrypt.hash(code, 10);
+    await this.model.setVerification(memberId, codeHash, 10); // 10분 유효
+    const ok = await sendVerifyCode(email, code);
+    return ok ? code : null;
+  };
+
+  /** 메일 미설정 + 비운영 환경에서만 응답에 코드 노출(dev 테스트용). 운영/메일설정 시 undefined. */
+  private devCodeOf(code: string): string | undefined {
+    return (!isMailConfigured() && process.env.NODE_ENV !== 'production') ? code : undefined;
+  }
+
+  /** 웹 회원가입: pending 생성 + 이메일 인증번호 발송. 인증(verify) 성공 시 approved. */
   register = async (req: Request, res: Response): Promise<void> => {
     try {
       const loginId = (req.body?.loginId ?? req.body?.email ?? '').trim().toLowerCase();
@@ -61,51 +77,125 @@ export class AuthController {
         return;
       }
 
-      const existing = await this.model.findByLoginId(loginId);
-      if (existing) {
-        res.status(409).json({ success: false, error: '이미 가입된 이메일입니다.' });
-        return;
-      }
-
-      // 최초 가입자(회원 0명)는 자동으로 관리자 + 승인 → 설정에 관리자 ID를 둘 필요 없음
-      const isAdmin = (await this.model.countMembers()) === 0;
-
-      // 가입 허용 off면 차단 (단, 최초 관리자 가입은 항상 허용)
-      if (!isAdmin && !(await this.settingModel.isSignupEnabled())) {
-        res.status(403).json({ success: false, error: '현재 신규 가입이 중단되었습니다.' });
-        return;
-      }
-
       const hash = await bcrypt.hash(password, 10);
-      // 무료 베타: 가입 즉시 자동 승인 + plan=pro_beta 무기한(킬 기능 베타 개방). 악용 시 관리자 사후 정지.
-      // ▶ 정식 출시(결제 오픈) 시 30일 트라이얼 전환: 아래 8번째 인자로 만료시각을 넘기면 됨.
-      //   예) const expires = new Date(Date.now() + 30*864e5).toISOString().slice(0,19).replace('T',' ');
-      //       createWebMember(..., occupation, expires)
-      const id = await this.model.createWebMember(
-        loginId,
-        hash,
-        displayName,
-        isAdmin ? 'admin' : 'user',
-        'approved',
-        'pro_beta',
-        occupation
-        // , planExpiresAt  ← 출시 때 활성화
-      );
+      const existing = await this.model.findByLoginId(loginId);
 
-      // 가입 즉시 로그인 처리(관리자/일반 공통)
-      const sid = newSessionToken();
-      await this.model.setSessionToken(id, sid);
-      const token = signToken({ uid: id, role: isAdmin ? 'admin' : 'user', sid });
-      res.cookie(AUTH_COOKIE, token, cookieOptions());
-      res.json({
-        success: true,
-        status: 'approved',
-        role: isAdmin ? 'admin' : 'user',
-        message: isAdmin ? '관리자 계정으로 가입되었습니다.' : '가입이 완료되었습니다.',
-      });
+      let memberId: number;
+      if (existing) {
+        // 이미 인증 완료된 이메일은 가입 불가, 미인증(pending)이면 재시도 허용(정보 갱신 후 코드 재발송)
+        if (existing.status === 'approved') {
+          res.status(409).json({ success: false, error: '이미 가입된 이메일입니다.' });
+          return;
+        }
+        memberId = existing.id;
+        await this.model.refreshPendingSignup(existing.id, hash, displayName, occupation);
+      } else {
+        // 최초 가입자(회원 0명)는 관리자. plan=pro_beta 무기한(베타).
+        // status=pending → 이메일 인증(verify) 성공 시 approved.
+        // ▶ 정식 출시 시 30일 트라이얼: createWebMember 8번째 인자로 now()+30일 전달.
+        const isAdmin = (await this.model.countMembers()) === 0;
+        if (!isAdmin && !(await this.settingModel.isSignupEnabled())) {
+          res.status(403).json({ success: false, error: '현재 신규 가입이 중단되었습니다.' });
+          return;
+        }
+        memberId = await this.model.createWebMember(
+          loginId, hash, displayName, isAdmin ? 'admin' : 'user', 'pending', 'pro_beta', occupation
+        );
+      }
+
+      const code = await this.sendCode(memberId, loginId);
+      if (!code) {
+        res.status(500).json({ success: false, error: '인증 메일 발송에 실패했습니다. 잠시 후 다시 시도해 주세요.' });
+        return;
+      }
+      // 토큰 발급 안 함 — verify 성공 시 자동 로그인
+      res.json({ success: true, status: 'pending', email: loginId, devCode: this.devCodeOf(code) });
     } catch (e) {
       console.error('register 오류:', e);
       res.status(500).json({ success: false, error: '가입 처리 중 오류가 발생했습니다.' });
+    }
+  };
+
+  /** 이메일 인증번호 확인 → 승인 + 자동 로그인. */
+  verify = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const loginId = (req.body?.loginId ?? req.body?.email ?? '').trim().toLowerCase();
+      const code = (req.body?.code ?? '').toString().trim();
+      if (!loginId || !/^\d{6}$/.test(code)) {
+        res.status(400).json({ success: false, error: '인증번호 6자리를 입력해 주세요.' });
+        return;
+      }
+      const member = await this.model.findByLoginId(loginId);
+      if (!member) {
+        res.status(400).json({ success: false, error: '가입 정보를 찾을 수 없습니다. 다시 가입해 주세요.' });
+        return;
+      }
+      if (member.status === 'approved') {
+        res.status(400).json({ success: false, error: '이미 인증된 계정입니다. 로그인해 주세요.' });
+        return;
+      }
+      const v = await this.model.getVerification(member.id);
+      if (!v || !v.codeHash || !Number(v.valid)) {
+        res.status(400).json({ success: false, error: '인증번호가 만료되었습니다. 재전송해 주세요.' });
+        return;
+      }
+      if (Number(v.attempts) >= 5) {
+        res.status(400).json({ success: false, error: '시도 횟수를 초과했습니다. 재전송해 주세요.' });
+        return;
+      }
+      const ok = await bcrypt.compare(code, v.codeHash);
+      if (!ok) {
+        await this.model.bumpVerifyAttempt(member.id);
+        const left = Math.max(0, 5 - (Number(v.attempts) + 1));
+        res.status(400).json({ success: false, error: `인증번호가 일치하지 않습니다. (남은 시도 ${left}회)` });
+        return;
+      }
+
+      // 성공 → 승인 + 자동 로그인
+      await this.model.markVerified(member.id);
+      await this.logModel.record(member.id, member.login_id, 'login', clientIp(req), req.headers['user-agent'] as string || null);
+      const sid = newSessionToken();
+      await this.model.setSessionToken(member.id, sid);
+      const token = signToken({ uid: member.id, role: member.role, sid });
+      res.cookie(AUTH_COOKIE, token, cookieOptions());
+      res.json({ success: true, status: 'approved', role: member.role, displayName: member.display_name });
+    } catch (e) {
+      console.error('verify 오류:', e);
+      res.status(500).json({ success: false, error: '인증 처리 중 오류가 발생했습니다.' });
+    }
+  };
+
+  /** 인증번호 재전송 (60초 쿨다운). */
+  resend = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const loginId = (req.body?.loginId ?? req.body?.email ?? '').trim().toLowerCase();
+      if (!EMAIL_RE.test(loginId)) {
+        res.status(400).json({ success: false, error: '올바른 이메일 주소를 입력해 주세요.' });
+        return;
+      }
+      const member = await this.model.findByLoginId(loginId);
+      if (!member) {
+        res.status(400).json({ success: false, error: '가입 정보를 찾을 수 없습니다. 다시 가입해 주세요.' });
+        return;
+      }
+      if (member.status === 'approved') {
+        res.status(400).json({ success: false, error: '이미 인증된 계정입니다.' });
+        return;
+      }
+      const v = await this.model.getVerification(member.id);
+      if (v && Number(v.resendBlocked)) {
+        res.status(429).json({ success: false, error: '잠시 후 다시 시도해 주세요.' });
+        return;
+      }
+      const code = await this.sendCode(member.id, loginId);
+      if (!code) {
+        res.status(500).json({ success: false, error: '인증 메일 발송에 실패했습니다.' });
+        return;
+      }
+      res.json({ success: true, devCode: this.devCodeOf(code) });
+    } catch (e) {
+      console.error('resend 오류:', e);
+      res.status(500).json({ success: false, error: '재전송 중 오류가 발생했습니다.' });
     }
   };
 

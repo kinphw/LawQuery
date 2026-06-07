@@ -22,6 +22,8 @@ export class AuthHandler {
   private initializeRoutes(): void {
     // 공개 (게이트 밖)
     this.router.post('/auth/register', this.auth.register);
+    this.router.post('/auth/verify', this.auth.verify);   // 이메일 인증번호 확인 → 승인+자동로그인
+    this.router.post('/auth/resend', this.auth.resend);   // 인증번호 재전송(쿨다운)
     this.router.post('/auth/login', this.auth.login);
     this.router.post('/auth/logout', this.auth.logout);
     this.router.get('/auth/me', this.auth.me);

@@ -30,7 +30,7 @@
 
     <div class="card auth-card">
       <div class="card-body p-4">
-        <div class="btn-group w-100 mb-3" role="group">
+        <div class="btn-group w-100 mb-3" role="group" id="authTabs">
           <button type="button" class="btn btn-outline-dark tab-btn active" id="tabLogin">로그인</button>
           <button type="button" class="btn btn-outline-dark tab-btn" id="tabRegister">회원가입</button>
         </div>
@@ -84,6 +84,24 @@
             <strong>베타 기간 무료</strong>로 이용하실 수 있습니다. (추후 유료 전환 예정)
           </p>
         </form>
+
+        <!-- 이메일 인증번호 입력(가입 2단계) -->
+        <form id="verifyForm" class="d-none">
+          <p class="small text-muted mb-3">
+            <strong id="verifyEmail"></strong> 으로 인증번호 6자리를 보냈습니다.<br>
+            메일이 안 보이면 스팸함도 확인해 주세요.
+          </p>
+          <div class="mb-3">
+            <label class="form-label">인증번호</label>
+            <input type="text" class="form-control text-center fs-4" id="verifyCode"
+              inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="------" required />
+          </div>
+          <button type="submit" class="btn btn-dark w-100">인증 완료</button>
+          <div class="d-flex justify-content-between align-items-center mt-3">
+            <button type="button" class="btn btn-link btn-sm p-0" id="resendBtn">인증번호 재전송</button>
+            <button type="button" class="btn btn-link btn-sm p-0 text-muted" id="backToRegister">← 이메일 다시 입력</button>
+          </div>
+        </form>
       </div>
     </div>
   </div>
@@ -125,12 +143,89 @@
       $('tabLogin').addEventListener('click', () => {
         $('tabLogin').classList.add('active'); $('tabRegister').classList.remove('active');
         $('loginForm').classList.remove('d-none'); $('registerForm').classList.add('d-none');
+        $('verifyForm').classList.add('d-none');
         clearAlert();
       });
       $('tabRegister').addEventListener('click', () => {
         $('tabRegister').classList.add('active'); $('tabLogin').classList.remove('active');
         $('registerForm').classList.remove('d-none'); $('loginForm').classList.add('d-none');
+        $('verifyForm').classList.add('d-none');
         clearAlert();
+      });
+
+      // ── 이메일 인증(가입 2단계) ──
+      let pendingEmail = '';
+      let resendTimer = null;
+
+      function showVerify(email) {
+        pendingEmail = email;
+        $('verifyEmail').textContent = email;
+        $('authTabs').classList.add('d-none');
+        $('loginForm').classList.add('d-none');
+        $('registerForm').classList.add('d-none');
+        $('verifyForm').classList.remove('d-none');
+        $('verifyCode').value = '';
+        $('verifyCode').focus();
+        startResendCooldown(60);
+        clearAlert();
+      }
+      function backToRegisterView() {
+        if (resendTimer) { clearInterval(resendTimer); resendTimer = null; }
+        $('verifyForm').classList.add('d-none');
+        $('authTabs').classList.remove('d-none');
+        $('tabRegister').classList.add('active'); $('tabLogin').classList.remove('active');
+        $('registerForm').classList.remove('d-none');
+        clearAlert();
+      }
+      function startResendCooldown(sec) {
+        const btn = $('resendBtn');
+        let left = sec;
+        btn.disabled = true;
+        btn.textContent = `재전송 (${left}초)`;
+        if (resendTimer) clearInterval(resendTimer);
+        resendTimer = setInterval(() => {
+          left -= 1;
+          if (left <= 0) {
+            clearInterval(resendTimer); resendTimer = null;
+            btn.disabled = false; btn.textContent = '인증번호 재전송';
+          } else {
+            btn.textContent = `재전송 (${left}초)`;
+          }
+        }, 1000);
+      }
+
+      $('backToRegister').addEventListener('click', backToRegisterView);
+
+      $('resendBtn').addEventListener('click', async () => {
+        clearAlert();
+        try {
+          const r = await fetch('/api/auth/resend', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ loginId: pendingEmail }),
+          });
+          const data = await r.json();
+          if (data.success) { showAlert('인증번호를 다시 보냈습니다.', 'success'); startResendCooldown(60); }
+          else { showAlert(data.error || '재전송에 실패했습니다.'); }
+        } catch { showAlert('서버 연결에 실패했습니다.'); }
+      });
+
+      $('verifyForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        clearAlert();
+        const code = $('verifyCode').value.trim();
+        if (!/^\d{6}$/.test(code)) { showAlert('인증번호 6자리를 입력해 주세요.'); return; }
+        try {
+          const r = await fetch('/api/auth/verify', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ loginId: pendingEmail, code }),
+          });
+          const data = await r.json();
+          if (data.success) {
+            // 인증 성공 = 가입 완료 + 자동 로그인 → 다음 화면에서 PRO 온보딩 1회
+            try { localStorage.setItem('lq_onboard_pro', '1'); } catch (e) { /* noop */ }
+            go();
+          } else { showAlert(data.error || '인증에 실패했습니다.'); }
+        } catch { showAlert('서버 연결에 실패했습니다.'); }
       });
 
       function go() {
@@ -169,13 +264,13 @@
             }),
           });
           const data = await r.json();
-          if (data.success && data.status === 'approved') {
-            // 가입 직후 1회 PRO 베타 온보딩을 다음 화면(법령)에서 띄우도록 플래그
+          if (data.success && data.status === 'pending') {
+            // 인증번호 입력 단계로 전환
+            showVerify((data.email || $('regEmail').value).trim().toLowerCase());
+          } else if (data.success && data.status === 'approved') {
+            // (구버전 호환) 즉시 승인된 경우
             try { localStorage.setItem('lq_onboard_pro', '1'); } catch (e) { /* noop */ }
             go();
-          } else if (data.success) {
-            showAlert(data.message || '가입 신청이 완료되었습니다. 승인을 기다려 주세요.', 'success');
-            $('registerForm').reset();
           } else {
             showAlert(data.error || '가입에 실패했습니다.');
           }
