@@ -94,9 +94,9 @@ export class AuthController {
       }
 
       if (isFirstAdmin) {
-        // plan=pro_beta 무기한(베타). ▶ 정식 출시 시 30일 트라이얼은 일반 가입에만 적용.
+        // plan=pro 무기한(베타). ▶ 정식 출시 시 30일 트라이얼은 일반 가입에만 적용.
         const id = await this.model.createWebMember(
-          loginId, hash, displayName, 'admin', 'approved', 'pro_beta', occupation
+          loginId, hash, displayName, 'admin', 'approved', 'pro', occupation
         );
         const sid = newSessionToken();
         await this.model.setSessionToken(id, sid);
@@ -117,7 +117,7 @@ export class AuthController {
           return;
         }
         memberId = await this.model.createWebMember(
-          loginId, hash, displayName, 'user', 'pending', 'pro_beta', occupation
+          loginId, hash, displayName, 'user', 'pending', 'pro', occupation
         );
       }
 

@@ -3,10 +3,10 @@ import DbContext from '../../common/DbContext';
 export type SignupSource = 'web' | 'app';
 export type MemberStatus = 'pending' | 'approved' | 'rejected' | 'revoked';
 export type MemberRole = 'user' | 'admin';
-export type MemberPlan = 'free' | 'pro_beta' | 'pro';
+export type MemberPlan = 'free' | 'pro';
 
 /**
- * 만료를 반영한 실효 등급. 만료된 pro/pro_beta는 free로 취급.
+ * 만료를 반영한 실효 등급. 만료된 pro는 free로 취급.
  * (베타엔 plan_expires_at=NULL이라 항상 원래 plan 그대로 → 동작 변화 없음)
  */
 export function effectivePlan(m: Pick<Member, 'plan' | 'plan_expired'>): MemberPlan {
@@ -99,14 +99,14 @@ export class MemberModel {
     return rows[0] ?? null;
   }
 
-  /** 웹 가입. 무료 베타라 plan 기본 pro_beta(가입 즉시 킬 기능 개방). */
+  /** 웹 가입. 무료 베타라 plan 기본 pro(가입 즉시 킬 기능 개방, 만료 없음). */
   async createWebMember(
     loginId: string,
     passwordHash: string,
     displayName: string | null,
     role: MemberRole = 'user',
     status: MemberStatus = 'approved',
-    plan: MemberPlan = 'pro_beta',
+    plan: MemberPlan = 'pro',
     occupation: string | null = null,
     planExpiresAt: string | null = null // 베타=NULL(무기한). 정식 출시 때 now()+30일로 넘기면 트라이얼.
   ): Promise<number> {
@@ -156,7 +156,7 @@ export class MemberModel {
     await this.db.query('UPDATE member SET password_hash = ? WHERE id = ?', [passwordHash, id]);
   }
 
-  /** 등급(plan) 변경 — 관리자 수동 부여(free↔pro_beta↔pro). 관리자 부여는 만료 없이 영구(만료시각 초기화). */
+  /** 등급(plan) 변경 — 관리자 수동 부여(free↔pro). 관리자 부여는 만료 없이 영구(만료시각 초기화). */
   async updatePlan(id: number, plan: MemberPlan): Promise<void> {
     await this.db.query('UPDATE member SET plan = ?, plan_expires_at = NULL WHERE id = ?', [plan, id]);
   }

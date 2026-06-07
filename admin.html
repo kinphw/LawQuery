@@ -249,12 +249,11 @@
           if (m.signup_source !== 'app') a.push(`<button class="btn btn-outline-warning btn-sm pw-btn" data-id="${m.id}" data-lid="${esc(m.login_id)}">비번</button>`);
           if (m.role !== 'admin') a.push(`<button class="btn btn-danger btn-sm del-btn" data-id="${m.id}" data-lid="${esc(m.login_id)}">삭제</button>`);
           // 등급: 관리자는 강제 고정(셀렉트 없이 표시), 일반회원만 인라인 셀렉트로 변경
-          const planLabel = { free: 'FREE', pro_beta: 'PRO베타', pro: 'PRO' }[m.plan] || esc(m.plan);
+          const planLabel = { free: 'FREE', pro: 'PRO' }[m.plan] || esc(m.plan);
           const planCell = m.role === 'admin'
             ? `<span class="badge ${m.plan === 'free' ? 'bg-secondary' : 'bg-success'}">${planLabel}</span> <span class="text-muted small">관리자 고정</span>`
             : `<select class="form-select form-select-sm plan-sel" data-id="${m.id}" data-cur="${m.plan}" style="width:auto;display:inline-block">
                 <option value="free"${m.plan === 'free' ? ' selected' : ''}>FREE</option>
-                <option value="pro_beta"${m.plan === 'pro_beta' ? ' selected' : ''}>PRO베타</option>
                 <option value="pro"${m.plan === 'pro' ? ' selected' : ''}>PRO</option>
               </select>`;
           return `<tr>

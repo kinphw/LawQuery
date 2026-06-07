@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { verifyToken, signToken, AUTH_COOKIE, cookieOptions } from '../utils/jwt';
 import { MemberModel, Member, effectivePlan } from '../models/MemberModel';
 
-export type MemberPlan = 'free' | 'pro_beta' | 'pro';
+export type MemberPlan = 'free' | 'pro';
 
 // Express Request에 인증 사용자 정보 부착
 declare global {
@@ -16,9 +16,9 @@ declare global {
 
 const memberModel = new MemberModel();
 
-/** pro_beta(베타 무료) 또는 pro(정식 유료)면 킬 기능 접근 가능. */
+/** pro(킬 기능 접근). 베타엔 가입자에게 무기한 pro 부여, 유료화는 plan_expires_at로 처리. */
 export function isPro(plan?: MemberPlan): boolean {
-  return plan === 'pro_beta' || plan === 'pro';
+  return plan === 'pro';
 }
 
 function extractToken(req: Request): string | null {
@@ -81,7 +81,7 @@ export async function optionalAuth(req: Request, res: Response, next: NextFuncti
 }
 
 /**
- * PRO 게이트: 로그인 + 승인 + (pro_beta | pro)만 통과.
+ * PRO 게이트: 로그인 + 승인 + pro만 통과.
  * → 킬 기능(연계표·벌칙·참조·별표·유권해석)에 사용.
  * 비회원/미승인/무료(free)는 차단하되 code로 구분(프론트가 잠금 UI 분기).
  */

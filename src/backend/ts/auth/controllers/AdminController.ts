@@ -185,7 +185,7 @@ export class AdminController {
     }
   };
 
-  /** 관리자가 회원 등급(plan)을 변경. free↔pro_beta↔pro 수동 부여. */
+  /** 관리자가 회원 등급(plan)을 변경. free↔pro 수동 부여. */
   setPlan = async (req: Request, res: Response): Promise<void> => {
     try {
       const id = parseInt(req.params.id, 10);
@@ -194,8 +194,8 @@ export class AdminController {
         return;
       }
       const plan = (req.body?.plan ?? '').toString() as MemberPlan;
-      if (!['free', 'pro_beta', 'pro'].includes(plan)) {
-        res.status(400).json({ success: false, error: 'plan은 free/pro_beta/pro 중 하나여야 합니다.' });
+      if (!['free', 'pro'].includes(plan)) {
+        res.status(400).json({ success: false, error: 'plan은 free/pro 중 하나여야 합니다.' });
         return;
       }
       const target = await this.model.findById(id);

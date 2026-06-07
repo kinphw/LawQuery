@@ -80,7 +80,7 @@
     else if (me.source === 'app') who = '앱 사용자';
     else who = me.loginId || '사용자';
 
-    var isPro = me.plan === 'pro_beta' || me.plan === 'pro';
+    var isPro = me.plan === 'pro';
     var planBadge = isPro
       ? '<span class="lq-userbar__badge lq-userbar__badge--pro">PRO</span>'
       : '<span class="lq-userbar__badge lq-userbar__badge--free">FREE</span>';
@@ -139,7 +139,7 @@
   function maybeShowOnboarding(me) {
     var FLAG = 'lq_onboard_pro';
     try { if (!localStorage.getItem(FLAG)) return; } catch (e) { return; }
-    var isPro = me && (me.plan === 'pro_beta' || me.plan === 'pro');
+    var isPro = me && me.plan === 'pro';
     try { localStorage.removeItem(FLAG); } catch (e) { /* noop */ }
     if (!isPro) return;
     function show() {

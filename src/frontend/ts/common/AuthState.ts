@@ -9,7 +9,7 @@ export interface MeInfo {
   authenticated: boolean;
   status?: string;
   role?: 'user' | 'admin';
-  plan?: 'free' | 'pro_beta' | 'pro'; // 서버가 만료 반영한 실효 등급
+  plan?: 'free' | 'pro'; // 서버가 만료 반영한 실효 등급
   planExpiresAt?: string | null;     // PRO 만료 시각(현재 베타엔 null). 향후 "n일 남음" 표시용
   loginId?: string;
   displayName?: string;
@@ -31,7 +31,7 @@ export function getMe(): Promise<MeInfo> {
   return cached;
 }
 
-/** pro_beta(베타 무료) 또는 pro(정식)면 킬 기능 접근 가능. */
+/** pro면 킬 기능 접근 가능(서버가 만료 반영한 실효 등급 기준). */
 export function isPro(me: MeInfo): boolean {
-  return me.plan === 'pro_beta' || me.plan === 'pro';
+  return me.plan === 'pro';
 }
