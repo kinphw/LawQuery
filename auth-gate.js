@@ -30,7 +30,10 @@
       'padding:.05rem .4rem;font-size:.7rem;margin-left:.25rem}' +
     '.lq-userbar__badge--pro{background:#6f42c1}' +
     '.lq-userbar__badge--free{background:#6c757d}' +
-    '.lq-userbar__actions{display:flex;align-items:center;gap:.75rem}' +
+    '.lq-userbar__actions{display:flex;align-items:center;gap:.75rem;flex-wrap:wrap}' +
+    '.lq-userbar__remember{display:flex;align-items:center;gap:.2rem;color:#cfe2ff;' +
+      'font-size:.8rem;cursor:pointer;user-select:none}' +
+    '.lq-userbar__remember input{cursor:pointer;margin:0}' +
     '.lq-userbar__link{color:#cfe2ff;background:none;border:0;cursor:pointer;' +
       'text-decoration:none;font-size:.85rem;padding:0}' +
     '.lq-userbar__link:hover{color:#fff;text-decoration:underline}' +
@@ -97,6 +100,9 @@
           (me.role === 'admin' ? ' <span class="lq-userbar__badge">관리자</span>' : '') +
         '</span>' +
         '<span class="lq-userbar__actions">' +
+          '<label class="lq-userbar__remember" title="체크하면 30일간 로그인 유지">' +
+            '<input type="checkbox" id="lqRemember"' + (me.remember ? ' checked' : '') + '> 로그인 유지' +
+          '</label>' +
           adminLink +
           '<a href="board.html" class="lq-userbar__link">건의사항</a>' +
           '<a href="account.html" class="lq-userbar__link">내 계정</a>' +
@@ -112,6 +118,20 @@
         origFetch('/api/auth/logout', { method: 'POST' }).then(function () {
           location.reload();
         });
+      });
+    }
+
+    // "로그인 유지" 토글 → 장기(30일)/단기(30분) 쿠키로 재발급
+    var remember = document.getElementById('lqRemember');
+    if (remember) {
+      remember.addEventListener('change', function () {
+        remember.disabled = true;
+        origFetch('/api/auth/remember', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ remember: remember.checked }),
+        }).then(function () { remember.disabled = false; })
+          .catch(function () { remember.disabled = false; });
       });
     }
   }

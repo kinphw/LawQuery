@@ -27,6 +27,7 @@ export class AuthHandler {
     this.router.post('/auth/login', this.auth.login);
     this.router.post('/auth/logout', this.auth.logout);
     this.router.get('/auth/me', this.auth.me);
+    this.router.post('/auth/remember', this.auth.setRemember); // 로그인 유지 토글(장기/단기 쿠키)
     this.router.post('/auth/visit', this.auth.recordVisit); // 페이지 접근 기록(비로그인 포함)
     this.router.get('/auth/banner', this.auth.publicBanner); // 공개 배너 설정
     this.router.patch('/auth/profile', authGuard, this.auth.updateProfile); // 이름 변경(로그인 필요)
