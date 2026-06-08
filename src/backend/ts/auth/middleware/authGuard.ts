@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { verifyToken, signToken, AUTH_COOKIE, cookieOptions } from '../utils/jwt';
+import { verifyToken, signToken, AUTH_COOKIE, cookieOptions, expiryFor } from '../utils/jwt';
 import { MemberModel, Member, effectivePlan } from '../models/MemberModel';
 
 export type MemberPlan = 'free' | 'pro';
@@ -46,9 +46,10 @@ async function resolveMember(req: Request, res: Response): Promise<
   if (!member || member.status !== 'approved') return { ok: false, code: 'NOT_APPROVED' };
   if (member.session_token && payload.sid !== member.session_token) return { ok: false, code: 'SESSION_REPLACED' };
 
-  // 슬라이딩 만료: 활동 시 토큰 재발급
-  const fresh = signToken({ uid: member.id, role: member.role, sid: payload.sid });
-  res.cookie(AUTH_COOKIE, fresh, cookieOptions());
+  // 슬라이딩 만료: 활동 시 토큰 재발급. "로그인 유지"(rmb) 여부와 그 만료를 그대로 유지.
+  const { expiresIn, maxAgeMs } = expiryFor(payload.rmb === 1);
+  const fresh = signToken({ uid: member.id, role: member.role, sid: payload.sid, rmb: payload.rmb }, expiresIn);
+  res.cookie(AUTH_COOKIE, fresh, cookieOptions(maxAgeMs));
 
   // 만료 반영 실효 등급(베타엔 NULL이라 원래 plan 그대로). proGuard가 이 값으로 판정.
   req.member = { id: member.id, role: member.role, status: member.status, plan: effectivePlan(member) };

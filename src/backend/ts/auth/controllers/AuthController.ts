@@ -3,7 +3,7 @@ import bcrypt from 'bcryptjs';
 import { MemberModel, effectivePlan } from '../models/MemberModel';
 import { AccessLogModel } from '../models/AccessLogModel';
 import { SettingModel } from '../models/SettingModel';
-import { signToken, verifyToken, newSessionToken, AUTH_COOKIE, cookieOptions } from '../utils/jwt';
+import { signToken, verifyToken, newSessionToken, AUTH_COOKIE, cookieOptions, expiryFor } from '../utils/jwt';
 import crypto from 'crypto';
 import { sendVerifyCode, isMailConfigured } from '../utils/mailer';
 
@@ -385,10 +385,35 @@ export class AuthController {
         loginId: member.login_id,
         displayName: member.display_name,
         source: member.signup_source,
+        remember: payload.rmb === 1, // 로그인 유지 상태(회원바 체크박스 반영)
       });
     } catch (e) {
       console.error('me 오류:', e);
       res.status(500).json({ authenticated: false });
+    }
+  };
+
+  /** "로그인 유지" 토글: 현재 세션(sid 유지)을 장기(30일)/단기(30분) 쿠키로 재발급. */
+  setRemember = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const token = req.cookies?.[AUTH_COOKIE]
+        || (req.headers.authorization?.startsWith('Bearer ') ? req.headers.authorization.slice(7) : null);
+      const payload = token ? verifyToken(token) : null;
+      if (!payload) {
+        res.status(401).json({ success: false, error: '로그인이 필요합니다.' });
+        return;
+      }
+      const remember = !!req.body?.remember;
+      const { expiresIn, maxAgeMs } = expiryFor(remember);
+      const fresh = signToken(
+        { uid: payload.uid, role: payload.role, sid: payload.sid, rmb: remember ? 1 : 0 },
+        expiresIn
+      );
+      res.cookie(AUTH_COOKIE, fresh, cookieOptions(maxAgeMs));
+      res.json({ success: true, remember });
+    } catch (e) {
+      console.error('setRemember 오류:', e);
+      res.status(500).json({ success: false, error: '설정 변경 중 오류가 발생했습니다.' });
     }
   };
 
