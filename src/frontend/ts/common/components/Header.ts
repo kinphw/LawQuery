@@ -62,7 +62,7 @@ export class Header {
             </div>
             <div class="mb-2 p-2 rounded" style="background:#f1f3f5">
                 <i class="fas fa-globe text-primary"></i> 웹에서도 이용하실 수 있어요:
-                <a href="https://lq.kinphw.kro.kr" target="_blank" rel="noopener"><strong>lq.kinphw.kro.kr</strong></a>
+                <a href="https://codexa.kro.kr" target="_blank" rel="noopener"><strong>codexa.kro.kr</strong></a>
             </div>
             <div class="mb-1">
                 <a href="https://github.com/kinphw/LawQuery" target="_blank" rel="noopener">
