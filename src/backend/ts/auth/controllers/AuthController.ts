@@ -57,6 +57,24 @@ export class AuthController {
     return (!isMailConfigured() && process.env.NODE_ENV !== 'production') ? code : undefined;
   }
 
+  /**
+   * 로그인 성공 시 인증 쿠키 발급.
+   * 기본은 "로그인 유지"(장기 30일, rmb=1) — UX상 매번 재로그인 부담을 줄임.
+   * 사용자는 회원바 토글로 단기(30분) 세션으로 언제든 전환 가능(setRemember).
+   * 슬라이딩 갱신(authGuard)이 rmb를 보존하므로 발급 시 기본값만 정하면 된다.
+   */
+  private issueAuthCookie(
+    res: Response,
+    uid: number,
+    role: 'user' | 'admin',
+    sid: string,
+    remember = true,
+  ): void {
+    const { expiresIn, maxAgeMs } = expiryFor(remember);
+    const token = signToken({ uid, role, sid, rmb: remember ? 1 : 0 }, expiresIn);
+    res.cookie(AUTH_COOKIE, token, cookieOptions(maxAgeMs));
+  }
+
   /** 웹 회원가입: pending 생성 + 이메일 인증번호 발송. 인증(verify) 성공 시 approved. */
   register = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -100,8 +118,7 @@ export class AuthController {
         );
         const sid = newSessionToken();
         await this.model.setSessionToken(id, sid);
-        const token = signToken({ uid: id, role: 'admin', sid });
-        res.cookie(AUTH_COOKIE, token, cookieOptions());
+        this.issueAuthCookie(res, id, 'admin', sid);
         res.json({ success: true, status: 'approved', role: 'admin' });
         return;
       }
@@ -174,8 +191,7 @@ export class AuthController {
       await this.logModel.record(member.id, member.login_id, 'login', clientIp(req), req.headers['user-agent'] as string || null);
       const sid = newSessionToken();
       await this.model.setSessionToken(member.id, sid);
-      const token = signToken({ uid: member.id, role: member.role, sid });
-      res.cookie(AUTH_COOKIE, token, cookieOptions());
+      this.issueAuthCookie(res, member.id, member.role, sid);
       res.json({ success: true, status: 'approved', role: member.role, displayName: member.display_name });
     } catch (e) {
       console.error('verify 오류:', e);
@@ -265,8 +281,7 @@ export class AuthController {
       // 중복 로그인 차단: 새 세션 토큰 발급 → 기존 기기 세션 무효화
       const sid = newSessionToken();
       await this.model.setSessionToken(member.id, sid);
-      const token = signToken({ uid: member.id, role: member.role, sid });
-      res.cookie(AUTH_COOKIE, token, cookieOptions());
+      this.issueAuthCookie(res, member.id, member.role, sid);
       res.json({ success: true, role: member.role, displayName: member.display_name });
     } catch (e) {
       console.error('login 오류:', e);
