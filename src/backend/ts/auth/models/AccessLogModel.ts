@@ -116,8 +116,10 @@ export class AccessLogModel {
   }
 
   /**
-   * ID별 IP 접근 요약: 회원(또는 로그인ID)별로 어떤 IP에서 접속했는지 집계.
-   * "어떤 ID가 어떤 IP로 접근했나"를 한눈에 보기 위함.
+   * 회원별 IP 접근 요약: 회원별로 어떤 IP에서 얼마나 접속했는지 집계.
+   * member_id 기준이라 page_visit(login_id는 NULL이지만 member_id는 채워짐)까지 포함 →
+   * 로그인 빈도와 무관하게 실제 사용량/접속 IP가 온전히 잡힌다.
+   * (login_id는 access_log가 아닌 member 테이블에서 가져온다.)
    */
   async ipSummaryByMember(limit = 200): Promise<Array<{
     login_id: string | null;
@@ -129,16 +131,15 @@ export class AccessLogModel {
   }>> {
     const n = Math.min(Math.max(1, limit), 1000);
     return this.db.query(
-      `SELECT a.login_id,
+      `SELECT m.login_id,
               m.display_name,
               GROUP_CONCAT(DISTINCT a.ip ORDER BY a.ip SEPARATOR ', ') AS ips,
               COUNT(DISTINCT a.ip) AS ip_count,
               COUNT(*)             AS total,
               MAX(a.created_at)    AS last_at
        FROM access_log a
-       LEFT JOIN member m ON m.id = a.member_id
-       WHERE a.login_id IS NOT NULL
-       GROUP BY a.login_id, m.display_name
+       JOIN member m ON m.id = a.member_id
+       GROUP BY a.member_id, m.login_id, m.display_name
        ORDER BY last_at DESC
        LIMIT ${n}`
     );
