@@ -16,6 +16,8 @@
     .board-wrap { max-width: 760px; margin: 0 auto; padding: 1rem; }
     .post-content { white-space: pre-wrap; word-break: break-word; }
     .comment { border-top: 1px solid #eee; padding: .5rem 0; }
+    .lq-hp { position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0; }
+    .lq-guest-badge { font-size: .7rem; }
   </style>
 </head>
 
@@ -39,8 +41,12 @@
       <div class="card"><div class="card-body">
         <h6 id="formTitle">새 건의</h6>
         <input type="hidden" id="editId">
+        <!-- 비회원만 표시: 표시 이름(선택) -->
+        <div class="mb-2 d-none" id="fGuestWrap"><input type="text" id="fGuest" class="form-control" placeholder="이름 (선택, 미입력 시 '비회원')" maxlength="50"></div>
         <div class="mb-2"><input type="text" id="fTitle" class="form-control" placeholder="제목" maxlength="200"></div>
         <div class="mb-2"><textarea id="fContent" class="form-control" rows="6" placeholder="내용" maxlength="10000"></textarea></div>
+        <!-- 허니팟(스팸봇 유인): 사람에겐 안 보임 -->
+        <input type="text" id="fHoney" name="website" tabindex="-1" autocomplete="off" aria-hidden="true" class="lq-hp">
         <div class="d-flex gap-2">
           <button class="btn btn-dark" id="saveBtn">저장</button>
           <button class="btn btn-outline-secondary" id="cancelBtn">취소</button>
@@ -62,10 +68,13 @@
 
       <h6>댓글 <span id="cCount" class="text-muted"></span></h6>
       <div id="commentList"></div>
+      <!-- 비회원만 표시: 댓글 작성자 이름(선택) -->
+      <input type="text" id="cGuest" class="form-control form-control-sm mt-2 d-none" placeholder="이름 (선택, 미입력 시 '비회원')" maxlength="50">
       <div class="input-group mt-2">
         <input type="text" id="cInput" class="form-control" placeholder="댓글 입력" maxlength="2000">
         <button class="btn btn-dark" id="cSubmit">등록</button>
       </div>
+      <input type="text" id="cHoney" name="website" tabindex="-1" autocomplete="off" aria-hidden="true" class="lq-hp">
     </div>
   </div>
 
@@ -75,6 +84,24 @@
       const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
       const show = (v) => { ['listView', 'formView', 'detailView'].forEach((x) => $(x).classList.toggle('d-none', x !== v)); };
       let curPostId = null;
+      let isGuest = true;
+
+      // 작성자 표기: 이름이 있으면 그대로, 비회원(member_id=null)은 '비회원' 뱃지를 붙임
+      const authorHtml = (name, memberId) => {
+        const who = esc(name || (memberId == null ? '익명' : '사용자'));
+        const badge = memberId == null ? ' <span class="badge bg-secondary lq-guest-badge">비회원</span>' : '';
+        return who + badge;
+      };
+
+      // 로그인 여부 판별 → 비회원에게만 이름(선택) 입력칸 노출. auth-gate.js가 노출한 me를 재사용.
+      async function detectGuest() {
+        try {
+          const me = await (window.__lqMePromise || fetch('/api/auth/me').then((r) => r.json()));
+          isGuest = !(me && me.authenticated);
+        } catch (e) { isGuest = true; }
+        $('fGuestWrap').classList.toggle('d-none', !isGuest);
+        $('cGuest').classList.toggle('d-none', !isGuest);
+      }
 
       async function loadList() {
         show('listView');
@@ -87,7 +114,7 @@
             <div class="d-flex">
               <span class="fw-semibold">${esc(p.title)}</span>
               <span class="ms-2 text-primary small">[${p.comment_count}]</span>
-              <span class="ms-auto text-muted small">${esc(p.author)} · ${(p.created_at || '').slice(0, 10)}</span>
+              <span class="ms-auto text-muted small">${authorHtml(p.author, p.member_id)} · ${(p.created_at || '').slice(0, 10)}</span>
             </div>
           </a>`).join('');
         el.querySelectorAll('.post-link').forEach((a) => a.addEventListener('click', (e) => { e.preventDefault(); openPost(a.dataset.id); }));
@@ -100,7 +127,7 @@
         show('detailView');
         const p = data.post;
         $('dTitle').textContent = p.title;
-        $('dMeta').textContent = `${p.author} · ${(p.created_at || '').replace('T', ' ').slice(0, 16)}` + (p.updated_at ? ' (수정됨)' : '');
+        $('dMeta').innerHTML = `${authorHtml(p.author, p.member_id)} · ${esc((p.created_at || '').replace('T', ' ').slice(0, 16))}` + (p.updated_at ? ' (수정됨)' : '');
         $('dContent').textContent = p.content;
         // 글 수정/삭제: 본인 or 관리자
         const canEdit = data.isAdmin || data.me === p.member_id;
@@ -119,7 +146,7 @@
         $('commentList').innerHTML = data.comments.map((c) => {
           const canDel = data.isAdmin || data.me === c.member_id;
           return `<div class="comment d-flex">
-            <div><span class="fw-semibold small">${esc(c.author)}</span>
+            <div><span class="fw-semibold small">${authorHtml(c.author, c.member_id)}</span>
               <span class="text-muted small ms-1">${(c.created_at || '').replace('T', ' ').slice(0, 16)}</span>
               <div>${esc(c.content)}</div></div>
             ${canDel ? `<button class="btn btn-sm btn-outline-danger ms-auto cdel" data-id="${c.id}">삭제</button>` : ''}
@@ -145,7 +172,7 @@
       $('backBtn').addEventListener('click', loadList);
       $('saveBtn').addEventListener('click', async () => {
         const id = $('editId').value;
-        const body = JSON.stringify({ title: $('fTitle').value, content: $('fContent').value });
+        const body = JSON.stringify({ title: $('fTitle').value, content: $('fContent').value, guestName: $('fGuest').value, website: $('fHoney').value });
         const url = id ? `/api/board/posts/${id}` : '/api/board/posts';
         const method = id ? 'PUT' : 'POST';
         const r = await (await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body })).json();
@@ -154,11 +181,12 @@
       $('cSubmit').addEventListener('click', async () => {
         const content = $('cInput').value.trim();
         if (!content) return;
-        const r = await (await fetch(`/api/board/posts/${curPostId}/comments`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content }) })).json();
+        const r = await (await fetch(`/api/board/posts/${curPostId}/comments`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content, guestName: $('cGuest').value, website: $('cHoney').value }) })).json();
         if (r.success) { $('cInput').value = ''; openPost(curPostId); } else alert(r.error || '실패');
       });
       $('cInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('cSubmit').click(); });
 
+      detectGuest();
       loadList();
     })();
   </script>

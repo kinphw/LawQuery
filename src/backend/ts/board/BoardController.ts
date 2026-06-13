@@ -6,9 +6,22 @@ export class BoardController {
   private model: BoardModel;
   constructor() { this.model = new BoardModel(); }
 
-  // 본인 또는 관리자만 수정/삭제 허용
-  private canModify(req: Request, ownerId: number): boolean {
-    return req.member?.role === 'admin' || req.member?.id === ownerId;
+  // 본인 또는 관리자만 수정/삭제 허용. 비회원 글(ownerId=null)은 관리자만.
+  private canModify(req: Request, ownerId: number | null): boolean {
+    if (req.member?.role === 'admin') return true;
+    return ownerId != null && req.member?.id === ownerId;
+  }
+
+  // 비회원 작성 시 표시 이름(선택, 1~50자). 회원이면 무시(NULL).
+  private guestNameOf(req: Request): string | null {
+    if (req.member) return null;
+    const name = (req.body?.guestName ?? '').toString().trim();
+    return name ? name.slice(0, 50) : null;
+  }
+
+  // 허니팟: 사람에겐 안 보이는 필드. 봇이 채우면 작성된 척 조용히 무시(스팸 차단).
+  private isSpam(req: Request): boolean {
+    return !!(req.body?.website ?? '').toString().trim();
   }
 
   listPosts = async (_req: Request, res: Response): Promise<void> => {
@@ -33,7 +46,8 @@ export class BoardController {
       const content = (req.body?.content ?? '').toString().trim();
       if (!title || title.length > 200) { res.status(400).json({ success: false, error: '제목을 1~200자로 입력해 주세요.' }); return; }
       if (!content || content.length > 10000) { res.status(400).json({ success: false, error: '내용을 입력해 주세요(최대 10000자).' }); return; }
-      const id = await this.model.createPost(req.member!.id, title, content);
+      if (this.isSpam(req)) { res.json({ success: true, id: 0 }); return; } // 봇: 성공한 척 무시
+      const id = await this.model.createPost(req.member?.id ?? null, this.guestNameOf(req), title, content);
       res.json({ success: true, id });
     } catch (e) { console.error('createPost', e); res.status(500).json({ success: false, error: '작성 오류' }); }
   };
@@ -70,7 +84,8 @@ export class BoardController {
       if (!post) { res.status(404).json({ success: false, error: '글을 찾을 수 없습니다.' }); return; }
       const content = (req.body?.content ?? '').toString().trim();
       if (!content || content.length > 2000) { res.status(400).json({ success: false, error: '댓글을 1~2000자로 입력해 주세요.' }); return; }
-      const id = await this.model.createComment(postId, req.member!.id, content);
+      if (this.isSpam(req)) { res.json({ success: true, id: 0 }); return; } // 봇: 성공한 척 무시
+      const id = await this.model.createComment(postId, req.member?.id ?? null, this.guestNameOf(req), content);
       res.json({ success: true, id });
     } catch (e) { console.error('createComment', e); res.status(500).json({ success: false, error: '댓글 작성 오류' }); }
   };

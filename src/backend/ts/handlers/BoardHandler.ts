@@ -1,8 +1,12 @@
 import { Router } from 'express';
 import { BoardController } from '../board/BoardController';
-import { authGuard } from '../auth/middleware/authGuard';
+import { optionalAuth } from '../auth/middleware/authGuard';
 
-/** 건의사항 게시판 라우터. 전부 authGuard(로그인+승인) 보호. */
+/**
+ * 건의사항 게시판 라우터.
+ * optionalAuth로 비회원도 통과(로그인이면 req.member 부착). 읽기·작성은 비회원 허용,
+ * 수정/삭제는 컨트롤러의 canModify가 비회원/타인을 차단(본인·관리자만).
+ */
 export class BoardHandler {
   public router: Router;
   private ctrl: BoardController;
@@ -10,7 +14,7 @@ export class BoardHandler {
   constructor() {
     this.router = Router();
     this.ctrl = new BoardController();
-    this.router.use(authGuard); // 게시판은 로그인 사용자만
+    this.router.use(optionalAuth); // 비회원도 읽기·건의 작성 가능(작성자 NULL)
     this.init();
   }
 
