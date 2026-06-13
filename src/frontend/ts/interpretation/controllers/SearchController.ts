@@ -8,6 +8,7 @@ import { SearchDataManager } from "./data/SearchDataManager";
 import { SearchEventManager } from "./event/SearchEventManager";
 
 import { getMe, isPro } from "../../common/AuthState";
+import { UpsellNotice } from "../../common/components/UpsellNotice";
 
 export interface ISearchController extends IController { // 의존성 주입을 위한 인터페이스
   model: SearchModel;
@@ -42,40 +43,117 @@ export class SearchController implements ISearchController {
     // this.scrollHandler = this.handleScroll.bind(this);
   }
 
+  private isTeaser = false;
+
   async initialize(): Promise<void> {
     // 헤더 렌더링 (뷰 생성자에서 실행됨)
-
-    // 등급 분기: 유권해석은 통째로 PRO. 비PRO면 잠금 화면만 표시하고 종료.
     const me = await getMe();
-    if (!isPro(me)) {
-      this.view.renderLock(me.authenticated);
-      return;
-    }
-    // PRO 전용 안내 문구(BETA 전체 공개)
-    this.view.showProBetaNote();
+    this.isTeaser = !isPro(me);
 
-    // 초기 데이터 로드
+    // 초기 데이터 로드 (비회원이면 서버가 상위 10건 + 그 본문을 내려줌)
     this.view.showLoading();
-    // const initialResults = await this.model.getInitialData();
-    // this.currentResults = initialResults;
     await this.dataManager.initialize();
     this.view.hideLoading();
 
-    // 결과 건수 표시
-    const count = this.model.getLastSearchCount();
-    // this.view.showToast(`총 ${count}건의 유권해석 데이터가 로드되었습니다. (초기 ${this.dataManager.getVisibleResultsCount()}건 표시)`);    
-    
-    // 초기 화면에는 일부만 표시
-    this.dataManager.setVisibleResults();    
-    this.view.render(this.dataManager.getVisibleResults(), false);
+    this.dataManager.setVisibleResults();
 
-    this.view.showToast(`총 ${count}건의 유권해석 조회 (${this.dataManager.getVisibleResultsCount()}/${this.dataManager.currentResults.length})`);    
+    // 비회원 티저: 검색 가능(상위 3건) + 최근목록 10건 + 행 클릭 시 인라인 본문 펼침.
+    if (this.isTeaser) {
+      this.bindTeaserControls();
+      this.renderTeaser(this.dataManager.getVisibleResults());
+      this.view.header.setInfoButtonHandler();
+      this.view.showToast(`최근 ${this.dataManager.getVisibleResultsCount()}건 미리보기 · 회원가입 시 전체 이용`);
+      return;
+    }
+
+    // PRO: 전체 흐름
+    this.view.render(this.dataManager.getVisibleResults(), false);
+    const count = this.model.getLastSearchCount();
+    this.view.showToast(`총 ${count}건의 유권해석 조회 (${this.dataManager.getVisibleResultsCount()}/${this.dataManager.currentResults.length})`);
 
     // 이벤트 바인딩
-    this.eventManager.bindEvents();    
-    
-    // 스크롤 이벤트 등록 // lazy loading을 위한 스크롤 이벤트
-    // window.addEventListener('scroll', this.scrollHandler);    
+    this.eventManager.bindEvents();
+  }
+
+  /** 비회원 티저 컨트롤(1회): 안내문구·전체복사 숨김 + 검색(상위3) + 글자크기. */
+  private bindTeaserControls(): void {
+    this.view.showTeaserNote();
+    this.view.searchForm.setSearchHandler(() => this.teaserSearch());
+    document.querySelectorAll('input[name="textSize"]').forEach((radio) =>
+      radio.addEventListener('change', (e) => {
+        this.view.resultTable.setTextSize((e.target as HTMLInputElement).value);
+        this.renderTeaser(this.dataManager.getVisibleResults());
+      })
+    );
+  }
+
+  /** 티저 렌더: 표 + 행클릭(인라인 본문) + 하단 안내 플레이스홀더. */
+  private renderTeaser(rows: SearchResult[]): void {
+    this.view.render(rows, false);
+    this.bindTeaserRowClicks();
+    if (rows.length) {
+      UpsellNotice.appendInside('results', '회원가입 시 전체 유권해석을 검색하고 본문을 조회할 수 있습니다');
+    }
+  }
+
+  /** 비회원 검색: 서버가 상위 3건 + 그 본문만 내려준다. */
+  private async teaserSearch(): Promise<void> {
+    const criteria: SearchCriteria = {
+      type: (document.getElementById('typeSelect') as HTMLSelectElement).value,
+      serial: (document.getElementById('serialInput') as HTMLInputElement).value,
+      field: (document.getElementById('fieldSelect') as HTMLSelectElement).value,
+      keyword: (document.getElementById('keywordInput') as HTMLInputElement).value,
+      startDate: (document.getElementById('startDateInput') as HTMLInputElement).value,
+      endDate: (document.getElementById('endDateInput') as HTMLInputElement).value,
+    };
+
+    this.view.showLoading();
+    const results = await this.model.search(criteria);
+    this.view.hideLoading();
+
+    this.dataManager.currentResults = results;
+    this.dataManager.resultStartIndex = 0;
+    this.dataManager.setVisibleResults();
+    this.renderTeaser(this.dataManager.getVisibleResults());
+
+    const total = this.model.getLastTotal();
+    this.view.showToast(
+      results.length
+        ? `검색결과 ${total.toLocaleString()}건 중 상위 ${results.length}건 표시 · 전체는 회원가입 시`
+        : '검색 결과가 없습니다.'
+    );
+  }
+
+  /** 티저 행 클릭: 인라인으로 받은 본문을 펼친다(추가 요청 없음 → 보이는 행만 열람). */
+  private bindTeaserRowClicks(): void {
+    const fmt = (t?: string) => this.view.resultTable.formatMultiline(t || '');
+    document.querySelectorAll('.search-result-row').forEach((row) => {
+      row.addEventListener('click', () => {
+        const el = row as HTMLElement;
+        const index = el.getAttribute('data-row-index');
+        const id = el.getAttribute('data-id');
+        if (index == null || id == null) return;
+        const detailRow = document.getElementById(`detail-${index}`);
+        if (!detailRow) return;
+        if (detailRow.getAttribute('data-loaded') === 'true') {
+          detailRow.classList.toggle('d-none');
+          return;
+        }
+        const item = this.dataManager.currentResults.find((r) => String(r.id) === id);
+        if (item && (item.질의요지 != null || item.회답 != null || item.이유 != null)) {
+          detailRow.innerHTML =
+            '<td colspan="5" class="bg-light">' +
+            `<div><strong>질의요지:</strong><br>${fmt(item.질의요지)}</div><br>` +
+            `<div class="mt-2"><strong>회답:</strong><br>${fmt(item.회답)}</div><br>` +
+            `<div class="mt-2"><strong>이유:</strong><br>${fmt(item.이유)}</div>` +
+            '</td>';
+        } else {
+          detailRow.innerHTML = '<td colspan="5" class="text-center text-muted">회원가입 시 본문을 조회할 수 있습니다.</td>';
+        }
+        detailRow.setAttribute('data-loaded', 'true');
+        detailRow.classList.remove('d-none');
+      });
+    });
   }
 
   // private getVisibleResults(): SearchResult[] {

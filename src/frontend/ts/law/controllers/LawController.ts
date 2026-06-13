@@ -36,6 +36,7 @@ import { CurrentLawBox } from "../views/components/CurrentLawBox";
 
 import { getMe, isPro } from "../../common/AuthState";
 import { LawUnitView } from "../views/LawUnitView";
+import { UpsellNotice } from "../../common/components/UpsellNotice";
 
 export interface ILawController extends IController {
 
@@ -171,40 +172,34 @@ export class LawController implements ILawController {
         // 헤더는 모드와 무관하게 1회 (토글바가 그 아래 위치)
         this.view.renderHeaderOnly();
 
-        // 조회 방식 결정: URL ?view= → 없으면 PRO=연계(linked), 비PRO=단일(unit)
+        // 조회 방식 결정: URL ?view= → 없으면 기본은 연계표.
+        // 비회원도 연계표 '상위 3개 조' 티저로 첫 화면에서 킬 기능을 바로 보게 한다.
         const params = new URLSearchParams(window.location.search);
         let view = params.get('view');
-        if (view !== 'unit' && view !== 'linked') view = pro ? 'linked' : 'unit';
+        if (view !== 'unit' && view !== 'linked') view = 'linked';
 
-        this.renderViewToggle(view as 'unit' | 'linked', pro);
+        this.renderViewToggle(view as 'unit' | 'linked');
 
         if (view === 'unit') {
             await this.showUnitMode(meta);
         } else if (pro) {
             await this.showLinkedMode();
         } else {
-            this.showLinkedLocked(me.authenticated);
+            await this.showLinkedTeaser();
         }
     }
 
-    /** 상단 조회방식 토글(단일 ↔ 연계표). 전환은 ?view= 갱신 후 리로드(이벤트 생명주기 단순화). */
-    private renderViewToggle(current: 'unit' | 'linked', pro: boolean): void {
+    /** 상단 조회방식 토글(개별 ↔ 연계표). 전환은 ?view= 갱신 후 리로드(이벤트 생명주기 단순화). */
+    private renderViewToggle(current: 'unit' | 'linked'): void {
         const host = document.getElementById('lawViewToggleHost');
         if (!host) return;
-        const lock = pro ? '' : ' <i class="fas fa-lock"></i>';
-        // 연계표는 PRO 기능 → 잠금 여부와 무관하게 PRO 뱃지로 "이건 PRO" 각인
-        const proTag = '<span class="badge ms-1" style="background:#6f42c1;color:#fff;font-size:.6rem;vertical-align:middle">PRO</span>';
-        // PRO가 연계표를 쓰는 중이면 "PRO 전용 · BETA 전체 공개" 안내
-        const note = (current === 'linked' && pro)
-            ? `<div class="text-center mt-2"><span class="badge" style="background:#6f42c1;color:#fff">PRO</span> <span class="text-muted small">연계표·벌칙·별표는 PRO 전용 · BETA 기간 전체 공개 중</span></div>`
-            : '';
         host.innerHTML = `
             <div class="d-flex justify-content-center">
                 <div class="btn-group" role="group" aria-label="조회 방식">
                     <button type="button" class="btn btn-sm ${current === 'unit' ? 'btn-dark' : 'btn-outline-dark'} lq-view-btn" data-view="unit">개별 조회</button>
-                    <button type="button" class="btn btn-sm ${current === 'linked' ? 'btn-dark' : 'btn-outline-dark'} lq-view-btn" data-view="linked">연계표${proTag}${lock}</button>
+                    <button type="button" class="btn btn-sm ${current === 'linked' ? 'btn-dark' : 'btn-outline-dark'} lq-view-btn" data-view="linked">연계표</button>
                 </div>
-            </div>${note}`;
+            </div>`;
         host.querySelectorAll('.lq-view-btn').forEach((btn) => {
             btn.addEventListener('click', () => {
                 const next = (btn as HTMLElement).dataset.view!;
@@ -238,8 +233,9 @@ export class LawController implements ILawController {
         // 별표 id 세팅
         this.view.setAnnexIds(await this.modelFetchAnnexIds.getAnnexIds());
 
-        // 초기 데이터 로드 및 렌더링
-        this.dataManager.setCurrentResults(await this.modelFetchAll.getAllLaws());
+        // 초기 데이터 로드 및 렌더링 (pro는 전체 데이터)
+        const all = await this.modelFetchAll.getAllLaws();
+        this.dataManager.setCurrentResults(all.data);
         this.view.render(this.dataManager.getCurrentResults());
 
         // 체크박스 렌더링
@@ -250,28 +246,23 @@ export class LawController implements ILawController {
         this.bindAllEvents();
     }
 
-    /** 연계표를 비PRO가 선택했을 때: 잠금 화면 + 가입/문의 유도. */
-    private showLinkedLocked(authenticated: boolean): void {
+    /**
+     * 연계표 티저(비회원·free). 서버가 상위 3개 조만 내려준다(나머지 미전송 → 무유출).
+     * 표 아래에 "회원가입 시 전체 조회" 안내 플레이스홀더를 덧붙인다.
+     * 벌칙·별표·참조·조문선택 등 부가 킬 기능은 티저에서 감춘다(클릭 시 잠긴 엔드포인트라 혼란 방지).
+     */
+    private async showLinkedTeaser(): Promise<void> {
         this.hideEl('penaltyBtn');
         this.hideEl('annexBtn');
         this.hideEl('lawArticleCard');
         this.hideEl('lawSearchCard');
-        const cta = authenticated
-            ? '<span class="text-muted">PRO 등급에서 이용 가능합니다. 관리자에게 문의해 주세요.</span>'
-            : '<a href="login.html" class="btn btn-primary btn-lg">가입하고 PRO 베타 이용 →</a>';
-        const results = document.getElementById('results');
-        if (results) results.innerHTML = `
-            <div class="container">
-                <div class="text-center p-5">
-                    <div class="display-4 mb-3"><i class="fas fa-lock text-secondary"></i></div>
-                    <h4 class="mb-2">5단 연계표는 PRO 전용입니다</h4>
-                    <p class="text-muted mb-4">
-                        법·시행령·감독규정·시행세칙·별표를 한 줄로 연결해 보는 기능입니다.<br>
-                        <strong>단일 법규 개별조회</strong>는 위 토글에서 회원가입없이 이용하실 수 있습니다.
-                    </p>
-                    <div>${cta}</div>
-                </div>
-            </div>`;
+
+        const all = await this.modelFetchAll.getAllLaws(); // 비회원엔 상위 3개 조 + locked
+        this.dataManager.setCurrentResults(all.data);
+        this.view.render(this.dataManager.getCurrentResults());
+
+        // 표 아래 안내(실제 잠긴 내용은 담지 않음)
+        UpsellNotice.appendInside('results', '회원가입 시 전체 연계표(법·시행령·감독규정·세칙·별표)를 조회할 수 있습니다');
     }
 
     private hideEl(id: string): void {

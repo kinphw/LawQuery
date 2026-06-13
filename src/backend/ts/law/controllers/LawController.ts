@@ -3,7 +3,12 @@ import { Request, Response } from 'express';
 import { BaseLawController } from './BaseLawController';
 // import { LawService } from '../services/LawService';
 import { LawModel } from '../models/LawModel';
+import { LawTreeNode } from '../types/LawTreeNode';
+import { isPro } from '../../auth/middleware/authGuard';
 import DbContext from '../../common/DbContext';
+
+// 비회원 연계표 티저: 상위 N개 '조'(최상위 법 노드, id != null)까지만 노출
+const TEASER_ARTICLES = 3;
 
 export class LawController extends BaseLawController<LawModel> {
   // private service: LawService;
@@ -13,22 +18,38 @@ export class LawController extends BaseLawController<LawModel> {
     super(new LawModel());
   }
 
-  // /all
+  // /all — 연계표. pro면 전체, 비회원/free면 상위 3개 조만 티저로 내려준다(나머지는 미전송 → 무유출).
   async getAll(req: Request, res: Response): Promise<void> {
 
-    // 요청별 구조를 읽는다 (연계표 = PRO 전용, proGuard로 보호됨)
+    // 요청별 구조를 읽는다
     const dbName: string = req.query.law as string;
     const step: number = parseInt(req.query.step as string);
     const dbContext = this.getDbContext(dbName);
 
-    // const data = await this.service.getAllLaws();
     const dataTemp = await this.model.getAllLaws(dbContext, step);
     const data = this.model.toLawTree(dataTemp);
 
-    // res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-    // res.end(JSON.stringify({ success: true, data }));
-    // res.end(JSON.stringify(data)); // 그냥 간단하게 내보낸다...
+    // pro가 아니면 상위 3개 조까지만 잘라서 보내고 locked 플래그/전체 조 수(total)를 함께 내려준다.
+    if (!isPro(req.member?.plan)) {
+      const { nodes, total } = LawController.teaserTree(data, TEASER_ARTICLES);
+      res.status(200).json({ success: true, data: nodes, locked: true, total });
+      return;
+    }
+
     res.status(200).json({ success: true, data });
+  }
+
+  /** 트리(최상위 = 조 단위)를 상위 max개 조까지만 남긴다. total은 원래 조 수. */
+  private static teaserTree(tree: LawTreeNode[], max: number): { nodes: LawTreeNode[]; total: number } {
+    const total = tree.reduce((n, node) => n + (node.id != null ? 1 : 0), 0);
+    const nodes: LawTreeNode[] = [];
+    let count = 0;
+    for (const node of tree) {
+      if (node.id != null && count >= max) break; // 다음 조부터 차단
+      nodes.push(node);
+      if (node.id != null) count++;
+    }
+    return { nodes, total };
   }
 
   // async getByIds(req: IncomingMessage, res: ServerResponse, lawIds: string[] | null) {

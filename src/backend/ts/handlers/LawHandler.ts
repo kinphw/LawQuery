@@ -37,8 +37,9 @@ export class LawHandler {
     this.router.get('/referenceIds', optionalAuth, this.referenceController.getReferenceIds.bind(this.referenceController));
     this.router.get('/annexIds', optionalAuth, this.annexController.getAnnexIds.bind(this.annexController));
 
+    // ── 연계표(킬) — 비회원에게도 '상위 3개 조'만 티저로 공개(optionalAuth). 전체는 컨트롤러가 pro만 내려줌 ──
+    this.router.get('/all', optionalAuth, this.controller.getAll.bind(this.controller));      // 5단 연계표(비회원=상위 3개 조 티저)
     // ── PRO 전용(proGuard) — 킬 기능 ──
-    this.router.get('/all', proGuard, this.controller.getAll.bind(this.controller));         // 5단 연계표(킬)
     this.router.get('/get', proGuard, this.controller.getByIds.bind(this.controller));       // 선택 연계표(킬)
     this.router.get('/penalty', proGuard, this.penaltyController.getPenalty.bind(this.penaltyController));
     this.router.get('/reference', proGuard, this.referenceController.getReference.bind(this.referenceController));

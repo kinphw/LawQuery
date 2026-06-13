@@ -81,10 +81,6 @@ export class AuthController {
       const loginId = (req.body?.loginId ?? req.body?.email ?? '').trim().toLowerCase();
       const password = req.body?.password ?? '';
       const displayName = (req.body?.displayName ?? '').trim() || null;
-      // 직군/소속 수집 (B2B 자산). 화이트리스트만 허용.
-      const OCC = ['회계사', '세무사', '금융회사', '회계팀', '법무팀', '학생', '기타'];
-      const occRaw = (req.body?.occupation ?? '').toString().trim();
-      const occupation = OCC.includes(occRaw) ? occRaw : null;
 
       if (!EMAIL_RE.test(loginId)) {
         res.status(400).json({ success: false, error: '올바른 이메일 주소를 입력해 주세요.' });
@@ -114,7 +110,7 @@ export class AuthController {
       if (isFirstAdmin) {
         // plan=pro 무기한(베타). ▶ 정식 출시 시 30일 트라이얼은 일반 가입에만 적용.
         const id = await this.model.createWebMember(
-          loginId, hash, displayName, 'admin', 'approved', 'pro', occupation
+          loginId, hash, displayName, 'admin', 'approved', 'pro'
         );
         const sid = newSessionToken();
         await this.model.setSessionToken(id, sid);
@@ -127,14 +123,14 @@ export class AuthController {
       if (existing) {
         // 미인증(pending) 재시도 → 정보 갱신 후 코드 재발송
         memberId = existing.id;
-        await this.model.refreshPendingSignup(existing.id, hash, displayName, occupation);
+        await this.model.refreshPendingSignup(existing.id, hash, displayName);
       } else {
         if (!(await this.settingModel.isSignupEnabled())) {
           res.status(403).json({ success: false, error: '현재 신규 가입이 중단되었습니다.' });
           return;
         }
         memberId = await this.model.createWebMember(
-          loginId, hash, displayName, 'user', 'pending', 'pro', occupation
+          loginId, hash, displayName, 'user', 'pending', 'pro'
         );
       }
 

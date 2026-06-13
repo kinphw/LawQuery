@@ -72,38 +72,25 @@ export class SearchView {
     }
   }
 
-  /** PRO 전용 안내 문구(유권해석은 통째로 PRO 기능 · BETA 전체 공개). */
-  showProBetaNote(): void {
-    if (!this.resultsContainer || document.getElementById('lqProNote')) return;
+  /**
+   * 비회원 티저 안내(검색은 막지 않는다). 검색 폼 위 한 줄 + 전체복사 버튼 숨김.
+   * 검색은 가능하되 결과는 상위 3건만 보이고, 클릭하면 본문이 펼쳐진다(인라인).
+   */
+  showTeaserNote(): void {
+    // 비회원에겐 전체복사(대량 본문 요청)는 숨김
+    document.getElementById('copyAllBtn')?.classList.add('d-none');
+
+    if (document.getElementById('lqTeaserNote')) return; // 중복 방지
     const note = document.createElement('div');
-    note.id = 'lqProNote';
-    note.className = 'alert alert-light border d-flex align-items-center gap-2 py-2 small';
+    note.id = 'lqTeaserNote';
+    note.className = 'alert alert-light border d-flex align-items-center gap-2 py-2 small mb-2';
     note.innerHTML =
-      '<span class="badge" style="background:#6f42c1;color:#fff">PRO</span>' +
-      '<span><strong>PRO 전용 기능</strong>입니다 (유권해석·비조치의견서) · BETA 기간 전체 공개 중</span>';
-    this.resultsContainer.parentElement?.insertBefore(note, this.resultsContainer);
-  }
-
-  /** 비PRO(비회원·FREE) 잠금 화면. 유권해석은 통째로 PRO 전용. */
-  renderLock(authenticated: boolean): void {
-    // 검색 폼 비활성화
-    document.querySelectorAll('#searchForm input, #searchForm select, #searchForm button')
-      .forEach((el) => ((el as HTMLInputElement).disabled = true));
-
-    if (!this.resultsContainer) return;
-    const cta = authenticated
-      ? '<span class="text-muted">PRO 등급에서 이용 가능합니다. 관리자에게 문의해 주세요.</span>'
-      : '<a href="login.html" class="btn btn-primary btn-lg">가입하고 PRO 베타 이용 →</a>';
-    this.resultsContainer.innerHTML = `
-      <div class="text-center p-5">
-        <div class="display-4 mb-3"><i class="fas fa-lock text-secondary"></i></div>
-        <h4 class="mb-2">유권해석·비조치의견서는 PRO 전용입니다</h4>
-        <p class="text-muted mb-4">
-          흩어져 있어 찾기 어려운 유권해석·법령해석·비조치의견서를<br>
-          한 곳에서 검색·조회하는 기능입니다.
-        </p>
-        <div>${cta}</div>
-      </div>`;
+      '<i class="fas fa-circle-info text-secondary"></i>' +
+      '<span>미리보기입니다 — <strong>검색은 상위 3건</strong>, 최근 목록은 <strong>10건</strong>까지 표시됩니다. ' +
+      '행을 클릭하면 본문을 볼 수 있어요. <strong>회원가입 시 전체</strong>가 열립니다.</span>';
+    const form = document.getElementById('searchForm');
+    if (form && form.parentElement) form.parentElement.insertBefore(note, form);
+    else if (this.resultsContainer) this.resultsContainer.parentElement?.insertBefore(note, this.resultsContainer);
   }
 
   showToast(message: string): void {

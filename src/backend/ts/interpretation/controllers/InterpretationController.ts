@@ -1,12 +1,32 @@
 import { Request, Response } from 'express';
 import { InterpretationModel } from '../models/InterpretationModel';
+import type { SearchResult } from '../types/SearchResult';
+import { isPro } from '../../auth/middleware/authGuard';
 // import { URL } from 'url';
+
+// 비회원 유권해석 티저 분량: 초기목록 10건 / 검색결과 3건
+const TEASER_INITIAL = 10;
+const TEASER_SEARCH = 3;
 
 export class InterpretationController {
   private model: InterpretationModel;
 
   constructor() {
     this.model = new InterpretationModel();
+  }
+
+  /**
+   * 비회원 티저: 상위 max건만 남기고, 그 행들의 본문(질의요지/회답/이유)을 인라인으로 합쳐 반환.
+   * → 보이는 행만 본문을 받으므로 임의 id 열람(전체 스크래핑)이 불가능하다(상세 엔드포인트는 차단 유지).
+   */
+  private async teaserRows(rows: SearchResult[], max: number): Promise<SearchResult[]> {
+    const sliced = rows.slice(0, max);
+    const details = await this.model.getDetailsByIds(sliced.map((r) => r.id));
+    const byId = new Map(details.map((d) => [d.id, d]));
+    return sliced.map((r) => {
+      const d = byId.get(r.id);
+      return d ? { ...r, 질의요지: d.질의요지, 회답: d.회답, 이유: d.이유 } : r;
+    });
   }
 
   // async search(req: IncomingMessage, res: ServerResponse): Promise<void> {
@@ -29,14 +49,15 @@ export class InterpretationController {
 
 
       const results = await this.model.search({ type, serial, field, keyword, startDate, endDate });
-      
-      // res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-      // res.end(JSON.stringify({
-      //   success: true,
-      //   count: results.length,
-      //   data: results
-      // }));
-      res.status(200).json({          
+
+      // 비회원: 검색결과 상위 3건 + 그 본문만(나머지 미전송). total=전체 매칭 수.
+      if (!isPro(req.member?.plan)) {
+        const data = await this.teaserRows(results, TEASER_SEARCH);
+        res.status(200).json({ success: true, count: data.length, data, locked: true, total: results.length });
+        return;
+      }
+
+      res.status(200).json({
           success: true,
           count: results.length,
           data: results
@@ -116,18 +137,24 @@ export class InterpretationController {
   }
 
   // async getInitialData(req: IncomingMessage, res: ServerResponse): Promise<void> {
-    async getInitialData(req: Request, res: Response): Promise<void> {  
+    async getInitialData(req: Request, res: Response): Promise<void> {
     try {
       const results = await this.model.getInitialData();
-      
-      // res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-      // res.end(JSON.stringify({
-      //   success: true,
-      //   count: results.length,
-      //   data: results
-      // }));
 
-      res.status(200).json({          
+      // 비회원: 상위 10건 + 그 본문만(나머지 미전송). 상세 엔드포인트는 차단 유지.
+      if (!isPro(req.member?.plan)) {
+        const data = await this.teaserRows(results, TEASER_INITIAL);
+        res.status(200).json({
+          success: true,
+          count: data.length,
+          data,
+          locked: true,
+          total: results.length,
+        });
+        return;
+      }
+
+      res.status(200).json({
         success: true,
         count: results.length,
         data: results

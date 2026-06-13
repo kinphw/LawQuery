@@ -99,13 +99,12 @@ export class MemberModel {
     role: MemberRole = 'user',
     status: MemberStatus = 'approved',
     plan: MemberPlan = 'pro',
-    occupation: string | null = null,
     planExpiresAt: string | null = null // 베타=NULL(무기한). 정식 출시 때 now()+30일로 넘기면 트라이얼.
   ): Promise<number> {
     const result: any = await this.db.query(
-      `INSERT INTO member (login_id, password_hash, display_name, occupation, signup_source, status, role, plan, plan_expires_at)
-       VALUES (?, ?, ?, ?, 'web', ?, ?, ?, ?)`,
-      [loginId, passwordHash, displayName, occupation, status, role, plan, planExpiresAt]
+      `INSERT INTO member (login_id, password_hash, display_name, signup_source, status, role, plan, plan_expires_at)
+       VALUES (?, ?, ?, 'web', ?, ?, ?, ?)`,
+      [loginId, passwordHash, displayName, status, role, plan, planExpiresAt]
     );
     return (result as any).insertId ?? (result as any)[0]?.insertId;
   }
@@ -187,11 +186,11 @@ export class MemberModel {
     );
   }
 
-  /** 미인증(pending) 이메일 재가입 시 비번/이름/직군만 갱신(상태는 pending 유지). */
-  async refreshPendingSignup(id: number, passwordHash: string, displayName: string | null, occupation: string | null): Promise<void> {
+  /** 미인증(pending) 이메일 재가입 시 비번/이름만 갱신(상태는 pending 유지). */
+  async refreshPendingSignup(id: number, passwordHash: string, displayName: string | null): Promise<void> {
     await this.db.query(
-      'UPDATE member SET password_hash = ?, display_name = ?, occupation = ? WHERE id = ?',
-      [passwordHash, displayName, occupation, id]
+      'UPDATE member SET password_hash = ?, display_name = ? WHERE id = ?',
+      [passwordHash, displayName, id]
     );
   }
 

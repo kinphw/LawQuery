@@ -23,8 +23,8 @@
 
 ## ✅ 커밋1에서 완료된 것 (백엔드, 검증됨)
 
-- DB: `member.plan ENUM('free','pro_beta','pro')` + `member.occupation VARCHAR(30)` 칼럼 추가 (로컬 적용됨)
-- 가입 시 plan=pro_beta 자동, occupation(직군) 화이트리스트 수집: 회계사/세무사/금융회사/회계팀/법무팀/학생/기타
+- DB: `member.plan ENUM('free','pro_beta','pro')` 칼럼 추가 (로컬 적용됨). ~~`member.occupation`~~
+- 가입 시 plan=pro_beta 자동. ~~occupation(직군) 수집~~ → **폐기(2026-06-14)**: 가입 폼·백엔드·고지에서 제거(반감·오해 방지). 컬럼/기존 값은 보존하되 신규 가입은 NULL.
 - 게이트 미들웨어 [authGuard.ts](../src/backend/ts/auth/middleware/authGuard.ts):
   - `optionalAuth` (비회원 통과, 로그인 시 req.member 부착)
   - `proGuard` (pro_beta/pro만, 아니면 403 code=PRO_REQUIRED / 비로그인 401)
@@ -36,7 +36,7 @@
 - 신규 API: `GET /api/law/unit?law=j&origin=s` → 단일 단위(a/e/s/r) 전체 조문 seq 순. [LawModel.getSingleUnit](../src/backend/ts/law/models/LawModel.ts), [LawController.getUnit](../src/backend/ts/law/controllers/LawController.ts)
 - index.ts: 전역 authGuard 제거(핸들러 내부 게이트로 이동)
 - me 응답에 plan 포함, admin 회원목록에 plan 포함
-- **검증 통과**: 비회원 /unit 200(감독규정 123조), 비회원 /all 401차단, pro_beta /all·유권해석 200, occupation 저장 확인
+- **검증 통과**: 비회원 /unit 200(감독규정 123조), 비회원 /all 401차단, pro_beta /all·유권해석 200 (※ occupation 수집은 이후 폐기됨)
 
 ## ✅ 커밋2에서 완료된 것 (프론트 + 일부 백엔드)
 
@@ -82,7 +82,7 @@
 ## ⚠️ 운영 배포 시 필요 (다 끝나고)
 
 - 운영 DB ALTER (root/genius):
-  - `occupation VARCHAR(30)` 추가
+  - ~~`occupation VARCHAR(30)` 추가~~ → **불필요(직군 수집 폐기 2026-06-14)**. 이미 추가돼 있어도 무해(신규 가입은 NULL).
   - `ALTER TABLE member ADD COLUMN plan_expires_at DATETIME NULL AFTER plan;` (로컬 dev 적용 완료)
   - 인증 컬럼: `ALTER TABLE member ADD COLUMN verify_code_hash VARCHAR(255) NULL, ADD COLUMN verify_expires_at DATETIME NULL, ADD COLUMN verify_attempts INT NOT NULL DEFAULT 0, ADD COLUMN verify_sent_at DATETIME NULL;` (로컬 dev 적용 완료)
   - ★ 등급 단순화(pro_beta 제거): `UPDATE member SET plan='pro' WHERE plan='pro_beta'; ALTER TABLE member MODIFY plan ENUM('free','pro') NOT NULL DEFAULT 'free';` (로컬 dev 적용 완료. 순서 중요 — UPDATE 먼저)
