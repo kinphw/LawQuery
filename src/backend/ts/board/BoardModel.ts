@@ -37,7 +37,7 @@ export class BoardModel {
   async listPosts(limit = 100): Promise<BoardPost[]> {
     const n = Math.min(Math.max(1, limit), 500);
     return this.db.query<BoardPost>(
-      `SELECT p.id, p.member_id, p.title, p.created_at, p.updated_at,
+      `SELECT p.id, p.member_id, p.title, p.content, p.created_at, p.updated_at,
               ${BoardModel.author('p')} AS author,
               (SELECT COUNT(*) FROM board_comment c WHERE c.post_id = p.id) AS comment_count
        FROM board_post p

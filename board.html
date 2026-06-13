@@ -18,6 +18,7 @@
     .comment { border-top: 1px solid #eee; padding: .5rem 0; }
     .lq-hp { position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0; }
     .lq-guest-badge { font-size: .7rem; }
+    .post-title { word-break: break-word; }
   </style>
 </head>
 
@@ -28,12 +29,12 @@
       <a href="index.html" class="btn btn-outline-secondary btn-sm ms-auto">← 돌아가기</a>
     </div>
 
-    <!-- 목록 -->
+    <!-- 피드(목록 = 제목+내용+댓글) -->
     <div id="listView">
       <div class="d-flex mb-2">
         <button class="btn btn-dark btn-sm ms-auto" id="newBtn">글쓰기</button>
       </div>
-      <div class="list-group" id="postList"><div class="text-muted p-3 text-center">불러오는 중...</div></div>
+      <div id="feed"><div class="text-muted p-3 text-center">불러오는 중...</div></div>
     </div>
 
     <!-- 작성/수정 폼 -->
@@ -41,7 +42,7 @@
       <div class="card"><div class="card-body">
         <h6 id="formTitle">새 건의</h6>
         <input type="hidden" id="editId">
-        <!-- 비회원만 표시: 표시 이름(선택) -->
+        <!-- 비회원 새 글에서만 표시: 표시 이름(선택) -->
         <div class="mb-2 d-none" id="fGuestWrap"><input type="text" id="fGuest" class="form-control" placeholder="이름 (선택, 미입력 시 '비회원')" maxlength="50"></div>
         <div class="mb-2"><input type="text" id="fTitle" class="form-control" placeholder="제목" maxlength="200"></div>
         <div class="mb-2"><textarea id="fContent" class="form-control" rows="6" placeholder="내용" maxlength="10000"></textarea></div>
@@ -53,38 +54,19 @@
         </div>
       </div></div>
     </div>
-
-    <!-- 상세 -->
-    <div id="detailView" class="d-none">
-      <button class="btn btn-outline-secondary btn-sm mb-2" id="backBtn">← 목록</button>
-      <div class="card mb-3"><div class="card-body">
-        <div class="d-flex align-items-start">
-          <h5 id="dTitle" class="mb-1"></h5>
-          <div class="ms-auto text-nowrap" id="dActions"></div>
-        </div>
-        <div class="text-muted small mb-3" id="dMeta"></div>
-        <div class="post-content" id="dContent"></div>
-      </div></div>
-
-      <h6>댓글 <span id="cCount" class="text-muted"></span></h6>
-      <div id="commentList"></div>
-      <!-- 비회원만 표시: 댓글 작성자 이름(선택) -->
-      <input type="text" id="cGuest" class="form-control form-control-sm mt-2 d-none" placeholder="이름 (선택, 미입력 시 '비회원')" maxlength="50">
-      <div class="input-group mt-2">
-        <input type="text" id="cInput" class="form-control" placeholder="댓글 입력" maxlength="2000">
-        <button class="btn btn-dark" id="cSubmit">등록</button>
-      </div>
-      <input type="text" id="cHoney" name="website" tabindex="-1" autocomplete="off" aria-hidden="true" class="lq-hp">
-    </div>
   </div>
 
   <script>
     (function () {
       const $ = (id) => document.getElementById(id);
       const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-      const show = (v) => { ['listView', 'formView', 'detailView'].forEach((x) => $(x).classList.toggle('d-none', x !== v)); };
-      let curPostId = null;
-      let isGuest = true;
+      const show = (v) => { ['listView', 'formView'].forEach((x) => $(x).classList.toggle('d-none', x !== v)); };
+      const fmt = (t) => esc((t || '').replace('T', ' ').slice(0, 16));
+
+      let posts = [];           // 현재 피드의 글 목록
+      let myId = null;          // 로그인 회원ID (서버 응답 기준, 게스트면 null)
+      let isAdmin = false;      // 관리자 여부 (서버 응답 기준)
+      let isGuest = true;       // 비회원이면 이름(선택) 입력칸 노출
 
       // 작성자 표기: 이름이 있으면 그대로, 비회원(member_id=null)은 '비회원' 뱃지를 붙임
       const authorHtml = (name, memberId) => {
@@ -93,101 +75,169 @@
         return who + badge;
       };
 
+      // 본인 또는 관리자만 글 수정/삭제 가능
+      const canModPost = (p) => isAdmin || (myId != null && myId === p.member_id);
+
       // 로그인 여부 판별 → 비회원에게만 이름(선택) 입력칸 노출. auth-gate.js가 노출한 me를 재사용.
       async function detectGuest() {
         try {
           const me = await (window.__lqMePromise || fetch('/api/auth/me').then((r) => r.json()));
           isGuest = !(me && me.authenticated);
         } catch (e) { isGuest = true; }
-        $('fGuestWrap').classList.toggle('d-none', !isGuest);
-        $('cGuest').classList.toggle('d-none', !isGuest);
       }
 
-      async function loadList() {
-        show('listView');
-        const data = await (await fetch('/api/board/posts')).json();
-        const el = $('postList');
-        if (!data.success) { el.innerHTML = `<div class="text-danger p-3">${esc(data.error)}</div>`; return; }
-        if (!data.posts.length) { el.innerHTML = '<div class="text-muted p-3 text-center">아직 글이 없습니다.</div>'; return; }
-        el.innerHTML = data.posts.map((p) => `
-          <a href="#" class="list-group-item list-group-item-action post-link" data-id="${p.id}">
-            <div class="d-flex">
-              <span class="fw-semibold">${esc(p.title)}</span>
-              <span class="ms-2 text-primary small">[${p.comment_count}]</span>
-              <span class="ms-auto text-muted small">${authorHtml(p.author, p.member_id)} · ${(p.created_at || '').slice(0, 10)}</span>
+      // ── 피드 렌더 ──────────────────────────────────────────────
+      function renderCard(p) {
+        const edited = p.updated_at ? ' <span class="text-muted">(수정됨)</span>' : '';
+        const actions = canModPost(p)
+          ? `<div class="ms-auto text-nowrap ps-2">
+               <button class="btn btn-outline-primary btn-sm pEdit" data-id="${p.id}">수정</button>
+               <button class="btn btn-danger btn-sm pDel" data-id="${p.id}">삭제</button>
+             </div>` : '';
+        const guestCInput = isGuest
+          ? `<input type="text" class="cGuest form-control form-control-sm mt-2" placeholder="이름 (선택, 미입력 시 '비회원')" maxlength="50">` : '';
+        return `<div class="card mb-3" data-card="${p.id}">
+          <div class="card-body">
+            <div class="d-flex align-items-start">
+              <h5 class="mb-1 post-title">${esc(p.title)}</h5>
+              ${actions}
             </div>
-          </a>`).join('');
-        el.querySelectorAll('.post-link').forEach((a) => a.addEventListener('click', (e) => { e.preventDefault(); openPost(a.dataset.id); }));
+            <div class="text-muted small mb-2">${authorHtml(p.author, p.member_id)} · ${fmt(p.created_at)}${edited}</div>
+            <div class="post-content mb-2">${esc(p.content)}</div>
+            <button class="btn btn-sm btn-link px-0 cToggle" data-id="${p.id}">💬 댓글 <span class="cCount">${p.comment_count}</span></button>
+            <div class="cWrap d-none" data-wrap="${p.id}">
+              <div class="cList mt-1"></div>
+              ${guestCInput}
+              <div class="input-group input-group-sm mt-2">
+                <input type="text" class="cInput form-control" placeholder="댓글 입력" maxlength="2000">
+                <button class="btn btn-dark cSubmit" data-id="${p.id}">등록</button>
+              </div>
+              <input type="text" class="cHoney lq-hp" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">
+            </div>
+          </div>
+        </div>`;
       }
 
-      async function openPost(id) {
-        curPostId = id;
+      async function loadFeed() {
+        show('listView');
+        const el = $('feed');
+        const data = await (await fetch('/api/board/posts')).json();
+        if (!data.success) { el.innerHTML = `<div class="text-danger p-3">${esc(data.error)}</div>`; return; }
+        myId = data.me != null ? data.me : null;
+        isAdmin = !!data.isAdmin;
+        posts = data.posts || [];
+        if (!posts.length) { el.innerHTML = '<div class="text-muted p-3 text-center">아직 글이 없습니다. 첫 건의를 남겨보세요.</div>'; return; }
+        el.innerHTML = posts.map(renderCard).join('');
+      }
+
+      // ── 댓글 ──────────────────────────────────────────────────
+      const cardEl = (id) => $('feed').querySelector(`[data-card="${id}"]`);
+
+      async function loadComments(id) {
+        const card = cardEl(id);
+        if (!card) return;
+        const list = card.querySelector('.cList');
         const data = await (await fetch(`/api/board/posts/${id}`)).json();
-        if (!data.success) { alert(data.error || '오류'); return; }
-        show('detailView');
-        const p = data.post;
-        $('dTitle').textContent = p.title;
-        $('dMeta').innerHTML = `${authorHtml(p.author, p.member_id)} · ${esc((p.created_at || '').replace('T', ' ').slice(0, 16))}` + (p.updated_at ? ' (수정됨)' : '');
-        $('dContent').textContent = p.content;
-        // 글 수정/삭제: 본인 or 관리자
-        const canEdit = data.isAdmin || data.me === p.member_id;
-        $('dActions').innerHTML = canEdit
-          ? `<button class="btn btn-outline-primary btn-sm" id="editBtn">수정</button> <button class="btn btn-danger btn-sm" id="delBtn">삭제</button>` : '';
-        if (canEdit) {
-          $('editBtn').addEventListener('click', () => openForm(p));
-          $('delBtn').addEventListener('click', async () => {
-            if (!confirm('이 글을 삭제할까요?')) return;
-            const r = await (await fetch(`/api/board/posts/${id}`, { method: 'DELETE' })).json();
-            r.success ? loadList() : alert(r.error || '실패');
-          });
-        }
-        // 댓글
-        $('cCount').textContent = `(${data.comments.length})`;
-        $('commentList').innerHTML = data.comments.map((c) => {
+        if (!data.success) { list.innerHTML = `<div class="text-danger small">${esc(data.error || '오류')}</div>`; return; }
+        // 권한은 서버 응답을 신뢰
+        list.innerHTML = data.comments.map((c) => {
           const canDel = data.isAdmin || data.me === c.member_id;
           return `<div class="comment d-flex">
             <div><span class="fw-semibold small">${authorHtml(c.author, c.member_id)}</span>
-              <span class="text-muted small ms-1">${(c.created_at || '').replace('T', ' ').slice(0, 16)}</span>
+              <span class="text-muted small ms-1">${fmt(c.created_at)}</span>
               <div>${esc(c.content)}</div></div>
-            ${canDel ? `<button class="btn btn-sm btn-outline-danger ms-auto cdel" data-id="${c.id}">삭제</button>` : ''}
+            ${canDel ? `<button class="btn btn-sm btn-outline-danger ms-auto cdel" data-id="${c.id}" data-post="${id}">삭제</button>` : ''}
           </div>`;
         }).join('') || '<div class="text-muted small">댓글이 없습니다.</div>';
-        $('commentList').querySelectorAll('.cdel').forEach((b) => b.addEventListener('click', async () => {
-          if (!confirm('댓글을 삭제할까요?')) return;
-          const r = await (await fetch(`/api/board/comments/${b.dataset.id}`, { method: 'DELETE' })).json();
-          r.success ? openPost(id) : alert(r.error || '실패');
-        }));
+        const cnt = card.querySelector('.cCount');
+        if (cnt) cnt.textContent = data.comments.length;
       }
 
+      async function toggleComments(id) {
+        const card = cardEl(id);
+        const wrap = card && card.querySelector('.cWrap');
+        if (!wrap) return;
+        if (wrap.classList.contains('d-none')) {
+          await loadComments(id);
+          wrap.classList.remove('d-none');
+          const input = card.querySelector('.cInput');
+          if (input) input.focus();
+        } else {
+          wrap.classList.add('d-none');
+        }
+      }
+
+      async function submitComment(id) {
+        const card = cardEl(id);
+        const input = card.querySelector('.cInput');
+        const content = input.value.trim();
+        if (!content) return;
+        const guestName = (card.querySelector('.cGuest') || {}).value || '';
+        const website = card.querySelector('.cHoney').value;
+        const r = await (await fetch(`/api/board/posts/${id}/comments`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ content, guestName, website }),
+        })).json();
+        if (r.success) { input.value = ''; loadComments(id); } else alert(r.error || '실패');
+      }
+
+      // ── 폼(작성/수정) ─────────────────────────────────────────
       function openForm(p) {
         show('formView');
         $('formTitle').textContent = p ? '글 수정' : '새 건의';
         $('editId').value = p ? p.id : '';
         $('fTitle').value = p ? p.title : '';
         $('fContent').value = p ? p.content : '';
+        $('fGuest').value = '';
+        // 비회원 + 새 글일 때만 이름 입력칸 표시(수정은 회원/관리자만 가능)
+        $('fGuestWrap').classList.toggle('d-none', !(isGuest && !p));
+        $('fTitle').focus();
       }
 
+      // ── 이벤트 위임(피드는 재렌더되므로 컨테이너에 한 번만 바인딩) ──
+      $('feed').addEventListener('click', async (e) => {
+        const edit = e.target.closest('.pEdit');
+        const del = e.target.closest('.pDel');
+        const toggle = e.target.closest('.cToggle');
+        const csub = e.target.closest('.cSubmit');
+        const cdel = e.target.closest('.cdel');
+        if (edit) { const p = posts.find((x) => String(x.id) === edit.dataset.id); if (p) openForm(p); return; }
+        if (del) {
+          if (!confirm('이 글을 삭제할까요?')) return;
+          const r = await (await fetch(`/api/board/posts/${del.dataset.id}`, { method: 'DELETE' })).json();
+          r.success ? loadFeed() : alert(r.error || '실패');
+          return;
+        }
+        if (toggle) { toggleComments(toggle.dataset.id); return; }
+        if (csub) { submitComment(csub.dataset.id); return; }
+        if (cdel) {
+          if (!confirm('댓글을 삭제할까요?')) return;
+          const r = await (await fetch(`/api/board/comments/${cdel.dataset.id}`, { method: 'DELETE' })).json();
+          r.success ? loadComments(cdel.dataset.post) : alert(r.error || '실패');
+          return;
+        }
+      });
+      // 댓글 입력칸 Enter → 등록
+      $('feed').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && e.target.classList.contains('cInput')) {
+          e.preventDefault();
+          const card = e.target.closest('[data-card]');
+          if (card) submitComment(card.getAttribute('data-card'));
+        }
+      });
+
       $('newBtn').addEventListener('click', () => openForm(null));
-      $('cancelBtn').addEventListener('click', loadList);
-      $('backBtn').addEventListener('click', loadList);
+      $('cancelBtn').addEventListener('click', loadFeed);
       $('saveBtn').addEventListener('click', async () => {
         const id = $('editId').value;
         const body = JSON.stringify({ title: $('fTitle').value, content: $('fContent').value, guestName: $('fGuest').value, website: $('fHoney').value });
         const url = id ? `/api/board/posts/${id}` : '/api/board/posts';
         const method = id ? 'PUT' : 'POST';
         const r = await (await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body })).json();
-        if (r.success) { id ? openPost(id) : loadList(); } else alert(r.error || '실패');
+        if (r.success) loadFeed(); else alert(r.error || '실패');
       });
-      $('cSubmit').addEventListener('click', async () => {
-        const content = $('cInput').value.trim();
-        if (!content) return;
-        const r = await (await fetch(`/api/board/posts/${curPostId}/comments`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content, guestName: $('cGuest').value, website: $('cHoney').value }) })).json();
-        if (r.success) { $('cInput').value = ''; openPost(curPostId); } else alert(r.error || '실패');
-      });
-      $('cInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('cSubmit').click(); });
 
-      detectGuest();
-      loadList();
+      (async () => { await detectGuest(); loadFeed(); })();
     })();
   </script>
 </body>

@@ -24,9 +24,15 @@ export class BoardController {
     return !!(req.body?.website ?? '').toString().trim();
   }
 
-  listPosts = async (_req: Request, res: Response): Promise<void> => {
+  listPosts = async (req: Request, res: Response): Promise<void> => {
     try {
-      res.json({ success: true, posts: await this.model.listPosts() });
+      // 피드에서 내용·수정/삭제 권한 표시에 쓰도록 me/isAdmin도 함께 내려줌
+      res.json({
+        success: true,
+        posts: await this.model.listPosts(),
+        me: req.member?.id,
+        isAdmin: req.member?.role === 'admin',
+      });
     } catch (e) { console.error('listPosts', e); res.status(500).json({ success: false, error: '목록 조회 오류' }); }
   };
 
