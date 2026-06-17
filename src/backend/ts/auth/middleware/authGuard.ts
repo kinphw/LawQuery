@@ -44,7 +44,10 @@ async function resolveMember(req: Request, res: Response): Promise<
 
   const member = await memberModel.findById(payload.uid);
   if (!member || member.status !== 'approved') return { ok: false, code: 'NOT_APPROVED' };
-  if (member.session_token && payload.sid !== member.session_token) return { ok: false, code: 'SESSION_REPLACED' };
+  // 다중 세션 허용: 같은 계정의 웹·앱·여러 기기 동시 로그인을 허용한다.
+  // (이전엔 sid 불일치 시 SESSION_REPLACED 로 차단했는데, /api/auth/me 는 sid 를 검증하지 않아
+  //  "상태바엔 PRO인데 콘텐츠는 티저"가 발생했다 → 게이트의 sid 검증 제거.)
+  // ▶ 계정 공유 방지가 필요해지면 여기서 sid 검증을 되살리되, me(AuthController)도 함께 sid 를 검증해 일관성을 맞출 것.
 
   // 슬라이딩 만료: 활동 시 토큰 재발급. "로그인 유지"(rmb) 여부와 그 만료를 그대로 유지.
   const { expiresIn, maxAgeMs } = expiryFor(payload.rmb === 1);
