@@ -10,7 +10,121 @@ import { LawPenalty } from "../types/LawPenalty"; // 250504
 import { TreeConverter } from '../utils/TreeConverter';
 import DbContext from '../../common/DbContext';
 
+/**
+ * 기준 전환 피벗 1행(long-format). dir 로 구분:
+ *  - 'base': 기준조 자기행(루트 노드 생성용)
+ *  - 'up'  : 기준조에 '직접' 매핑되는 상위 조문(역방향 rdb 1홉)
+ *  - 'down': 기준조의 하위 조문(정방향 rdb 전이). parent_id 로 트리 중첩.
+ */
+export interface PivotRow extends RowDataPacket {
+  base_seq: number;
+  base_id: string;
+  base_content: string | null;
+  base_sched: string | null;
+  base_date: string | null;
+  node_id: string;
+  node_content: string | null;
+  node_sched: string | null;
+  node_date: string | null;
+  node_seq: number | null;
+  parent_id: string | null;
+  depth: number;
+  dir: 'base' | 'up' | 'down';
+}
+
+const PIVOT_LEVELS = ['a', 'e', 's', 'r', 'b'] as const;
+
 export class LawModel extends LawBaseModel {
+
+  /**
+   * 기준(base) 전환 피벗 — 기준조가 속한 계층 '체인 전체'를 양방향 전이로 가져온다(원래 5단표를 기준점에서 재루팅).
+   *  - 상향(up):  기준조의 상위 조문을 전이로(역방향 rdb 재귀) — 예) 시행세칙→감독규정→시행령→법 까지 타고 올라감.
+   *  - 하향(down): 기준조의 하위 조문을 전이로(정방향 rdb 재귀) — 예) 시행령→감독규정→시행세칙 까지 타고 내려감.
+   *  - 양쪽 모두 parent_id(트리상 '기준점에 가까운' 노드)를 함께 내려 프론트에서 5단표와 동일하게 중첩 렌더.
+   * base/step 은 컨트롤러에서 검증되지만, 여기서도 화이트리스트(PIVOT_LEVELS)로만 SQL 식별자를 구성해 주입을 차단.
+   */
+  async getPivot(dbContext: DbContext, step: number, base: string): Promise<PivotRow[]> {
+    this.setDbContext(dbContext);
+
+    const levels = PIVOT_LEVELS.slice(0, step);
+    const bi = levels.indexOf(base as typeof PIVOT_LEVELS[number]);
+    if (bi < 0) return []; // base 가 레벨 목록에 없으면(=화이트리스트 통과 실패) 빈 결과
+
+    const U = (lv: string) => lv.toUpperCase();
+    const above = levels.slice(0, bi);     // 상위 레벨들
+    const below = levels.slice(bi + 1);    // 하위 레벨들
+
+    // 하향 descent 조건: 기준~하위 각 레벨에서 '자기보다 낮은' 레벨로만 내려간다.
+    const descend = levels.slice(bi).map((lv, i) => {
+      const lowers = levels.slice(bi + i + 1).map(U).join('');
+      return lowers ? `(d.node_id LIKE '${U(lv)}%' AND rdb.id_end REGEXP '^[${lowers}]')` : null;
+    }).filter(Boolean).join(' OR ');
+    // 상향 ascend 조건: 기준~상위 각 레벨에서 '자기보다 높은' 레벨로만 올라간다.
+    const ascend = levels.slice(0, bi + 1).map((lv, i) => {
+      const highers = levels.slice(0, i).map(U).join('');
+      return highers ? `(u.node_id LIKE '${U(lv)}%' AND rdb.id_start REGEXP '^[${highers}]')` : null;
+    }).filter(Boolean).join(' OR ');
+
+    // 하위/상위 레벨 테이블 LEFT JOIN + COALESCE 로 node 내용/seq 를 뽑는 헬퍼
+    const sideSelect = (cteAlias: string, sideLevels: string[], dir: string) => {
+      const joins = sideLevels.map(lv => `LEFT JOIN db_${lv} x_${lv} ON x_${lv}.id_${lv} = ${cteAlias}.node_id`).join('\n        ');
+      const coal = (col: string) => `COALESCE(${sideLevels.map(lv => `x_${lv}.${col.replace('{lv}', lv)}`).join(', ')})`;
+      return `
+        SELECT ${cteAlias}.base_seq, ${cteAlias}.base_id, NULL AS base_content, NULL AS base_sched, NULL AS base_date,
+               ${cteAlias}.node_id,
+               ${coal('content_{lv}')} AS node_content,
+               ${coal('content_{lv}_sched')} AS node_sched,
+               ${coal('sched_date')} AS node_date,
+               ${coal('seq')} AS node_seq,
+               ${cteAlias}.parent_id, ${cteAlias}.depth, '${dir}' AS dir
+        FROM ${cteAlias}
+        ${joins}
+        WHERE ${cteAlias}.depth > 0 AND ${coal('content_{lv}')} IS NOT NULL`;
+    };
+
+    const ctes: string[] = [];
+    const unionParts: string[] = [];
+
+    if (below.length) {
+      ctes.push(`down_ids AS (
+        SELECT b.id_${base} AS base_id, b.seq AS base_seq, b.id_${base} AS node_id, CAST(NULL AS CHAR(64)) AS parent_id, 0 AS depth
+        FROM db_${base} b WHERE b.id_${base} IS NOT NULL AND b.content_${base} IS NOT NULL
+        UNION ALL
+        SELECT d.base_id, d.base_seq, rdb.id_end, d.node_id, d.depth + 1
+        FROM down_ids d JOIN rdb ON rdb.id_start = d.node_id AND rdb.id_end <> d.node_id
+        WHERE d.depth < ${step} AND (${descend})
+      )`);
+      unionParts.push(sideSelect('down_ids', below, 'down'));
+    }
+
+    if (above.length) {
+      ctes.push(`up_ids AS (
+        SELECT b.id_${base} AS base_id, b.seq AS base_seq, b.id_${base} AS node_id, CAST(NULL AS CHAR(64)) AS parent_id, 0 AS depth
+        FROM db_${base} b WHERE b.id_${base} IS NOT NULL AND b.content_${base} IS NOT NULL
+        UNION ALL
+        SELECT u.base_id, u.base_seq, rdb.id_start, u.node_id, u.depth + 1
+        FROM up_ids u JOIN rdb ON rdb.id_end = u.node_id AND rdb.id_start <> u.node_id
+        WHERE u.depth < ${step} AND (${ascend})
+      )`);
+      unionParts.push(sideSelect('up_ids', above, 'up'));
+    }
+
+    // 기준조 자기행(루트 생성용). id NOT NULL 로 제목행(장·절) 제외.
+    unionParts.push(`
+        SELECT b.seq AS base_seq, b.id_${base} AS base_id, b.content_${base} AS base_content,
+               b.content_${base}_sched AS base_sched, b.sched_date AS base_date,
+               b.id_${base} AS node_id, b.content_${base} AS node_content, b.content_${base}_sched AS node_sched,
+               b.sched_date AS node_date, b.seq AS node_seq, NULL AS parent_id, 0 AS depth, 'base' AS dir
+        FROM db_${base} b WHERE b.id_${base} IS NOT NULL AND b.content_${base} IS NOT NULL`);
+
+    const cte = ctes.length ? `WITH RECURSIVE ${ctes.join(',\n')}\n` : '';
+
+    // base 먼저(루트) → up/down(각 depth 오름차순으로 부모가 자식보다 먼저 생기게).
+    const query = `${cte}${unionParts.join('\nUNION ALL\n')}
+      ORDER BY base_seq, FIELD(dir,'base','up','down'), depth, node_seq`;
+
+    return this.db.query<PivotRow>(query);
+  }
 
   async getAllLaws(dbContext: DbContext, step: number = 4): Promise<LawResult[]> {
 
@@ -238,31 +352,6 @@ export class LawModel extends LawBaseModel {
     const rows = await this.db.query<LawResult>(query);
     return rows;
   }
-
-  /**
-   * 단일 단위(법/시행령/감독규정/시행세칙) 전체 조회 — 연계 없이 한 단의 모든 조문을 seq 순으로.
-   * 무료 기능: 하위규정이 분산돼 외부에서 통째 보기 어려운 걸 한 화면에. (origin: a/e/s/r)
-   */
-  async getSingleUnit(dbContext: DbContext, origin: string): Promise<any[]> {
-    this.setDbContext(dbContext);
-    const map: Record<string, { tbl: string; id: string; content: string; sched: string }> = {
-      a: { tbl: 'db_a', id: 'id_a', content: 'content_a', sched: 'content_a_sched' },
-      e: { tbl: 'db_e', id: 'id_e', content: 'content_e', sched: 'content_e_sched' },
-      s: { tbl: 'db_s', id: 'id_s', content: 'content_s', sched: 'content_s_sched' },
-      r: { tbl: 'db_r', id: 'id_r', content: 'content_r', sched: 'content_r_sched' },
-      b: { tbl: 'db_b', id: 'id_b', content: 'content_b', sched: 'content_b_sched' }, // 5단째(여신/신정=시행세칙)
-    };
-    const m = map[origin];
-    if (!m) return [];
-    // 법(db_a)은 제목행(id_a IS NULL, title_a)도 포함해 구조를 살린다. 나머지는 id 있는 조문만.
-    const query = origin === 'a'
-      ? `SELECT seq, id_a AS id, title_a AS title, content_a AS content, content_a_sched AS content_sched, sched_date
-         FROM db_a WHERE content_a IS NOT NULL OR title_a IS NOT NULL ORDER BY seq`
-      : `SELECT seq, ${m.id} AS id, ${m.content} AS content, ${m.sched} AS content_sched, sched_date
-         FROM ${m.tbl} WHERE ${m.content} IS NOT NULL ORDER BY seq`;
-    return this.db.query<any>(query);
-  }
-
 
   async getLawByIds(dbContext: DbContext, step: number, lawIds: string[]): Promise<LawResult[]> {
 
@@ -510,6 +599,53 @@ export class LawModel extends LawBaseModel {
     this.setDbContext(dbContext);
     const query = `SELECT origin, full_name, short_name FROM db_meta ORDER BY _pk`;
     return await this.db.query(query);
+  }
+
+  /**
+   * 법령 레지스트리 — 명시적 목록 테이블 `ldb_auth.law_registry`(단일 출처)에서 활성 법령을 읽고,
+   * 각 법령의 표시정보(step·names·originMap)는 그 DB의 db_meta 에서 도출한다.
+   * 새 법령 = ldb_<code> 적재 + law_registry 에 1행 INSERT. (db/law_registry.sql 참고)
+   * law_registry 테이블이 없으면 [] 반환 → 프론트가 하드코딩 드롭다운으로 폴백.
+   */
+  async getLawRegistry(): Promise<Array<{ code: string; label: string; step: number; names: string[]; originMap: Record<string, string>; kind: string }>> {
+    const LEVELS = ['a', 'e', 's', 'r', 'b'];
+    const authDb = process.env.AUTH_DB || 'ldb_auth';
+
+    let regs: Array<{ code: string; label: string | null; kind: string }>;
+    try {
+      const auth = DbContext.getInstance(authDb);
+      regs = await auth.query(
+        `SELECT code, label, kind FROM law_registry WHERE enabled = 1 ORDER BY sort_order, code`,
+      );
+    } catch {
+      return []; // law_registry 미설치 → 폴백
+    }
+
+    const out: Array<{ code: string; label: string; step: number; names: string[]; originMap: Record<string, string>; kind: string }> = [];
+    for (const reg of regs) {
+      try {
+        const ctx = DbContext.getInstance(`ldb_${reg.code}`);
+        const meta = await ctx.query<{ origin: string; full_name: string; short_name: string }>(
+          `SELECT origin, full_name, short_name FROM db_meta ORDER BY _pk`,
+        );
+        const levels = meta.filter(m => LEVELS.includes(m.origin)); // 트리 레벨 행만(잡행 방어)
+        if (!levels.length) continue;
+        const originMap: Record<string, string> = {};
+        meta.forEach(m => { originMap[m.origin] = m.short_name; });
+        out.push({
+          code: reg.code,
+          // 라벨: registry override 우선, 없으면 법(a) full_name 첫 줄(=법령명).
+          label: reg.label || (levels[0].full_name || '').split('\n')[0] || levels[0].short_name,
+          step: levels.length,
+          names: levels.map(m => m.full_name),
+          originMap,
+          kind: reg.kind,
+        });
+      } catch {
+        // ldb_<code> 미존재/비정상 → 목록에서 제외(등록만 됐고 아직 적재 전 등)
+      }
+    }
+    return out;
   }
 
   toLawTree(rows: LawResult[]): LawTreeNode[] {

@@ -26,6 +26,9 @@ import { LawFetchAnnexModel } from "../models/LawFetchAnnexModel";
 import { LawFetchAnnexIdsModel } from "../models/LawFetchAnnexIdsModel";
 import { LawFetchArticleModel } from "../models/LawFetchArticleModel";
 import { LawFetchMetaModel } from "../models/LawFetchMetaModel";
+import { LawFetchPivotModel } from "../models/LawFetchPivotModel";
+import { LawFetchListModel, LawListEntry } from "../models/LawFetchListModel";
+import { setLawRegistry } from "../config/LawConfig";
 
 import { LawView } from "../views/LawView";
 import { LawPenaltyView } from "../views/components/LawPenaltyView";
@@ -35,7 +38,6 @@ import { LawAnnexView } from "../views/components/LawAnnexView";
 import { CurrentLawBox } from "../views/components/CurrentLawBox";
 
 import { getMe, isPro } from "../../common/AuthState";
-import { LawUnitView } from "../views/LawUnitView";
 import { UpsellNotice } from "../../common/components/UpsellNotice";
 
 export interface ILawController extends IController {
@@ -91,6 +93,8 @@ export class LawController implements ILawController {
     view!: LawView;
     viewPenalty!: LawPenaltyView; // 250504
     viewAnnex!: LawAnnexView;
+    private modelFetchPivot!: LawFetchPivotModel; // 기준 전환 피벗
+    private modelFetchList!: LawFetchListModel;    // 법령 목록(드롭다운/설정 단일 출처)
     // currentResults: LawResult[] = []; // Store current results
     private eventManagers: ILawEventManager[];
     private penaltyEventManager: LawPenaltyEventManager;
@@ -116,6 +120,8 @@ export class LawController implements ILawController {
         this.modelFetchAnnexIds = new LawFetchAnnexIdsModel();
         this.modelFetchArticle = new LawFetchArticleModel();
         this.modelFetchMeta = new LawFetchMetaModel();
+        this.modelFetchPivot = new LawFetchPivotModel();
+        this.modelFetchList = new LawFetchListModel();
 
         this.dataManager = new LawDataManager();
 
@@ -152,6 +158,9 @@ export class LawController implements ILawController {
 
     async initialize(): Promise<void> {
 
+        // 법령 목록(DB의 ldb_* 스캔)으로 드롭다운/설정을 동적 구성 → 새 법령 추가 시 프론트 코드 수정 0.
+        await this.bootstrapLawRegistry();
+
         // DB에서 법령명 메타 로드 → LawConfig 하드코딩 대체 (단일/연계 공통)
         const meta = await this.modelFetchMeta.getMeta();
         const me = await getMe();
@@ -169,59 +178,28 @@ export class LawController implements ILawController {
             CurrentLawBox.update(); // fallback
         }
 
-        // 헤더는 모드와 무관하게 1회 (토글바가 그 아래 위치)
+        // 헤더는 1회만 (정렬기준 셀렉터가 그 아래 위치)
         this.view.renderHeaderOnly();
 
-        // 조회 방식 결정: URL ?view= → 없으면 기본은 연계표.
-        // 비회원도 연계표 '상위 3개 조' 티저로 첫 화면에서 킬 기능을 바로 보게 한다.
-        const params = new URLSearchParams(window.location.search);
-        let view = params.get('view');
-        if (view !== 'unit' && view !== 'linked') view = 'linked';
-
-        this.renderViewToggle(view as 'unit' | 'linked');
-
-        if (view === 'unit') {
-            await this.showUnitMode(meta);
-        } else if (pro) {
-            await this.showLinkedMode();
+        // 연계표 단일 진입. 비회원/free는 '상위 3개 조' 티저로 첫 화면에서 킬 기능을 바로 본다.
+        if (pro) {
+            await this.showLinkedMode(meta);
         } else {
             await this.showLinkedTeaser();
         }
     }
 
-    /** 상단 조회방식 토글(개별 ↔ 연계표). 전환은 ?view= 갱신 후 리로드(이벤트 생명주기 단순화). */
-    private renderViewToggle(current: 'unit' | 'linked'): void {
-        const host = document.getElementById('lawViewToggleHost');
-        if (!host) return;
-        host.innerHTML = `
-            <div class="d-flex justify-content-center">
-                <div class="btn-group" role="group" aria-label="조회 방식">
-                    <button type="button" class="btn btn-sm ${current === 'unit' ? 'btn-dark' : 'btn-outline-dark'} lq-view-btn" data-view="unit">개별 조회</button>
-                    <button type="button" class="btn btn-sm ${current === 'linked' ? 'btn-dark' : 'btn-outline-dark'} lq-view-btn" data-view="linked">연계표</button>
-                </div>
-            </div>`;
-        host.querySelectorAll('.lq-view-btn').forEach((btn) => {
-            btn.addEventListener('click', () => {
-                const next = (btn as HTMLElement).dataset.view!;
-                if (next === current) return;
-                const p = new URLSearchParams(window.location.search);
-                p.set('view', next);
-                window.location.search = p.toString(); // 리로드 → initialize가 해당 모드로 렌더
-            });
-        });
-    }
+    /** 연계표 모드(PRO). 기준=법(a)이면 기존 5단 연계, 그 외(e/s/r/b)면 피벗 연계표. */
+    private async showLinkedMode(meta: import("../models/LawFetchMetaModel").LawMeta[]): Promise<void> {
+        // 상단 기준 셀렉터(법·시행령·…) — base=a는 기존 5단표, 나머지는 피벗.
+        const base = this.getBase();
+        this.renderBaseSelector(meta, base);
+        if (base !== 'a') {
+            await this.renderPivot(meta, base);
+            return;
+        }
 
-    /** 단일 조회 모드(회원가입 없이 이용). 연계 전용 정적 요소는 숨긴다. */
-    private async showUnitMode(meta: import("../models/LawFetchMetaModel").LawMeta[]): Promise<void> {
-        this.hideEl('penaltyBtn');
-        this.hideEl('annexBtn');
-        this.hideEl('lawArticleCard');
-        const unitView = new LawUnitView(meta);
-        await unitView.start();
-    }
-
-    /** 연계표 모드(PRO). 기존 5단 연계 조회 흐름. */
-    private async showLinkedMode(): Promise<void> {
+        // ── 기준=법(a): 기존 5단 연계 흐름(무손상) ──
         // 초기 벌칙 id_a 로드 : 250505
         this.dataManager.setPenaltyIds(await this.modelFetchPenaltyIds.getPenaltyIds());
         this.view.setPenaltyIds(this.dataManager.getPenaltyIds());
@@ -268,6 +246,107 @@ export class LawController implements ILawController {
     private hideEl(id: string): void {
         const el = document.getElementById(id);
         if (el) el.classList.add('d-none');
+    }
+
+    // ── 법령 레지스트리(동적 드롭다운/설정) ───────────────────────────
+
+    /** /api/law/list 로 레지스트리 채우고, 드롭다운 생성 + 현재 법령의 step 정규화. */
+    private async bootstrapLawRegistry(): Promise<void> {
+        const list = await this.modelFetchList.getList();
+        if (!list.length) return; // 실패 시 기존 하드코딩 드롭다운/LawConfig 폴백 유지
+
+        setLawRegistry(list); // getLawConfig(...)가 이제 DB값을 반환(originMap 등)
+
+        const params = new URLSearchParams(window.location.search);
+        const lawParam = params.get('law');
+        // 명시된 법령의 step 이 비었거나 실제 레벨 수와 다르면 보정(리로드 없이 replaceState).
+        if (lawParam) {
+            const entry = list.find(e => e.code === lawParam);
+            if (entry && params.get('step') !== String(entry.step)) {
+                params.set('step', String(entry.step));
+                history.replaceState(null, '', `?${params.toString()}`);
+            }
+        }
+
+        this.renderLawDropdown(list, lawParam || 'j');
+    }
+
+    /** 법령 선택 드롭다운을 목록으로 생성(링크에 올바른 step 자동 첨부). */
+    private renderLawDropdown(list: LawListEntry[], current: string): void {
+        const ul = document.getElementById('lawDropdownMenu');
+        if (!ul) return;
+        const esc = (s: string) => s
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        ul.innerHTML = list.map(e =>
+            `<li><a class="dropdown-item${e.code === current ? ' active' : ''}" href="?law=${encodeURIComponent(e.code)}&step=${e.step}">${esc(e.label)}</a></li>`,
+        ).join('');
+    }
+
+    // ── 기준 전환(피벗) ─────────────────────────────────────────────
+
+    private getStep(): number {
+        return parseInt(new URLSearchParams(window.location.search).get('step') || '4', 10);
+    }
+
+    /** URL ?base= → 유효(레벨 범위 내, a 포함)하면 그 값, 아니면 'a'(기존 5단표). */
+    private getBase(): string {
+        const b = (new URLSearchParams(window.location.search).get('base') || 'a').toLowerCase();
+        const levels = ['a', 'e', 's', 'r', 'b'].slice(0, this.getStep());
+        return levels.includes(b) ? b : 'a';
+    }
+
+    /** 상단 기준 셀렉터(법·시행령·…). 클릭 시 ?base= 갱신 후 리로드(이벤트 생명주기 단순화). */
+    private renderBaseSelector(meta: import("../models/LawFetchMetaModel").LawMeta[], current: string): void {
+        const host = document.getElementById('lawBaseHost');
+        if (!host) return;
+        const levels = ['a', 'e', 's', 'r', 'b'].slice(0, this.getStep());
+        const short: Record<string, string> = {};
+        meta.forEach(m => { short[m.origin] = m.short_name; });
+
+        const btns = levels.map(lv => {
+            const active = lv === current ? 'btn-primary' : 'btn-outline-primary';
+            return `<button type="button" class="btn ${active} lq-base-btn" data-base="${lv}">${short[lv] || lv}</button>`;
+        }).join('');
+
+        host.innerHTML = `
+            <div class="d-flex align-items-center gap-1">
+                <span class="text-muted small">정렬기준</span>
+                <div class="btn-group btn-group-sm" role="group" aria-label="기준 레벨">${btns}</div>
+            </div>`;
+
+        host.querySelectorAll('.lq-base-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const next = (btn as HTMLElement).dataset.base!;
+                if (next === current) return;
+                const p = new URLSearchParams(window.location.search);
+                if (next === 'a') p.delete('base'); else p.set('base', next);
+                window.location.search = p.toString(); // 리로드 → initialize가 해당 기준으로 렌더
+            });
+        });
+    }
+
+    /**
+     * 피벗 연계표 렌더(기준 e/s/r/b). 5단표와 '완전히 동일한' 렌더 경로(view.render/LawTable)를 사용.
+     * 데이터만 기준 재배치된 트리이고, 디자인·벌칙/참조/별표 버튼은 5단과 동일하게 흐른다.
+     */
+    private async renderPivot(_meta: import("../models/LawFetchMetaModel").LawMeta[], base: string): Promise<void> {
+        this.hideEl('lawArticleCard'); // 조문별 선택조회는 5단 전용(피벗 미지원)
+
+        // 킬 버튼용 id 세트 로드(5단 연계 흐름과 동일)
+        this.dataManager.setPenaltyIds(await this.modelFetchPenaltyIds.getPenaltyIds());
+        this.view.setPenaltyIds(this.dataManager.getPenaltyIds());
+        this.dataManager.setReferenceData(await this.modelFetchReferenceIds.getReferenceIds());
+        this.view.setReferenceData(this.dataManager.getReferenceData());
+        this.view.setAnnexIds(await this.modelFetchAnnexIds.getAnnexIds());
+
+        // 기준 재배치 트리 → 5단표와 동일하게 view.render
+        const tree = await this.modelFetchPivot.getPivot(base);
+        this.dataManager.setCurrentResults(tree);
+        this.view.render(this.dataManager.getCurrentResults());
+
+        // 이벤트 바인딩(5단과 동일 매니저 — 벌칙/참조/별표 버튼 포함)
+        this.bindAllEvents();
+        this.bindPostRenderEvents();
     }
 
     // 이벤트매니저에서 호출하기 위한 public 메서드

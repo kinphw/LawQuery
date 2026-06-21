@@ -10,6 +10,9 @@ test.html
 test*.html
 test.py
 
+# 검증/프로토타입 scratch
+proto/
+
 # 데이터 및 로그
 data/*
 logs/*

@@ -28,7 +28,7 @@ export class LawHandler {
     // this.router.use(LawMiddleware); 
 
     // ── 무료(비회원 허용, optionalAuth) ──
-    this.router.get('/unit', optionalAuth, this.controller.getUnit.bind(this.controller));   // 단일 단위 전체 조회(미끼)
+    this.router.get('/list', optionalAuth, this.controller.getLawList.bind(this.controller)); // 법령 목록(드롭다운/설정 단일 출처)
     this.router.get('/getTitles', optionalAuth, this.controller.getTitles.bind(this.controller));
     this.router.get('/article', optionalAuth, this.controller.getArticle.bind(this.controller));
     this.router.get('/meta', optionalAuth, this.controller.getMeta.bind(this.controller));
@@ -41,6 +41,7 @@ export class LawHandler {
     this.router.get('/all', optionalAuth, this.controller.getAll.bind(this.controller));      // 5단 연계표(비회원=상위 3개 조 티저)
     // ── PRO 전용(proGuard) — 킬 기능 ──
     this.router.get('/get', proGuard, this.controller.getByIds.bind(this.controller));       // 선택 연계표(킬)
+    this.router.get('/pivot', proGuard, this.controller.getPivot.bind(this.controller));     // 기준 전환 피벗 연계표(킬)
     this.router.get('/penalty', proGuard, this.penaltyController.getPenalty.bind(this.penaltyController));
     this.router.get('/reference', proGuard, this.referenceController.getReference.bind(this.referenceController));
     this.router.get('/annex', proGuard, this.annexController.getAnnex.bind(this.annexController));

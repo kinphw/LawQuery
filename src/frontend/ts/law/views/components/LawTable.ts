@@ -13,6 +13,8 @@ export class LawTable {
     // Test
     private lawView: LawView;
     private step: number;
+    // 현재 정렬기준(base)에 해당하는 컬럼 인덱스 → 해당 열을 강조 표시
+    private highlightCol: number;
 
     // 법령명 thead 설정을 위한 클래스변수 // 250623
     public names: string[] = [];
@@ -38,6 +40,11 @@ export class LawTable {
         const law = urlParams.get('law') || 'j';
         this.names = getLawConfig(law).names;
         this.step = parseInt(urlParams.get('step') || '4', 10);
+
+        // 정렬기준(base) → 컬럼 인덱스(a=0,e=1,s=2,r=3,b=4). 없으면 법(0).
+        const base = (urlParams.get('base') || 'a').toLowerCase();
+        const bi = ['a', 'e', 's', 'r', 'b'].indexOf(base);
+        this.highlightCol = bi >= 0 ? Math.min(bi, this.step - 1) : 0;
 
         // this.names = law === 'y'
         //     ? [
@@ -71,13 +78,14 @@ export class LawTable {
             return '<div class="alert alert-warning">표시할 법령이 없습니다.</div>';
         }
 
-        let html = '<div class="table-responsive"><table class="table table-bordered law-table">';
+        let html = '<div class="table-responsive law-table-wrap"><table class="table table-bordered law-table">';
         html += `
             <thead class="table-dark sticky-top">
                 <tr>
-                    ${this.names.slice(0, this.step).map(name => {
+                    ${this.names.slice(0, this.step).map((name, i) => {
             const parts = name.split('\n');
-            return `<th class="text-center py-1">
+            const hl = i === this.highlightCol ? ' lq-base-col' : '';
+            return `<th class="text-center py-1${hl}">
                             <div class="small">${parts[0]}</div>
                             <div class="text-xs">${parts.slice(1).join('<br>')}</div>
                         </th>`;
@@ -100,7 +108,8 @@ export class LawTable {
 
         return paths.map((path, r) => {
             const tds = path.map((node, c) => {
-                if (!node) return this.emptyTd(LawTable.COL_CLASS[c]);
+                const hl = c === this.highlightCol ? ' lq-base-col' : ''; // 정렬기준 컬럼 강조
+                if (!node) return this.emptyTd(`${LawTable.COL_CLASS[c]}${hl}`);
                 if (rowspans[r][c] === 0) return ''; // rowspan이 0인 경우 빈 셀
                 let extra = this.renderReferenceButton(node.id);
                 if (c === 0) {
@@ -109,7 +118,7 @@ export class LawTable {
                 extra += this.renderAnnexButton(node.id); // Add newly decoupled Annex button
 
                 return this.td(
-                    `${LawTable.COL_CLASS[c]} ${LawTable.INDENT_CLASS[c]}`,
+                    `${LawTable.COL_CLASS[c]} ${LawTable.INDENT_CLASS[c]}${hl}`,
                     node.title,
                     node.scheduledTitle,
                     node.scheduledDate,
@@ -139,6 +148,21 @@ export class LawTable {
         return `<td class="${className} law-box ${this.currentTextSize}"></td>`;
     }
 
+    /**
+     * 노드를 '레벨'(컬럼)에 배치한다. 레벨 = id 접두사(A/E/S/R/B), 가상노드 'V_E_…'는 'E'.
+     * 기준=법(a) 트리는 깊이==레벨이라 기존과 동일하게 동작하고,
+     * 기준 전환(피벗) 트리는 루트가 시행령 등이어도 각 노드가 제 컬럼으로 들어간다.
+     */
+    private levelOf(node: LawTreeNode): number {
+        const id = node.id;
+        if (!id) return 0; // 타이틀행 등 id 없는 노드는 법 컬럼
+        const s = String(id);
+        const ch = (s.startsWith('V_') ? s[2] : s[0]).toUpperCase();
+        const idx = ['A', 'E', 'S', 'R', 'B'].indexOf(ch);
+        if (idx < 0) return 0;
+        return Math.min(idx, this.step - 1);
+    }
+
     /** leaf 경로(Path)들을 수집 */
     private collectPaths(root: LawTreeNode): Path[] {
         const paths: Path[] = [];
@@ -148,7 +172,7 @@ export class LawTable {
             depth: number
         ) => {
             const next = acc.slice();
-            next[depth] = node;
+            next[this.levelOf(node)] = node; // 컬럼 = 레벨(깊이 아님)
             if (!node.children?.length || depth === this.step - 1) {
                 // 리프 노드이거나 최대 단계에 도달하면 경로 추가
                 paths.push(next.slice(0, this.step) as Path);

@@ -45,6 +45,18 @@ const DEFAULT_CONFIG: LawConfigEntry = {
     originMap: { a: '법률', e: '시행령', s: '시행규칙', r: '행정규칙/규정', b: '자치법규/세칙' },
 };
 
+// 런타임 레지스트리 — /api/law/list(=DB의 db_meta) 로 채워진다. 하드코딩 LAW_CONFIG 보다 우선.
+// 이게 채워지면 새 법령은 코드 수정 없이 동작(드롭다운/이름/originMap 전부 DB 출처).
+const RUNTIME_CONFIG = new Map<string, LawConfigEntry>();
+
+export function setLawRegistry(
+    entries: Array<{ code: string; label: string; names: string[]; originMap: Record<string, string> }>,
+): void {
+    for (const e of entries) {
+        RUNTIME_CONFIG.set(e.code, { label: e.label, names: e.names, originMap: e.originMap });
+    }
+}
+
 export function getLawConfig(law: string): LawConfigEntry {
-    return LAW_CONFIG[law] ?? DEFAULT_CONFIG;
+    return RUNTIME_CONFIG.get(law) ?? LAW_CONFIG[law] ?? DEFAULT_CONFIG;
 }

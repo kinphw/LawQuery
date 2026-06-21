@@ -31,9 +31,9 @@
   - `isPro(plan)` 헬퍼
   - req.member에 plan 포함
 - 엔드포인트 분류 [LawHandler.ts](../src/backend/ts/handlers/LawHandler.ts):
-  - **무료(optionalAuth)**: `/law/unit`(신규), `/law/article`, `/law/meta`, `/law/getTitles`, `/law/*Ids`
+  - **무료(optionalAuth)**: `/law/article`, `/law/meta`, `/law/getTitles`, `/law/*Ids`
   - **PRO(proGuard)**: `/law/all`·`/law/get`(연계표), `/law/penalty`·`/reference`·`/annex`, `/interpretation/*`(통째)
-- 신규 API: `GET /api/law/unit?law=j&origin=s` → 단일 단위(a/e/s/r) 전체 조문 seq 순. [LawModel.getSingleUnit](../src/backend/ts/law/models/LawModel.ts), [LawController.getUnit](../src/backend/ts/law/controllers/LawController.ts)
+- ~~신규 API: `GET /api/law/unit?law=j&origin=s` → 단일 단위(a/e/s/r) 전체 조문 seq 순.~~ **(2026-06-22 제거됨 — 연계표 '정렬기준'(피벗)으로 대체)**
 - index.ts: 전역 authGuard 제거(핸들러 내부 게이트로 이동)
 - me 응답에 plan 포함, admin 회원목록에 plan 포함
 - **검증 통과**: 비회원 /unit 200(감독규정 123조), 비회원 /all 401차단, pro_beta /all·유권해석 200 (※ occupation 수집은 이후 폐기됨)
@@ -49,8 +49,8 @@
 
 2. **법령 프론트**:
    - 공통 [AuthState.ts](../src/frontend/ts/common/AuthState.ts) — `getMe()`/`isPro()`.
-   - [LawController](../src/frontend/ts/law/controllers/LawController.ts) `initialize()`에서 me 분기: 비PRO면 [LawUnitView](../src/frontend/ts/law/views/LawUnitView.ts).start()로 단일뷰, PRO면 기존 연계표.
-   - [LawUnitView](../src/frontend/ts/law/views/LawUnitView.ts): 단위 선택바(법/시행령/감독규정/세칙, meta 기준 a/e/s/r) → [LawFetchUnitModel](../src/frontend/ts/law/models/LawFetchUnitModel.ts) `/api/law/unit` → 1컬럼 렌더(텍스트검색 필터·하이라이트). 벌칙/별표 버튼·조문별선택조회는 잠금 + 업셀.
+   - [LawController](../src/frontend/ts/law/controllers/LawController.ts) `initialize()`에서 me 분기: 비PRO면 연계표 티저, PRO면 연계표.
+   - ~~LawUnitView / LawFetchUnitModel: 단위 선택바 단일뷰(개별 조회).~~ **(2026-06-22 제거됨 — 연계표 '정렬기준'(피벗)으로 대체. 비회원은 연계표 상위 3개 조 티저)**
 
 3. **유권해석 프론트**: [SearchController](../src/frontend/ts/interpretation/controllers/SearchController.ts) me 분기 → 비PRO면 [SearchView](../src/frontend/ts/interpretation/views/SearchView.ts).renderLock()(폼 비활성화 + PRO 잠금 화면).
 

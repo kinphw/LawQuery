@@ -42,9 +42,11 @@ export class Header {
     }
 
     setInfoButtonHandler(): void {
-        document.getElementById('infoButton')?.addEventListener('click',
-            () => this.showInfo());
-    }    
+        // onclick 할당(멱등). addEventListener는 여러 렌더 경로에서 반복 바인딩되어
+        // 클릭 1회에 showInfo()가 중복 실행 → 모달 백드롭이 겹치는 원인이 된다.
+        const btn = document.getElementById('infoButton');
+        if (btn) (btn as HTMLElement).onclick = () => this.showInfo();
+    }
 
     // private showInfo(): void {
     //     alert(`

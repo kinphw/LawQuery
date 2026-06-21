@@ -18,28 +18,31 @@
 
 <body>
   <div id="header"></div>
-  <!-- 법령 선택 드롭다운 -->
-  <div class="d-flex justify-content-center align-items-center my-3">
+  <!-- 상단 컨트롤 바: 법령선택 ｜ 정렬기준 — 가운데로 모아 적당한 간격만 둔다 -->
+  <div class="container my-3">
+    <div id="lawTopControls" class="d-flex flex-wrap align-items-center justify-content-center gap-2 gap-md-4">
 
-    <!-- 현재 선택된 법령 표시 -->
-    <div id="currentLawBox" class="badge bg-dark text-white me-3 px-3 py-2 fs-6">선택된 법령</div>
+      <!-- 1) 법령 선택 -->
+      <div class="d-flex align-items-center gap-2">
+        <div id="currentLawBox" class="badge bg-dark text-white px-3 py-2 fs-6">선택된 법령</div>
+        <div class="dropdown">
+          <button class="btn btn-sm btn-dark dropdown-toggle" type="button" id="lawDropdown" data-bs-toggle="dropdown"
+            aria-expanded="false">
+            법령 선택
+          </button>
+          <!-- 항목은 컨트롤러가 /api/law/list 로 동적 생성. 아래는 JS 실패 시 폴백. -->
+          <ul class="dropdown-menu" id="lawDropdownMenu" aria-labelledby="lawDropdown">
+            <li><a class="dropdown-item" href="?law=j&step=4">전자금융거래법</a></li>
+            <li><a class="dropdown-item" href="?law=y&step=5">여신전문금융업법</a></li>
+            <li><a class="dropdown-item" href="?law=s&step=5">신용정보의 이용 및 보호에 관한 법률</a></li>
+          </ul>
+        </div>
+      </div>
 
-
-    <div class="dropdown">
-      <button class="btn btn-dark dropdown-toggle" type="button" id="lawDropdown" data-bs-toggle="dropdown"
-        aria-expanded="false">
-        법령 선택
-      </button>
-      <ul class="dropdown-menu" aria-labelledby="lawDropdown">
-        <li><a class="dropdown-item" href="?law=j&step=4">전자금융거래법</a></li>
-        <li><a class="dropdown-item" href="?law=y&step=5">여신전문금융업법</a></li>
-        <li><a class="dropdown-item" href="?law=s&step=5">신용정보의 이용 및 보호에 관한 법률</a></li>
-      </ul>
+      <!-- 2) 정렬기준 셀렉터(연계표). 컨트롤러가 채움 -->
+      <div id="lawBaseHost" class="d-flex justify-content-center"></div>
     </div>
   </div>
-
-  <!-- 조회 방식 토글 (단일 ↔ 연계표). 컨트롤러가 채움 -->
-  <div id="lawViewToggleHost" class="container mb-2"></div>
 
   <!-- 텍스트 검색 영역 -->
   <div class="container mb-3" id="lawSearchCard">

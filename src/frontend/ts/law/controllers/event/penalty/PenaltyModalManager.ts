@@ -8,8 +8,8 @@ export class PenaltyModalManager {
         if (modal) {
             modal.querySelector('.modal-title')!.textContent = '벌칙 정보';
             modal.querySelector('.modal-body')!.innerHTML = tableHtml;
-            // @ts-ignore
-            const bsModal = new bootstrap.Modal(modal);
+            // @ts-ignore — 요소당 인스턴스 1개만(백드롭 중복·잔류 방지)
+            const bsModal = bootstrap.Modal.getOrCreateInstance(modal);
             bsModal.show();
         }
     }
@@ -27,8 +27,8 @@ export class PenaltyModalManager {
             ">
 ${content}
             </pre>`;
-            // @ts-ignore
-            const bsModal = new bootstrap.Modal(modal);
+            // @ts-ignore — 요소당 인스턴스 1개만(백드롭 중복·잔류 방지)
+            const bsModal = bootstrap.Modal.getOrCreateInstance(modal);
             bsModal.show();
         } else {
             alert(content);

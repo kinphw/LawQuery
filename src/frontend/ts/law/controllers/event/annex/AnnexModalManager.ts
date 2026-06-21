@@ -10,7 +10,7 @@ export class AnnexModalManager {
         const modalElement = document.getElementById('annexModal');
         if (modalElement) {
             // @ts-ignore - bootstrap is globally available
-            const modal = new bootstrap.Modal(modalElement);
+            const modal = bootstrap.Modal.getOrCreateInstance(modalElement);
             modal.show();
         }
     }
@@ -31,7 +31,7 @@ export class AnnexModalManager {
         }
 
         // @ts-ignore
-        const modal = new bootstrap.Modal(modalElement);
+        const modal = bootstrap.Modal.getOrCreateInstance(modalElement);
         modal.show();
 
         // Clear iframe when hidden to stop background tasks / audio
@@ -57,7 +57,7 @@ export class AnnexModalManager {
         }
 
         // @ts-ignore
-        const modal = new bootstrap.Modal(modalElement);
+        const modal = bootstrap.Modal.getOrCreateInstance(modalElement);
         modal.show();
     }
 }
