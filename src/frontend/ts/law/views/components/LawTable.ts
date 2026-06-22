@@ -109,8 +109,9 @@ export class LawTable {
         return paths.map((path, r) => {
             const tds = path.map((node, c) => {
                 const hl = c === this.highlightCol ? ' lq-base-col' : ''; // 정렬기준 컬럼 강조
-                if (!node) return this.emptyTd(`${LawTable.COL_CLASS[c]}${hl}`);
-                if (rowspans[r][c] === 0) return ''; // rowspan이 0인 경우 빈 셀
+                if (rowspans[r][c] === 0) return ''; // 위 셀 rowspan에 병합됨(빈 칸·내용 공통)
+                // 빈 칸도 rowspan 적용 → 한 밴드에서 빈 박스가 행마다 중복 렌더되는 것 방지(피벗 중간단 누락 시)
+                if (!node) return this.emptyTd(`${LawTable.COL_CLASS[c]}${hl}`, rowspans[r][c]);
                 let extra = this.renderReferenceButton(node.id);
                 if (c === 0) {
                     extra += this.renderPenaltyButton(node.id);
@@ -144,8 +145,9 @@ export class LawTable {
 
         return `<td class="${finalClass}"${rowAttr}${idAttr}>${this.formatContent(text, scheduledText ?? null, scheduledDate ?? null, searchText)}${extraHtml}</td>`;
     }
-    private emptyTd(className: string): string {
-        return `<td class="${className} law-box ${this.currentTextSize}"></td>`;
+    private emptyTd(className: string, rowspan?: number): string {
+        const rowAttr = rowspan && rowspan > 1 ? ` rowspan="${rowspan}"` : '';
+        return `<td class="${className} law-box ${this.currentTextSize}"${rowAttr}></td>`;
     }
 
     /**
