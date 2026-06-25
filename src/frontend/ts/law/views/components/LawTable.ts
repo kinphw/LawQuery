@@ -78,12 +78,6 @@ export class LawTable {
             return '<div class="alert alert-warning">표시할 법령이 없습니다.</div>';
         }
 
-        // 분할 항/호 노드에 '제N조' 프리픽스 — 기본은 같은 조 연속 시 생략(dedupe),
-        // 검색결과(필터로 조 stem이 사라짐)·하위규정 기준(pivot)에선 매 노드 표시(noDedup).
-        const base = (new URLSearchParams(window.location.search).get('base') || 'a').toLowerCase();
-        const noDedup = base !== 'a' || !!searchText;
-        const lastJo: (string | null)[] = Array(this.step).fill(null);
-
         let html = '<div class="table-responsive law-table-wrap"><table class="table table-bordered law-table">';
         html += `
             <thead class="table-dark sticky-top">
@@ -102,7 +96,7 @@ export class LawTable {
 
         html += '<tbody>';
         results.forEach(law => {
-            html += this.renderLawRows(law, searchText, lastJo, noDedup);
+            html += this.renderLawRows(law, searchText);
         });
         html += '</tbody></table></div>';
         return html;
@@ -117,8 +111,7 @@ export class LawTable {
         return { joId, label: `제${m[1]}조${m[2] ? '의' + m[2] : ''}` };
     }
 
-    private renderLawRows(root: LawTreeNode, search: string,
-                          lastJo: (string | null)[], noDedup: boolean): string {
+    private renderLawRows(root: LawTreeNode, search: string): string {
         const paths = this.collectPaths(root);
         const rowspans = this.calcRowspans(paths);
 
@@ -129,16 +122,12 @@ export class LawTable {
                 // 빈 칸도 rowspan 적용 → 한 밴드에서 빈 박스가 행마다 중복 렌더되는 것 방지(피벗 중간단 누락 시)
                 if (!node) return this.emptyTd(`${LawTable.COL_CLASS[c]}${hl}`, rowspans[r][c]);
 
-                // 분할 항/호 노드: '제N조' 프리픽스(dedupe 또는 noDedup)
+                // 분할 항/호 노드: 소속 조('제N조') 프리픽스 — 항상 표시(검색·하위규정뿐 아니라
+                // 전체뷰에서도 '몇조'를 잃지 않게). 분할 안 된 조/별표는 null이라 미표시.
                 let joPrefix = '';
                 if (node.id && !node.isVirtual) {
                     const jo = this.joInfo(String(node.id));
-                    if (jo) {
-                        if (noDedup || jo.joId !== lastJo[c]) joPrefix = jo.label;
-                        lastJo[c] = jo.joId;
-                    } else {
-                        lastJo[c] = String(node.id);  // 조 자체 → 그 조로 갱신
-                    }
+                    if (jo) joPrefix = jo.label;
                 }
 
                 let extra = this.renderReferenceButton(node.id);
