@@ -18,10 +18,10 @@
   "scripts": {
     "build": "webpack --config webpack.config.js",
     "watch": "webpack --watch --config webpack.config.js",
-    "typecheck:watch": "tsc --noEmit --watch",
+    "typecheck:watch": "tsc --noEmit --watch --watchFile dynamicprioritypolling",
     "dev": "webpack serve --config webpack.config.js",
-    "dev:backend": "ts-node-dev --respawn --transpile-only src/backend/ts/index.ts",
-    "scss:watch": "sass --watch assets/scss/style.scss:assets/css/style.css",
+    "dev:backend": "ts-node-dev --respawn --transpile-only --poll src/backend/ts/index.ts",
+    "scss:watch": "sass --watch --poll assets/scss/style.scss:assets/css/style.css",
     "dev:full": "concurrently \"npm run dev\" \"npm run dev:backend\" \"npm run typecheck:watch\" \"npm run scss:watch\"",
     "dev:fast": "concurrently \"npm:watch\" \"npm run dev:backend\" \"npm run scss:watch\""
   },

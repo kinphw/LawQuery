@@ -29,6 +29,12 @@ module.exports = {
     ]
   },
   devtool: 'eval-source-map',
+  // 폴링 감시 — Windows에서 외부 프로세스(에이전트/스크립트)의 파일수정은 native fs.watch가
+  // 놓치는 경우가 있어 폴링으로 강제 감지(webpack serve/watch 공통 적용).
+  watchOptions: {
+    poll: 1000,
+    ignored: /node_modules/
+  },
   // devServer: {
   //   static: './',      // index.html, law.html이 루트에 있으니까
   //   port: 4000,
