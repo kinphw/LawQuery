@@ -78,6 +78,12 @@ export class LawTable {
             return '<div class="alert alert-warning">표시할 법령이 없습니다.</div>';
         }
 
+        // 분할 항/호 노드에 '제N조' 프리픽스 — 기본은 같은 조 연속 시 생략(dedupe),
+        // 검색결과(필터로 조 stem이 사라짐)·하위규정 기준(pivot)에선 매 노드 표시(noDedup).
+        const base = (new URLSearchParams(window.location.search).get('base') || 'a').toLowerCase();
+        const noDedup = base !== 'a' || !!searchText;
+        const lastJo: (string | null)[] = Array(this.step).fill(null);
+
         let html = '<div class="table-responsive law-table-wrap"><table class="table table-bordered law-table">';
         html += `
             <thead class="table-dark sticky-top">
@@ -96,13 +102,23 @@ export class LawTable {
 
         html += '<tbody>';
         results.forEach(law => {
-            html += this.renderLawRows(law, searchText);
+            html += this.renderLawRows(law, searchText, lastJo, noDedup);
         });
         html += '</tbody></table></div>';
         return html;
     }
 
-    private renderLawRows(root: LawTreeNode, search: string): string {
+    /** 분할 항/호 노드 id → 소속 조('A2_3h'→'A2', 'E14_2_1h'→'E14_2') + 표시 라벨. 조 자체/별표면 null. */
+    private joInfo(id: string): { joId: string; label: string } | null {
+        const joId = id.replace(/_\d+h(?:_.*)?$/, '');
+        if (joId === id) return null;                 // 분할 자식 아님(조 자체·가지조문·별표)
+        const m = joId.match(/^[AESR](\d+)(?:_(\d+))?$/);
+        if (!m) return null;
+        return { joId, label: `제${m[1]}조${m[2] ? '의' + m[2] : ''}` };
+    }
+
+    private renderLawRows(root: LawTreeNode, search: string,
+                          lastJo: (string | null)[], noDedup: boolean): string {
         const paths = this.collectPaths(root);
         const rowspans = this.calcRowspans(paths);
 
@@ -112,6 +128,19 @@ export class LawTable {
                 if (rowspans[r][c] === 0) return ''; // 위 셀 rowspan에 병합됨(빈 칸·내용 공통)
                 // 빈 칸도 rowspan 적용 → 한 밴드에서 빈 박스가 행마다 중복 렌더되는 것 방지(피벗 중간단 누락 시)
                 if (!node) return this.emptyTd(`${LawTable.COL_CLASS[c]}${hl}`, rowspans[r][c]);
+
+                // 분할 항/호 노드: '제N조' 프리픽스(dedupe 또는 noDedup)
+                let joPrefix = '';
+                if (node.id && !node.isVirtual) {
+                    const jo = this.joInfo(String(node.id));
+                    if (jo) {
+                        if (noDedup || jo.joId !== lastJo[c]) joPrefix = jo.label;
+                        lastJo[c] = jo.joId;
+                    } else {
+                        lastJo[c] = String(node.id);  // 조 자체 → 그 조로 갱신
+                    }
+                }
+
                 let extra = this.renderReferenceButton(node.id);
                 if (c === 0) {
                     extra += this.renderPenaltyButton(node.id);
@@ -127,7 +156,8 @@ export class LawTable {
                     rowspans[r][c],
                     extra,
                     node.id ?? undefined, // id를 data-id 속성으로 추가
-                    node.isVirtual // 가상 노드 여부 전달
+                    node.isVirtual, // 가상 노드 여부 전달
+                    joPrefix
                 );
             }).join('');
             const cls = r === 0 && !root.id_aa ? 'title-row' : '';
@@ -136,14 +166,17 @@ export class LawTable {
     }
 
     // 헬퍼 함수들 // id를 <td>의 data-id 속성으로 추가
-    private td(className: string, text: string | null, scheduledText: string | null | undefined, scheduledDate: string | null | undefined, searchText: string, rowspan?: number, extraHtml: string = '', id?: string, isVirtual?: boolean): string {
+    private td(className: string, text: string | null, scheduledText: string | null | undefined, scheduledDate: string | null | undefined, searchText: string, rowspan?: number, extraHtml: string = '', id?: string, isVirtual?: boolean, joPrefix: string = ''): string {
         const rowAttr = rowspan && rowspan > 1 ? ` rowspan="${rowspan}"` : '';
         const idAttr = id ? ` data-id="${id}"` : ''; // id를 data-id로 추가
 
         // 가상 노드인 경우 virtual-cell 클래스 추가
         const finalClass = isVirtual ? `${className} law-box ${this.currentTextSize} virtual-cell` : `${className} law-box ${this.currentTextSize}`;
 
-        return `<td class="${finalClass}"${rowAttr}${idAttr}>${this.formatContent(text, scheduledText ?? null, scheduledDate ?? null, searchText)}${extraHtml}</td>`;
+        // 분할 항/호의 소속 조 표시(검색·하위규정뷰에서 '몇조'를 잃지 않도록)
+        const pfx = joPrefix ? `<div class="lq-jo-tag small fw-bold text-secondary">${joPrefix}</div>` : '';
+
+        return `<td class="${finalClass}"${rowAttr}${idAttr}>${pfx}${this.formatContent(text, scheduledText ?? null, scheduledDate ?? null, searchText)}${extraHtml}</td>`;
     }
     private emptyTd(className: string, rowspan?: number): string {
         const rowAttr = rowspan && rowspan > 1 ? ` rowspan="${rowspan}"` : '';

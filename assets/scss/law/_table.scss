@@ -49,6 +49,19 @@
     background-color: #495057;  // 헤더(table-dark, #212529)보다 한 톤 밝은 회색
   }
 
+  // ── 분할 항/호 노드의 소속 조 태그 — 검색·하위규정(pivot) 뷰에서 '몇조'를 잃지 않도록 ──
+  // 기본 5단표에선 같은 조 연속 시 LawTable이 생략(dedupe), 여기선 보일 때의 모양만 정의.
+  .law-table .lq-jo-tag {
+    display: inline-block;
+    margin: 0 0 2px;
+    padding: 0 6px;
+    border-radius: 3px;
+    background-color: #eef1f4;
+    color: #6c757d;
+    border: 1px solid #dde2e6;
+    line-height: 1.5;
+  }
+
 // 벌칙 테이블 공통 스타일
 .penalty-table {
   border-collapse: collapse !important;
