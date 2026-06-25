@@ -8,9 +8,9 @@ export class LawReferenceModel extends LawBaseModel {
     //     this.db = DbContext.getInstance('ldb_j'); // 'ldb_j'는 법률 데이터베이스의 이름
     // }
 
-    async getReferenceContent(dbContext: DbContext, id: string): Promise<{ items: { type: string, content: string }[] }> {
+    async getReferenceContent(dbContext: DbContext, id: string): Promise<{ items: { type: string, content: string, url: string | null }[] }> {
         this.setDbContext(dbContext); // DbContext 설정
-        const rows = await this.db.query<{ ref_type: string, ref_content: string }>(
+        const rows = await this.db.query<{ ref_type: string, ref_content: string, ref_url: string | null }>(
             `SELECT
                 ref_type,
                 CASE
@@ -20,7 +20,8 @@ export class LawReferenceModel extends LawBaseModel {
                     WHEN ref_type = 'db_s' THEN (SELECT content_s FROM db_s WHERE id_s = ref_target)
                     WHEN ref_type = 'db_r' THEN (SELECT content_r FROM db_r WHERE id_r = ref_target)
                     ELSE NULL
-                END AS ref_content
+                END AS ref_content,
+                CASE WHEN ref_type = 'text' THEN ref_target ELSE NULL END AS ref_url
             FROM db_ref
             WHERE id_origin = ?
             ORDER BY id
@@ -30,7 +31,7 @@ export class LawReferenceModel extends LawBaseModel {
 
         const items = rows
             .filter(row => row.ref_content)
-            .map(row => ({ type: row.ref_type, content: row.ref_content }));
+            .map(row => ({ type: row.ref_type, content: row.ref_content, url: row.ref_url }));
         return { items };
     }
 

@@ -23,14 +23,19 @@ export class ReferenceButtonHandler {
 
                 const url = ApiUrlBuilder.buildWithParams('/api/law/reference', { id });
                 const res = await fetch(url);
-                const { data }: { data: { items: { type: string, content: string }[] } } = await res.json();
+                const { data }: { data: { items: { type: string, content: string, url?: string | null }[] } } = await res.json();
 
                 const content = data.items && data.items.length > 0
                     ? `<ul class="list-group">${data.items.map(item => {
                         const label = item.type === 'text'
                             ? ''
                             : `[${originMap[item.type.replace('db_', '')] ?? item.type}]\n`;
-                        return `<li class="list-group-item bg-light text-dark mb-2">${(label + item.content).replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>')}</li>`;
+                        const text = (label + item.content).replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
+                        // 외부법(text)은 law.go.kr 해당 조 뷰어로 새 탭 링크
+                        const body = item.url
+                            ? `<a href="${encodeURI(item.url)}" target="_blank" rel="noopener" class="text-primary">${text} 🔗</a>`
+                            : text;
+                        return `<li class="list-group-item bg-light text-dark mb-2">${body}</li>`;
                     }).join('')}</ul>`
                     : '<span class="text-muted">참조규정 없음</span>';
 
