@@ -31,11 +31,11 @@ export class ReferenceButtonHandler {
                             ? ''
                             : `[${originMap[item.type.replace('db_', '')] ?? item.type}]\n`;
                         const text = (label + item.content).replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
-                        // 외부법(text)은 law.go.kr 해당 조 뷰어로 새 탭 링크
-                        const body = item.url
-                            ? `<a href="${encodeURI(item.url)}" target="_blank" rel="noopener" class="text-primary">${text} 🔗</a>`
-                            : text;
-                        return `<li class="list-group-item bg-light text-dark mb-2">${body}</li>`;
+                        // 외부법(text)은 본문 임베드 + law.go.kr 원문 링크(별도 줄)
+                        const link = item.url
+                            ? `<br><a href="${encodeURI(item.url)}" target="_blank" rel="noopener" class="text-primary small">📄 법령정보센터 원문 🔗</a>`
+                            : '';
+                        return `<li class="list-group-item bg-light text-dark mb-2">${text}${link}</li>`;
                     }).join('')}</ul>`
                     : '<span class="text-muted">참조규정 없음</span>';
 
