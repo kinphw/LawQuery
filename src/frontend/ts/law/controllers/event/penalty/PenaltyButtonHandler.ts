@@ -19,11 +19,35 @@ export class PenaltyButtonHandler {
                     const p = penalties[idx];
                     const content = p?.content_a ?? '';
                     // 위반조가 위임한 하위(시행령 등)도 함께 — '진짜 원인규정'까지 한 팝업에
-                    const chain = p?.id_a ? await this.articleModel.getDelegationChain(p.id_a) : [];
-                    this.modalManager.showOriginLawModal(content, chain);
+                    const { chain, highlights } = p?.id_a
+                        ? await this.articleModel.getDelegationChain(p.id_a)
+                        : { chain: [], highlights: [] };
+                    const focus = this.followFocus(p, highlights);   // {조ID: 강조 단위번호}
+                    this.modalManager.showOriginLawModal(content, p?.id_a ?? '', chain, focus);
                 });
             });
         }, 0);
+    }
+
+    /** 위반 호에서 출발, 강조쌍을 따라가며 각 조의 강조 단위번호(항/호) 수집. */
+    private followFocus(p: LawPenalty, highlights: Array<{ up: string; down: string }>): Record<string, number> {
+        const res: Record<string, number> = {};
+        if (!p?.id_a) return res;
+        const jo = (s: string) => s.replace(/_\d+h.*$/, '');
+        const numOf = (s: string) => { const m = s.match(/_(\d+)h(?:_\d+(?:_\d+)?ho)?$/); return m ? parseInt(m[1]) : null; };
+        const jm = p.id_a.match(/^A(\d+)(?:_(\d+))?/);
+        const hm = jm ? (p.content_pa || '').match(new RegExp(`제${jm[1]}조${jm[2] ? '의' + jm[2] : ''}제(\\d+)호`)) : null;
+        if (!hm) return res;                                // 위반 호를 못 찾으면 강조 없음(전체 표시)
+        res[p.id_a] = parseInt(hm[1]);
+        let cur = highlights.find(h => jo(h.up) === p.id_a && numOf(h.up) === res[p.id_a]);
+        const seen = new Set<string>();
+        while (cur && !seen.has(cur.down)) {
+            seen.add(cur.down);
+            const dn = numOf(cur.down);
+            if (dn != null) res[jo(cur.down)] = dn;
+            cur = highlights.find(h => h.up === cur!.down);
+        }
+        return res;
     }
 
 

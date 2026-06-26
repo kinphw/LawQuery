@@ -19,16 +19,20 @@ export class LawFetchArticleModel {
         }
     }
 
-    /** 위임 체인 — 위반조가 rdb로 위임한 하위(시행령 등) 조문. 벌칙 원문 팝업에서 함께 표시. */
-    async getDelegationChain(id: string): Promise<Array<{ origin: string; id: string; content: string }>> {
+    /** 위임 체인 + 강조쌍 — 위반조가 위임한 하위(시행령 등) 조문 + 정밀 인용 매핑. */
+    async getDelegationChain(id: string): Promise<{
+        chain: Array<{ origin: string; id: string; content: string }>;
+        highlights: Array<{ up: string; down: string }>;
+    }> {
         const url = ApiUrlBuilder.buildWithParams('/api/law/delegation', { id });
+        const empty = { chain: [], highlights: [] };
         try {
             const response = await fetch(url);
-            if (!response.ok) return [];
+            if (!response.ok) return empty;
             const json = await response.json();
-            return (json.success && json.data) ? json.data : [];
+            return (json.success && json.data) ? json.data : empty;
         } catch {
-            return [];
+            return empty;
         }
     }
 }

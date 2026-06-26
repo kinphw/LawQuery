@@ -49,6 +49,10 @@
     background-color: #495057;  // 헤더(table-dark, #212529)보다 한 톤 밝은 회색
   }
 
+  // ── 벌칙 원문 팝업: 위임 체인에서 '실제 참조된 항/호'만 강조, 나머지는 흐리게 ──
+  .lq-hl-focus { background-color: #fff3cd; }   // 관련 항/호: 연한 노랑 강조
+  .lq-hl-dim   { opacity: 0.45; }               // 비관련 항/호: 흐리게(맥락 유지)
+
   // ── 분할 항/호 노드의 소속 조 태그 — 전 뷰에서 '몇조'를 항상 표시(분할조 한정) ──
   .law-table .lq-jo-tag {
     display: inline-block;

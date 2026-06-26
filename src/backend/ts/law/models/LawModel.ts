@@ -682,7 +682,8 @@ export class LawModel extends LawBaseModel {
    * 깊이순으로 반환. 벌칙 원문 팝업에서 "진짜 원인규정"(대통령령 위임 등)을 함께 보여주려는 용도.
    * 시작 조 자신(depth 0)은 제외하고 하위만 반환.
    */
-  async getDelegationChain(dbContext: DbContext, id: string): Promise<Array<{ origin: string; id: string; content: string }>> {
+  async getDelegationChain(dbContext: DbContext, id: string):
+      Promise<{ chain: Array<{ origin: string; id: string; content: string }>; highlights: Array<{ up: string; down: string }> }> {
     this.setDbContext(dbContext);
     const query = `
       WITH RECURSIVE chain AS (
@@ -702,6 +703,13 @@ export class LawModel extends LawBaseModel {
       WHERE c.depth > 0
       ORDER BY c.depth, c.node_id`;
     const rows = await this.db.query<{ id: string; origin: string; content: string | null }>(query, [id]);
-    return rows.filter(r => r.content).map(r => ({ origin: r.origin, id: r.id, content: r.content as string }));
+    const chain = rows.filter(r => r.content).map(r => ({ origin: r.origin, id: r.id, content: r.content as string }));
+    // 강조쌍(정밀 항/호) — 프론트가 위반 호에서 따라가며 해당 부분만 강조
+    let highlights: Array<{ up: string; down: string }> = [];
+    try {
+      highlights = await this.db.query<{ up: string; down: string }>(
+        'SELECT up_id AS up, down_id AS `down` FROM db_rdb_hl');
+    } catch { /* 테이블 미존재(구버전 DB) → 강조 없음 */ }
+    return { chain, highlights };
   }
 }
