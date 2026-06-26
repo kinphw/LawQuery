@@ -18,4 +18,17 @@ export class LawFetchArticleModel {
             return null;
         }
     }
+
+    /** 위임 체인 — 위반조가 rdb로 위임한 하위(시행령 등) 조문. 벌칙 원문 팝업에서 함께 표시. */
+    async getDelegationChain(id: string): Promise<Array<{ origin: string; id: string; content: string }>> {
+        const url = ApiUrlBuilder.buildWithParams('/api/law/delegation', { id });
+        try {
+            const response = await fetch(url);
+            if (!response.ok) return [];
+            const json = await response.json();
+            return (json.success && json.data) ? json.data : [];
+        } catch {
+            return [];
+        }
+    }
 }

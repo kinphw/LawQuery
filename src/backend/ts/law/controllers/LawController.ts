@@ -135,6 +135,19 @@ export class LawController extends BaseLawController<LawModel> {
     res.status(200).json({ success: true, data });
   }
 
+  // 위임 체인 (/api/law/delegation?law=&id=) — 벌칙 위반조가 위임한 하위(시행령 등) 조문.
+  async getDelegationChain(req: Request, res: Response): Promise<void> {
+    const dbName: string = req.query.law as string;
+    const id = req.query.id as string;
+    if (!id) {
+      res.status(400).json({ success: false, error: 'id 파라미터가 필요합니다.' });
+      return;
+    }
+    const dbContext = this.getDbContext(dbName);
+    const data = await this.model.getDelegationChain(dbContext, id);
+    res.status(200).json({ success: true, data });
+  }
+
   // 기준 전환 피벗 연계표 (/api/law/pivot?law=&step=&base=) — PRO 전용(킬).
   // base(기준 레벨)의 각 조문 기준으로 위·아래 연결조문을 묶어 1행씩 내려준다.
   async getPivot(req: Request, res: Response): Promise<void> {

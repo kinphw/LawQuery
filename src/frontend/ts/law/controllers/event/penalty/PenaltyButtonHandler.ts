@@ -1,25 +1,30 @@
 import { ILawController } from "../../LawController";
 import { LawPenalty } from "../../../types/LawPenalty";
 import { PenaltyModalManager } from "./PenaltyModalManager";
+import { LawFetchArticleModel } from "../../../models/LawFetchArticleModel";
 
 export class PenaltyButtonHandler {
+    private articleModel = new LawFetchArticleModel();
     constructor(
         private controller: ILawController,
         private modalManager: PenaltyModalManager
-    ) {} 
+    ) {}
 
 
     bindOriginLawButtons(penalties: LawPenalty[]): void {
         setTimeout(() => {
             document.querySelectorAll('.law-origin-btn').forEach(btn => {
-                btn.addEventListener('click', (e) => {
+                btn.addEventListener('click', async (e) => {
                     const idx = Number((e.currentTarget as HTMLElement).getAttribute('data-index'));
-                    const content = penalties[idx]?.content_a ?? '';
-                    this.modalManager.showOriginLawModal(content);
+                    const p = penalties[idx];
+                    const content = p?.content_a ?? '';
+                    // 위반조가 위임한 하위(시행령 등)도 함께 — '진짜 원인규정'까지 한 팝업에
+                    const chain = p?.id_a ? await this.articleModel.getDelegationChain(p.id_a) : [];
+                    this.modalManager.showOriginLawModal(content, chain);
                 });
             });
         }, 0);
-    }    
+    }
 
 
     // 정렬 버튼 이벤트 바인딩 (신규 메서드)

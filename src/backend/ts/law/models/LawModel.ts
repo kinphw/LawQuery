@@ -676,4 +676,32 @@ export class LawModel extends LawBaseModel {
     }
     return null;
   }
+
+  /**
+   * 위임 체인 — 한 조(주로 벌칙 위반조)가 rdb로 위임한 하위 조문(시행령→감독규정→세칙)을
+   * 깊이순으로 반환. 벌칙 원문 팝업에서 "진짜 원인규정"(대통령령 위임 등)을 함께 보여주려는 용도.
+   * 시작 조 자신(depth 0)은 제외하고 하위만 반환.
+   */
+  async getDelegationChain(dbContext: DbContext, id: string): Promise<Array<{ origin: string; id: string; content: string }>> {
+    this.setDbContext(dbContext);
+    const query = `
+      WITH RECURSIVE chain AS (
+        SELECT CAST(? AS CHAR(64)) AS node_id, 0 AS depth
+        UNION ALL
+        SELECT rdb.id_end, c.depth + 1
+        FROM chain c
+        JOIN rdb ON rdb.id_start = c.node_id AND rdb.id_end <> c.node_id
+        WHERE c.depth < 4 AND rdb.id_end REGEXP '^[ESR]'
+      )
+      SELECT DISTINCT c.node_id AS id, LOWER(LEFT(c.node_id, 1)) AS origin, c.depth AS depth,
+             COALESCE(e.content_e, s.content_s, r.content_r) AS content
+      FROM chain c
+      LEFT JOIN db_e e ON e.id_e = c.node_id
+      LEFT JOIN db_s s ON s.id_s = c.node_id
+      LEFT JOIN db_r r ON r.id_r = c.node_id
+      WHERE c.depth > 0
+      ORDER BY c.depth, c.node_id`;
+    const rows = await this.db.query<{ id: string; origin: string; content: string | null }>(query, [id]);
+    return rows.filter(r => r.content).map(r => ({ origin: r.origin, id: r.id, content: r.content as string }));
+  }
 }
