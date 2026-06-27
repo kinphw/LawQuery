@@ -196,7 +196,9 @@ export class LawTable {
                     node.id ?? undefined, // id를 data-id 속성으로 추가
                     node.isVirtual, // 가상 노드 여부 전달
                     joPrefix,
-                    this.computeFocus(node.id, pathJos) // 행 연결에 참여하는 항/호(강조)
+                    // 기준(base)보다 '위' 단계만 음영 — 기준 자신·하위는 전체표시
+                    // (감독규정 기준으로 봤는데 정작 감독규정이 흐려지는 UX 방지)
+                    c < this.highlightCol ? this.computeFocus(node.id, pathJos) : new Set<number>()
                 );
             }).join('');
             const cls = r === 0 && !root.id_aa ? 'title-row' : '';
