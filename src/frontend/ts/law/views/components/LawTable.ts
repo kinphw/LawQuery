@@ -133,8 +133,13 @@ export class LawTable {
         const cj = this.jo(cellId);
         if (cj !== cellId) return set;                // 이미 분할된 항/호 셀은 단일 → 흐리게 불필요
         for (const h of (this.hlIndex.get(cj) || [])) {
-            if (this.jo(h.up) === cj && pathJos.has(this.jo(h.down))) { const n = this.num(h.up); if (n) set.add(n); }
-            if (this.jo(h.down) === cj && pathJos.has(this.jo(h.up))) { const n = this.num(h.down); if (n) set.add(n); }
+            // 이 조가 '조 단위'로 엮였으면(상대가 도입부/조 전체를 위임·인용) 전체 표시(흐림 없음).
+            if (this.jo(h.up) === cj && pathJos.has(this.jo(h.down))) {
+                const n = this.num(h.up); if (n) set.add(n); else return new Set();
+            }
+            if (this.jo(h.down) === cj && pathJos.has(this.jo(h.up))) {
+                const n = this.num(h.down); if (n) set.add(n); else return new Set();
+            }
         }
         return set;
     }
