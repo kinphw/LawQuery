@@ -78,6 +78,15 @@ export class LawTable {
             return '<div class="alert alert-warning">표시할 법령이 없습니다.</div>';
         }
 
+        // 강조쌍 인덱스(조별) — 행의 연결에 참여하는 항/호 강조용
+        this.hlIndex = new Map();
+        for (const h of this.lawView.getHighlights()) {
+            for (const k of [this.jo(h.up), this.jo(h.down)]) {
+                const arr = this.hlIndex.get(k);
+                if (arr) arr.push(h); else this.hlIndex.set(k, [h]);
+            }
+        }
+
         let html = '<div class="table-responsive law-table-wrap"><table class="table table-bordered law-table">';
         html += `
             <thead class="table-dark sticky-top">
@@ -111,11 +120,48 @@ export class LawTable {
         return { joId, label: `제${m[1]}조${m[2] ? '의' + m[2] : ''}` };
     }
 
+    // ── 인용 강조(연계표): 행의 연결에 참여하는 항/호만 보이고 나머지는 흐리게 ──
+    private hlIndex = new Map<string, Array<{ up: string; down: string }>>();
+    private jo(id: string): string { return id ? id.replace(/_\d+h.*$/, '') : id; }
+    private num(id: string): number | null {
+        const m = id.match(/_(\d+)h(?:_\d+(?:_\d+)?ho)?$/); return m ? parseInt(m[1]) : null;
+    }
+    /** 셀(조)의 강조 단위번호 — 같은 행의 다른 조와 정밀 인용으로 엮인 항/호만. */
+    private computeFocus(cellId: string | null | undefined, pathJos: Set<string>): Set<number> {
+        const set = new Set<number>();
+        if (!cellId) return set;
+        const cj = this.jo(cellId);
+        if (cj !== cellId) return set;                // 이미 분할된 항/호 셀은 단일 → 흐리게 불필요
+        for (const h of (this.hlIndex.get(cj) || [])) {
+            if (this.jo(h.up) === cj && pathJos.has(this.jo(h.down))) { const n = this.num(h.up); if (n) set.add(n); }
+            if (this.jo(h.down) === cj && pathJos.has(this.jo(h.up))) { const n = this.num(h.down); if (n) set.add(n); }
+        }
+        return set;
+    }
+    /** 조 본문에서 focus 단위(항①②③/호1.2.3.)가 아닌 부분을 흐리게. */
+    private dimUnits(text: string, focus: Set<number>): string {
+        const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        const HANG = '①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮';
+        const hasHang = new RegExp(`[${HANG}]`).test(text);
+        let out = '', started = false, inFocus = false;
+        for (const ln of text.split('\n')) {
+            const t = ln.replace(/^\s+/, '');
+            const u = hasHang ? (HANG.indexOf(t[0]) >= 0 ? HANG.indexOf(t[0]) + 1 : null)
+                              : (t.match(/^(\d+)\./) ? parseInt(t.match(/^(\d+)\./)![1]) : null);
+            if (u !== null) { started = true; inFocus = focus.has(u); }
+            const h = esc(ln) + '<br>';
+            out += (!started || inFocus) ? h : `<span class="lq-hl-dim">${h}</span>`;
+        }
+        return out;
+    }
+
     private renderLawRows(root: LawTreeNode, search: string): string {
         const paths = this.collectPaths(root);
         const rowspans = this.calcRowspans(paths);
 
         return paths.map((path, r) => {
+            // 이 행에 등장하는 조들 — 셀별 '연결에 참여하는 항/호' 판정에 사용
+            const pathJos = new Set(path.filter(n => n?.id).map(n => this.jo(String(n!.id))));
             const tds = path.map((node, c) => {
                 const hl = c === this.highlightCol ? ' lq-base-col' : ''; // 정렬기준 컬럼 강조
                 if (rowspans[r][c] === 0) return ''; // 위 셀 rowspan에 병합됨(빈 칸·내용 공통)
@@ -146,7 +192,8 @@ export class LawTable {
                     extra,
                     node.id ?? undefined, // id를 data-id 속성으로 추가
                     node.isVirtual, // 가상 노드 여부 전달
-                    joPrefix
+                    joPrefix,
+                    this.computeFocus(node.id, pathJos) // 행 연결에 참여하는 항/호(강조)
                 );
             }).join('');
             const cls = r === 0 && !root.id_aa ? 'title-row' : '';
@@ -155,7 +202,7 @@ export class LawTable {
     }
 
     // 헬퍼 함수들 // id를 <td>의 data-id 속성으로 추가
-    private td(className: string, text: string | null, scheduledText: string | null | undefined, scheduledDate: string | null | undefined, searchText: string, rowspan?: number, extraHtml: string = '', id?: string, isVirtual?: boolean, joPrefix: string = ''): string {
+    private td(className: string, text: string | null, scheduledText: string | null | undefined, scheduledDate: string | null | undefined, searchText: string, rowspan?: number, extraHtml: string = '', id?: string, isVirtual?: boolean, joPrefix: string = '', focus: Set<number> = new Set()): string {
         const rowAttr = rowspan && rowspan > 1 ? ` rowspan="${rowspan}"` : '';
         const idAttr = id ? ` data-id="${id}"` : ''; // id를 data-id로 추가
 
@@ -165,7 +212,7 @@ export class LawTable {
         // 분할 항/호의 소속 조 표시(검색·하위규정뷰에서 '몇조'를 잃지 않도록)
         const pfx = joPrefix ? `<div class="lq-jo-tag small fw-bold text-secondary">${joPrefix}</div>` : '';
 
-        return `<td class="${finalClass}"${rowAttr}${idAttr}>${pfx}${this.formatContent(text, scheduledText ?? null, scheduledDate ?? null, searchText)}${extraHtml}</td>`;
+        return `<td class="${finalClass}"${rowAttr}${idAttr}>${pfx}${this.formatContent(text, scheduledText ?? null, scheduledDate ?? null, searchText, focus)}${extraHtml}</td>`;
     }
     private emptyTd(className: string, rowspan?: number): string {
         const rowAttr = rowspan && rowspan > 1 ? ` rowspan="${rowspan}"` : '';
@@ -272,7 +319,7 @@ export class LawTable {
         this.currentTextSize = size;
     }
 
-    private formatContent(text: string | null, scheduledText: string | null, scheduledDate: string | null, searchText: string): string {
+    private formatContent(text: string | null, scheduledText: string | null, scheduledDate: string | null, searchText: string, focus: Set<number> = new Set()): string {
         const highlight = (s: string): string => {
             if (!searchText) return s;
             return s.replace(new RegExp(searchText, 'gi'),
@@ -282,7 +329,10 @@ export class LawTable {
         const parts: string[] = [];
 
         if (text) {
-            const c = highlight(text).replace(/\n/g, '<br>');
+            // 연계 강조: 행의 연결에 참여하는 항/호만 보이고 나머지는 흐리게(검색 중엔 비활성)
+            const c = (focus.size && !searchText)
+                ? this.dimUnits(text, focus)
+                : highlight(text).replace(/\n/g, '<br>');
             parts.push(`<div class="box-item small p-2 m-0">${c}</div>`);
         }
 

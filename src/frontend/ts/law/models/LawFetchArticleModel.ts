@@ -35,4 +35,17 @@ export class LawFetchArticleModel {
             return empty;
         }
     }
+
+    /** 전체 강조쌍 — 5단표에서 행의 연결에 참여하는 항/호만 강조하는 데 사용. */
+    async getHighlights(): Promise<Array<{ up: string; down: string }>> {
+        const url = ApiUrlBuilder.buildWithParams('/api/law/highlights', {});
+        try {
+            const response = await fetch(url);
+            if (!response.ok) return [];
+            const json = await response.json();
+            return (json.success && json.data) ? json.data : [];
+        } catch {
+            return [];
+        }
+    }
 }

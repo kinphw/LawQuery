@@ -211,6 +211,9 @@ export class LawController implements ILawController {
         // 별표 id 세팅
         this.view.setAnnexIds(await this.modelFetchAnnexIds.getAnnexIds());
 
+        // 강조쌍 세팅(5단표에서 행의 연결에 참여하는 항/호 강조)
+        this.view.setHighlights(await this.modelFetchArticle.getHighlights());
+
         // 초기 데이터 로드 및 렌더링 (pro는 전체 데이터)
         const all = await this.modelFetchAll.getAllLaws();
         this.dataManager.setCurrentResults(all.data);
@@ -338,6 +341,7 @@ export class LawController implements ILawController {
         this.dataManager.setReferenceData(await this.modelFetchReferenceIds.getReferenceIds());
         this.view.setReferenceData(this.dataManager.getReferenceData());
         this.view.setAnnexIds(await this.modelFetchAnnexIds.getAnnexIds());
+        this.view.setHighlights(await this.modelFetchArticle.getHighlights());
 
         // 기준 재배치 트리 → 5단표와 동일하게 view.render
         const tree = await this.modelFetchPivot.getPivot(base);

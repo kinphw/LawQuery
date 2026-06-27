@@ -705,11 +705,17 @@ export class LawModel extends LawBaseModel {
     const rows = await this.db.query<{ id: string; origin: string; content: string | null }>(query, [id]);
     const chain = rows.filter(r => r.content).map(r => ({ origin: r.origin, id: r.id, content: r.content as string }));
     // 강조쌍(정밀 항/호) — 프론트가 위반 호에서 따라가며 해당 부분만 강조
-    let highlights: Array<{ up: string; down: string }> = [];
+    return { chain, highlights: await this.getHighlights(dbContext) };
+  }
+
+  /** 전체 인용 강조쌍(db_rdb_hl) — 5단표/팝업에서 '실제 참조된 항/호'만 강조. */
+  async getHighlights(dbContext: DbContext): Promise<Array<{ up: string; down: string }>> {
+    this.setDbContext(dbContext);
     try {
-      highlights = await this.db.query<{ up: string; down: string }>(
+      return await this.db.query<{ up: string; down: string }>(
         'SELECT up_id AS up, down_id AS `down` FROM db_rdb_hl');
-    } catch { /* 테이블 미존재(구버전 DB) → 강조 없음 */ }
-    return { chain, highlights };
+    } catch {
+      return []; // 테이블 미존재(구버전 DB) → 강조 없음
+    }
   }
 }

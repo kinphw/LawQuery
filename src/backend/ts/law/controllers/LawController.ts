@@ -135,6 +135,14 @@ export class LawController extends BaseLawController<LawModel> {
     res.status(200).json({ success: true, data });
   }
 
+  // 전체 강조쌍 (/api/law/highlights?law=) — 5단표에서 행의 연결에 참여하는 항/호 강조용.
+  async getHighlights(req: Request, res: Response): Promise<void> {
+    const dbName: string = req.query.law as string;
+    const dbContext = this.getDbContext(dbName);
+    const data = await this.model.getHighlights(dbContext);
+    res.status(200).json({ success: true, data });
+  }
+
   // 위임 체인 (/api/law/delegation?law=&id=) — 벌칙 위반조가 위임한 하위(시행령 등) 조문.
   async getDelegationChain(req: Request, res: Response): Promise<void> {
     const dbName: string = req.query.law as string;

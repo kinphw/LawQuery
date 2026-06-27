@@ -48,6 +48,11 @@ export class LawView {
         return this.referenceData;
     }
 
+    // 인용 강조쌍 — 5단표에서 행의 연결에 참여하는 항/호만 강조
+    private highlights: Array<{ up: string; down: string }> = [];
+    setHighlights(h: Array<{ up: string; down: string }>): void { this.highlights = h; }
+    getHighlights(): Array<{ up: string; down: string }> { return this.highlights; }
+
     //////////////////////////////
 
 

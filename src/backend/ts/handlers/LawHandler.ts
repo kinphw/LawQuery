@@ -44,6 +44,7 @@ export class LawHandler {
     this.router.get('/pivot', proGuard, this.controller.getPivot.bind(this.controller));     // 기준 전환 피벗 연계표(킬)
     this.router.get('/penalty', proGuard, this.penaltyController.getPenalty.bind(this.penaltyController));
     this.router.get('/delegation', proGuard, this.controller.getDelegationChain.bind(this.controller)); // 벌칙 위반조 위임 하위(시행령 등)
+    this.router.get('/highlights', proGuard, this.controller.getHighlights.bind(this.controller)); // 5단표 강조쌍(전체)
     this.router.get('/reference', proGuard, this.referenceController.getReference.bind(this.referenceController));
     this.router.get('/annex', proGuard, this.annexController.getAnnex.bind(this.annexController));
   }
