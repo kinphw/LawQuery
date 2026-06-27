@@ -78,13 +78,12 @@ export class LawTable {
             return '<div class="alert alert-warning">표시할 법령이 없습니다.</div>';
         }
 
-        // 강조쌍 인덱스(조별) — 행의 연결에 참여하는 항/호 강조용
+        // 강조쌍 인덱스 — '상위(up) 조'별. 그 조를 같은 행의 하위가 인용한 항/호를 강조.
         this.hlIndex = new Map();
         for (const h of this.lawView.getHighlights()) {
-            for (const k of [this.jo(h.up), this.jo(h.down)]) {
-                const arr = this.hlIndex.get(k);
-                if (arr) arr.push(h); else this.hlIndex.set(k, [h]);
-            }
+            const k = this.jo(h.up);
+            const arr = this.hlIndex.get(k);
+            if (arr) arr.push(h); else this.hlIndex.set(k, [h]);
         }
 
         let html = '<div class="table-responsive law-table-wrap"><table class="table table-bordered law-table">';
@@ -126,19 +125,16 @@ export class LawTable {
     private num(id: string): number | null {
         const m = id.match(/_(\d+)h(?:_\d+(?:_\d+)?ho)?$/); return m ? parseInt(m[1]) : null;
     }
-    /** 셀(조)의 강조 단위번호 — 같은 행의 다른 조와 정밀 인용으로 엮인 항/호만. */
+    /** 셀(조)의 강조 단위번호 — 이 조를 '상위'로서 같은 행의 하위가 인용한 항/호만.
+     *  (하위 셀을 음영하지 않음: 하위가 상위를 볼 때 상위를 강조하는 방향) */
     private computeFocus(cellId: string | null | undefined, pathJos: Set<string>): Set<number> {
         const set = new Set<number>();
         if (!cellId) return set;
         const cj = this.jo(cellId);
-        if (cj !== cellId) return set;                // 이미 분할된 항/호 셀은 단일 → 흐리게 불필요
+        if (cj !== cellId) return set;                // 이미 분할된 항/호 셀은 단일 → 음영 불필요
         for (const h of (this.hlIndex.get(cj) || [])) {
-            // 이 조가 '조 단위'로 엮였으면(상대가 도입부/조 전체를 위임·인용) 전체 표시(흐림 없음).
             if (this.jo(h.up) === cj && pathJos.has(this.jo(h.down))) {
-                const n = this.num(h.up); if (n) set.add(n); else return new Set();
-            }
-            if (this.jo(h.down) === cj && pathJos.has(this.jo(h.up))) {
-                const n = this.num(h.down); if (n) set.add(n); else return new Set();
+                const n = this.num(h.up); if (n) set.add(n);
             }
         }
         return set;
@@ -155,7 +151,9 @@ export class LawTable {
                               : (t.match(/^(\d+)\./) ? parseInt(t.match(/^(\d+)\./)![1]) : null);
             if (u !== null) { started = true; inFocus = focus.has(u); }
             const h = esc(ln) + '<br>';
-            out += (!started || inFocus) ? h : `<span class="lq-hl-dim">${h}</span>`;
+            out += (!started) ? h
+                 : inFocus ? `<span class="lq-hl-focus">${h}</span>`   // 강조
+                           : `<span class="lq-hl-dim">${h}</span>`;     // 흐리게
         }
         return out;
     }
