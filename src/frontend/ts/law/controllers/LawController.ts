@@ -211,8 +211,9 @@ export class LawController implements ILawController {
         // 별표 id 세팅
         this.view.setAnnexIds(await this.modelFetchAnnexIds.getAnnexIds());
 
-        // 강조쌍 세팅(5단표에서 행의 연결에 참여하는 항/호 강조)
-        this.view.setHighlights(await this.modelFetchArticle.getHighlights());
+        // 강조는 '하위 기준조회(피벗)'에서만 — 법(최상위) 기준에선 위에 상위가 없어 의미 없고
+        // 본문을 흐리게만 만들어 방해됨. base='a'에서는 비활성(highlights 빈 채로 둠).
+        this.view.setHighlights([]);
 
         // 초기 데이터 로드 및 렌더링 (pro는 전체 데이터)
         const all = await this.modelFetchAll.getAllLaws();
