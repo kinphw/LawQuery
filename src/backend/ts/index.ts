@@ -5,6 +5,7 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { LawHandler } from './handlers/LawHandler';
 import { InterpretationHandler } from './handlers/InterpretationHandler';
+import { ForeignHandler } from './handlers/ForeignHandler';
 import { AuthHandler } from './handlers/AuthHandler';
 import { BoardHandler } from './handlers/BoardHandler';
 
@@ -35,6 +36,7 @@ app.use('/api', authHandler.router);
 //  - 무료(optionalAuth): 단일 법령 본문·메타  /  PRO(proGuard): 연계표·벌칙·참조·별표·유권해석
 app.use('/api/law', lawHandler.router);
 app.use('/api/interpretation', interpretationHandler.router);
+app.use('/api/foreign', new ForeignHandler().router); // 해외법령(원문·번역 2단 + 개인 메모)
 app.use('/api/board', new BoardHandler().router); // 게시판(내부에서 authGuard 적용)
 
 // 404 처리

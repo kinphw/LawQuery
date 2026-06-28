@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#212529">
+  <title>해외법령조회 - LawQuery</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="apple-touch-icon" href="assets/icons/icon-192.png" />
+  <link rel="stylesheet" href="assets/vendor/bootstrap.min.css" />
+  <link rel="stylesheet" href="assets/vendor/fontawesome/css/fontawesome.min.css" />
+  <link rel="stylesheet" href="assets/vendor/fontawesome/css/all.min.css" />
+  <link rel="stylesheet" href="assets/css/style.css" />
+  <!-- 인증 게이트: 콘텐츠 paint 전에 인증을 먼저 확인(깜빡임 방지)하려고 head에서 동기 로드 -->
+  <script src="auth-gate.js"></script>
+  <style>
+    /* 해외법령 전용(원문|번역|메모 2~3단 표) — 기존 style.css 무수정 */
+    .fm-law-head { padding: .25rem 0 1rem; }
+    .fm-table { table-layout: fixed; width: 100%; }
+    .fm-table th { background: #212529; color: #fff; text-align: center; }
+    .fm-table td { vertical-align: top; font-size: .92rem; }
+    .fm-col-en { width: 44%; }
+    .fm-col-ko { width: 41%; }
+    .fm-col-memo { width: 15%; }
+    .fm-en-body, .fm-ko, .fm-memo-view { white-space: pre-wrap; word-break: break-word; line-height: 1.55; }
+    .fm-head { font-weight: 600; margin-bottom: .35rem; color: #0d6efd; }
+    .fm-part td { background: #e9ecef; font-weight: 700; font-size: .95rem; }
+    .fm-ko.fm-empty { color: #adb5bd; font-style: italic; }
+    .fm-memo { cursor: pointer; background: #fffdf3; }
+    .fm-memo:hover { background: #fff6d6; }
+    .fm-memo-view { font-size: .85rem; }
+    .fm-memo-add { color: #c0a000; font-size: .85rem; }
+    .fm-locked { cursor: pointer; text-align: center; color: #ced4da; background: #f8f9fa; }
+    .fm-memo-actions { margin-top: .35rem; display: flex; align-items: center; gap: .35rem; }
+    @media (max-width: 768px) {
+      .fm-table, .fm-table tbody, .fm-table tr, .fm-table td { display: block; width: 100% !important; }
+      .fm-table thead { display: none; }
+      .fm-table td { border-top: 0; }
+      .fm-table tr { border-bottom: 3px solid #dee2e6; margin-bottom: .5rem; }
+      .fm-en::before { content: '원문'; display: block; font-size: .7rem; color: #888; }
+      .fm-table td:nth-child(2)::before { content: '번역'; display: block; font-size: .7rem; color: #888; }
+    }
+  </style>
+</head>
+
+<body>
+  <div id="header"></div>
+
+  <!-- 상단 컨트롤 바: 해외법령 선택 -->
+  <div class="container my-3">
+    <div class="d-flex flex-wrap align-items-center justify-content-center gap-2">
+      <div class="d-flex align-items-center gap-2">
+        <div id="currentForeignBox" class="badge bg-dark text-white px-3 py-2 fs-6">법령 선택</div>
+        <div class="dropdown">
+          <button class="btn btn-sm btn-dark dropdown-toggle" type="button" id="foreignDropdown"
+            data-bs-toggle="dropdown" aria-expanded="false">
+            해외법령 선택
+          </button>
+          <ul class="dropdown-menu" id="foreignDropdownMenu" aria-labelledby="foreignDropdown"
+            style="max-height: 70vh; overflow-y: auto;">
+            <li><span class="dropdown-item-text text-muted">불러오는 중…</span></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <p class="text-center text-muted small mt-2 mb-0">
+      해외 결제·전자금융·가상자산 법령의 원문과 한글 번역(참고용). 메모는 로그인 후 이용하실 수 있어요.
+    </p>
+  </div>
+
+  <div id="results"></div>
+
+  <!-- 기본 라이브러리 -->
+  <script src="assets/vendor/bootstrap.bundle.min.js"></script>
+  <script src="dist/foreign.bundle.js" type="module"></script>
+
+  <!-- PWA: Service Worker 등록 -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function () {
+        navigator.serviceWorker.register('service-worker.js').catch(function (e) {
+          console.error('SW 등록 실패:', e);
+        });
+      });
+    }
+  </script>
+
+  <!-- 공통 모달 (Header 정보 버튼 등) -->
+  <div class="modal fade" id="commonModal" tabindex="-1" aria-labelledby="commonModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="commonModalLabel">알림</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="닫기"></button>
+        </div>
+        <div class="modal-body"></div>
+      </div>
+    </div>
+  </div>
+
+</body>
+
+</html>

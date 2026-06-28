@@ -4,7 +4,8 @@ module.exports = {
   mode: 'development',
   entry: {
     law: './src/frontend/ts/entry/law.ts',
-    interpretation: './src/frontend/ts/entry/interpretation.ts'
+    interpretation: './src/frontend/ts/entry/interpretation.ts',
+    foreign: './src/frontend/ts/entry/foreign.ts'
   },
   output: {
     filename: '[name].bundle.js', // dist/law.bundle.js 등으로 저장

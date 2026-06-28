@@ -11,7 +11,7 @@ import { ModalManager } from './ModalManager';
 
 export class Header {
 
-    render(currentPage: 'law' | 'interpretation'): string {
+    render(currentPage: 'law' | 'interpretation' | 'foreign'): string {
 
         const html = `
         <header class="text-center p-3 border bg-light">
@@ -29,8 +29,10 @@ export class Header {
             <div>
                 <button class="btn ${currentPage === 'law' ? 'btn-primary' : 'btn-secondary'} me-2"
                     onclick="location.href='index.html'">법률조회</button>
-                <button class="btn ${currentPage === 'interpretation' ? 'btn-primary' : 'btn-secondary'}"
+                <button class="btn ${currentPage === 'interpretation' ? 'btn-primary' : 'btn-secondary'} me-2"
                     onclick="location.href='interpretation.html'">유권해석조회</button>
+                <button class="btn ${currentPage === 'foreign' ? 'btn-primary' : 'btn-secondary'}"
+                    onclick="location.href='foreign.html'">해외법령</button>
             </div>
         </header>`;
 
