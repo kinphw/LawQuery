@@ -24,10 +24,10 @@ KEY = (os.getenv("DEEPL_API_KEY") or "").strip()
 URL = "https://api-free.deepl.com/v2/translate" if KEY.endswith(":fx") else "https://api.deepl.com/v2/translate"
 
 
-def translate(text: str) -> str:
+def translate(text: str, source: str = "EN") -> str:
     r = requests.post(URL,
         headers={"Authorization": f"DeepL-Auth-Key {KEY}"},
-        data={"source_lang": "EN", "target_lang": "KO", "text": text},
+        data={"source_lang": source, "target_lang": "KO", "text": text},
         verify=False, timeout=120)
     r.raise_for_status()
     return r.json()["translations"][0]["text"]
@@ -51,11 +51,12 @@ def main():
 
     grand = 0
     for code in [c.strip() for c in args.code.split(",") if c.strip()]:
-        cur.execute("SELECT id FROM law WHERE code=%s", (code,))
+        cur.execute("SELECT id, jurisdiction FROM law WHERE code=%s", (code,))
         law = cur.fetchone()
         if not law:
             print(f"{code}: DB law 없음"); continue
         lid = law["id"]
+        src = "JA" if law["jurisdiction"] == "jp" else "EN"  # DeepL source_lang 자동
         cur.execute(
             """SELECT id, article_no, ordinal, text_original, text_ko
                  FROM law_provision WHERE law_id=%s AND article_no IS NOT NULL
@@ -79,7 +80,7 @@ def main():
             if not en:
                 continue
             try:
-                ko = translate(en)
+                ko = translate(en, src)
             except Exception as e:
                 print(f"  {code} Art.{art} 실패: {e}")
                 conn.commit()
