@@ -91,8 +91,15 @@ export class ForeignView {
       }
       const isAnnex = /^ANNEX/i.test(p.article_no);
       const label = isAnnex ? this.esc(p.article_no) : `제${this.esc(p.article_no)}조`;
-      const title = p.heading_ko || p.heading;  // 한국어 제목 우선, 없으면 영문 폴백
-      const h = (title && !isAnnex) ? ` <span class="fm-toc-h">${this.esc(this.cut(title, 24))}</span>` : '';
+      // 한글 제목 + 영문 원문 병기
+      const ko = (p.heading_ko || '').trim();
+      const en = (p.heading || '').trim();
+      let h = '';
+      if (!isAnnex && (ko || en)) {
+        const koPart = ko ? this.esc(this.cut(ko, 20)) : '';
+        const enPart = en ? `<span class="fm-toc-en">${this.esc(this.cut(en, 26))}</span>` : '';
+        h = ` <span class="fm-toc-h">${[koPart, enPart].filter(Boolean).join(' ')}</span>`;
+      }
       body += `<a class="fm-toc-item" href="#fart-${idx}">${label}${h}</a>`;
     });
     return `<div class="fm-toc"><div class="fm-toc-title"><i class="fas fa-list-ul"></i> 조문 목차 · 바로가기</div><div class="fm-toc-body">${body}</div></div>`;
