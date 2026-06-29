@@ -10,6 +10,9 @@
 GRANT SELECT ON fin_law_db.* TO 'ldbuser'@'localhost';
 FLUSH PRIVILEGES;
 
+-- 1-b) 조 제목 한국어 컬럼(목차·바로가기용). 값은 scripts/foreign/fill_heading.py 로 적재.
+ALTER TABLE fin_law_db.law_provision ADD COLUMN IF NOT EXISTS heading_ko VARCHAR(512) DEFAULT NULL;
+
 -- 2) 해외법령 개인 메모 — 회원 DB(ldb_auth)에 둔다(member FK).
 --    조회는 조문(article) 단위이므로 메모 키는 그 article의 대표 provision_id(fin_law_db).
 USE ldb_auth;
