@@ -6,6 +6,7 @@ export interface ForeignLawListItem {
   code: string;
   jurisdiction: string;
   title_ko: string;
+  title_original: string;
   abbrev: string | null;
   status: string;
   law_type: string;
@@ -23,6 +24,7 @@ export interface ForeignLawMeta {
   abbrev: string | null;
   status: string;
   law_type: string;
+  is_crypto: number;
   official_citation: string | null;
   source_url: string | null;
   translation_source: string;

@@ -16,6 +16,7 @@ export interface ForeignLawListItem {
   code: string;
   jurisdiction: string;
   title_ko: string;
+  title_original: string;
   abbrev: string | null;
   status: string;
   law_type: string;
@@ -33,6 +34,7 @@ export interface ForeignLawMeta {
   abbrev: string | null;
   status: string;
   law_type: string;
+  is_crypto: number;
   official_citation: string | null;
   source_url: string | null;
   translation_source: string;
@@ -58,7 +60,7 @@ export class ForeignModel {
   /** 드롭다운용 법령 목록(관할별 정렬, 번역 보유 seg 수 포함). */
   async listLaws(): Promise<ForeignLawListItem[]> {
     return this.fin().query<ForeignLawListItem>(
-      `SELECT l.code, l.jurisdiction, l.title_ko, l.abbrev, l.status, l.law_type, l.is_crypto,
+      `SELECT l.code, l.jurisdiction, l.title_ko, l.title_original, l.abbrev, l.status, l.law_type, l.is_crypto,
               l.provision_count,
               CAST(SUM(p.text_ko IS NOT NULL AND p.text_ko <> '') AS UNSIGNED) AS ko_count
          FROM law l
@@ -71,7 +73,7 @@ export class ForeignModel {
   /** 단일 법령 메타. */
   async getLawMeta(code: string): Promise<ForeignLawMeta | null> {
     const rows = await this.fin().query<ForeignLawMeta>(
-      `SELECT id, code, jurisdiction, title_original, title_ko, abbrev, status, law_type,
+      `SELECT id, code, jurisdiction, title_original, title_ko, abbrev, status, law_type, is_crypto,
               official_citation, source_url, translation_source
          FROM law WHERE code = ? LIMIT 1`,
       [code]

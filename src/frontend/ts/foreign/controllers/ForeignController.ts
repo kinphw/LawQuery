@@ -1,5 +1,6 @@
 import { ForeignFetchModel, ForeignLawListItem } from '../models/ForeignFetchModel';
 import { ForeignView } from '../views/ForeignView';
+import { ForeignOverviewView } from '../views/ForeignOverviewView';
 import { Header } from '../../common/components/Header';
 
 /**
@@ -14,6 +15,7 @@ const JURIS_LABEL: Record<string, string> = {
 export class ForeignController {
   private model = new ForeignFetchModel();
   private view = new ForeignView();
+  private overview = new ForeignOverviewView();
   private header = new Header();
   private laws: ForeignLawListItem[] = [];
   private currentCode = '';
@@ -38,11 +40,27 @@ export class ForeignController {
       return;
     }
 
-    const params = new URLSearchParams(location.search);
-    this.currentCode = params.get('code') || this.pickDefault();
     this.renderDropdown();
     this.bindMemoDelegation();
-    await this.loadLaw(this.currentCode);
+
+    // ?code 가 있으면 그 법 본문(드릴다운), 없으면 국가별 소개 카탈로그(랜딩).
+    const params = new URLSearchParams(location.search);
+    const code = params.get('code');
+    if (code && this.laws.some(l => l.code === code)) {
+      await this.loadLaw(code);
+    } else {
+      this.renderOverview();
+    }
+  }
+
+  /** 랜딩 = 국가별 소개 카탈로그. */
+  private renderOverview(): void {
+    this.currentCode = '';
+    const box = document.getElementById('currentForeignBox');
+    if (box) box.textContent = '국가별 목록';
+    const results = document.getElementById('results')!;
+    results.innerHTML = this.overview.render(this.laws);
+    if (location.search) history.replaceState(null, '', location.pathname);
   }
 
   private async resolveMe(): Promise<any> {
@@ -52,13 +70,6 @@ export class ForeignController {
     }
     // 폴백: 직접 조회
     return fetch('/api/auth/me', { credentials: 'include' }).then(r => r.json()).catch(() => null);
-  }
-
-  private pickDefault(): string {
-    const pref = this.laws.find(l => l.code === 'eu_psr')
-      || this.laws.find(l => l.ko_count > 0)
-      || this.laws[0];
-    return pref.code;
   }
 
   private renderDropdown(): void {

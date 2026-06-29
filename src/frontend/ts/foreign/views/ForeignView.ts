@@ -1,4 +1,5 @@
 import { ForeignLawMeta, ForeignProvision } from '../models/ForeignFetchModel';
+import { getForeignIntro } from '../foreignIntro';
 
 /**
  * 해외법령 뷰 (seg-level) — 1 row = 1 seg.
@@ -29,7 +30,17 @@ export class ForeignView {
     const trans = this.transLabel(meta.translation_source);
     const status = this.statusLabel(meta.status);
 
+    const intro = getForeignIntro(meta.code);
+    const introHtml = intro ? `<div class="fm-intro">
+        <div class="fm-intro-summary">${this.esc(intro.summary)}</div>
+        ${intro.highlights && intro.highlights.length
+          ? `<ul class="fm-intro-hi">${intro.highlights.map(h => `<li>${this.esc(h)}</li>`).join('')}</ul>`
+          : ''}
+        ${meta.source_url ? `<div class="fm-intro-src"><a href="${this.esc(meta.source_url)}" target="_blank" rel="noopener"><i class="fas fa-up-right-from-square"></i> 원문 출처</a></div>` : ''}
+      </div>` : '';
+
     let html = `<div class="container-fluid fm-wrap">`;
+    html += `<div class="fm-back"><a href="foreign.html"><i class="fas fa-arrow-left"></i> 해외법령 목록</a></div>`;
     html += `<div class="fm-law-head">
       <h4 class="mb-1">${this.esc(meta.title_ko)}${meta.abbrev ? ` <span class="text-muted fs-6">(${this.esc(meta.abbrev)})</span>` : ''}</h4>
       <div class="text-muted small">${this.esc(meta.title_original)}</div>
@@ -40,6 +51,7 @@ export class ForeignView {
       </div>
       ${meta.official_citation ? `<div class="small text-secondary mt-1">인용양식: ${this.esc(meta.official_citation)}</div>` : ''}
     </div>`;
+    html += introHtml;
 
     if (!provisions.length) {
       html += `<div class="alert alert-warning">표시할 조문이 없습니다.</div></div>`;

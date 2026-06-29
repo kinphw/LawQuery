@@ -64,6 +64,39 @@
       .fm-en::before { content: '원문'; display: block; font-size: .7rem; color: #888; }
       .fm-table td:nth-child(2)::before { content: '번역'; display: block; font-size: .7rem; color: #888; }
     }
+
+    /* ── 뷰어 상단: 목록 백링크 + 소개 카드 ── */
+    .fm-back { margin-bottom: .5rem; }
+    .fm-back a { font-size: .9rem; color: #6c757d; text-decoration: none; }
+    .fm-back a:hover { color: #0d6efd; }
+    .fm-intro { border: 1px solid #e3e6ea; border-left: 3px solid #0d6efd; border-radius: .4rem;
+      background: #f8fbff; padding: .7rem .9rem; margin: 0 0 1rem; }
+    .fm-intro-summary { font-size: .92rem; line-height: 1.55; color: #343a40; }
+    .fm-intro-hi { margin: .5rem 0 0; padding-left: 1.1rem; font-size: .86rem; color: #495057; }
+    .fm-intro-hi li { margin: .12rem 0; }
+    .fm-intro-src { margin-top: .5rem; font-size: .84rem; }
+
+    /* ── 랜딩: 국가별 소개 카탈로그 ── */
+    .fx-overview { max-width: 1200px; }
+    .fx-juris-head { display: flex; align-items: baseline; gap: .5rem; margin: 1.1rem 0 .5rem;
+      padding-bottom: .35rem; border-bottom: 2px solid #e9ecef; }
+    .fx-juris-label { font-size: 1.05rem; font-weight: 700; color: #212529; }
+    .fx-card { display: flex; flex-direction: column; height: 100%; padding: .85rem .95rem;
+      border: 1px solid #e3e6ea; border-radius: .55rem; background: #fff; text-decoration: none; color: inherit;
+      transition: box-shadow .15s, border-color .15s, transform .15s; }
+    .fx-card:hover { border-color: #0d6efd; box-shadow: 0 .35rem .9rem rgba(13,110,253,.12); transform: translateY(-2px); }
+    .fx-card-badges { margin-bottom: .4rem; display: flex; flex-wrap: wrap; gap: .25rem; align-items: center; }
+    .fx-card-title { font-weight: 700; font-size: 1rem; line-height: 1.35; color: #212529; }
+    .fx-card-en { font-size: .78rem; color: #9aa0a6; margin-top: .1rem;
+      display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
+    .fx-card-summary { font-size: .87rem; line-height: 1.5; color: #495057; margin: .5rem 0 .35rem; }
+    .fx-tags { display: flex; flex-wrap: wrap; gap: .25rem; margin-bottom: .55rem; }
+    .fx-tag { font-size: .72rem; color: #0d6efd; background: #eef4ff; border: 1px solid #d6e4ff;
+      border-radius: 1rem; padding: .05rem .5rem; }
+    .fx-card-foot { margin-top: auto; display: flex; align-items: center; justify-content: space-between;
+      padding-top: .5rem; border-top: 1px dashed #eef0f2; }
+    .fx-card-go { font-size: .85rem; font-weight: 600; color: #0d6efd; }
+    .fx-card:hover .fx-card-go { text-decoration: underline; }
   </style>
 </head>
 
