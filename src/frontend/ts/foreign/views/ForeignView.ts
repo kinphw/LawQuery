@@ -1,8 +1,9 @@
 import { ForeignLawMeta, ForeignProvision } from '../models/ForeignFetchModel';
 
 /**
- * 해외법령 뷰 — 조문(article) 단위 2단 표(원문 | 번역) + 메모 열.
- * 한국 5단표(LawTable)와 달리 계층이 단순해 전용 렌더러를 둔다.
+ * 해외법령 뷰 (seg-level) — 1 row = 1 seg.
+ * part(편/장) 그룹 → article 그룹 헤더(첫 seg heading, 목차 앵커) → seg 별 [원문|번역|메모] 행.
+ * 메모는 (article_no, seg_index) 논리키. 표 seg(markdown)는 renderRich 가 <table> 로 렌더.
  */
 export class ForeignView {
   private statusLabel(s: string): string {
@@ -19,7 +20,12 @@ export class ForeignView {
     return '';
   }
 
-  renderTable(meta: ForeignLawMeta, provisions: ForeignProvision[], memos: Record<number, string>, canMemo: boolean): string {
+  /** article_no → 안정 앵커 id */
+  private articleId(articleNo: string): string {
+    return 'fa-' + String(articleNo).replace(/[^a-zA-Z0-9]/g, '_');
+  }
+
+  renderTable(meta: ForeignLawMeta, provisions: ForeignProvision[], memos: Record<string, string>, canMemo: boolean): string {
     const trans = this.transLabel(meta.translation_source);
     const status = this.statusLabel(meta.status);
 
@@ -49,63 +55,71 @@ export class ForeignView {
     </tr></thead><tbody>`;
 
     let lastPart: string | null = null;
-    provisions.forEach((p, idx) => {
-      if (p.part_no && p.part_no !== lastPart) {
-        lastPart = p.part_no;
-        html += `<tr class="fm-part"><td colspan="3">${this.esc(p.part_no)}</td></tr>`;
+    let lastArticle: string | null = null;
+    for (const seg of provisions) {
+      if (seg.part_no && seg.part_no !== lastPart) {
+        lastPart = seg.part_no;
+        html += `<tr class="fm-part"><td colspan="3">${this.esc(seg.part_no)}</td></tr>`;
       }
-      const isAnnex = /^ANNEX/i.test(p.article_no);
-      const head = isAnnex
-        ? `<div class="fm-head fm-annex">${this.esc(p.heading || p.article_no)}</div>`
-        : `<div class="fm-head">Art. ${this.esc(p.article_no)}${p.heading ? ` — ${this.esc(p.heading)}` : ''}</div>`;
-      const ko = p.text_ko
-        ? `<div class="fm-ko">${this.renderRich(p.text_ko)}</div>`
+      if (seg.article_no !== lastArticle) {
+        lastArticle = seg.article_no;
+        const isAnnex = /^ANNEX/i.test(seg.article_no);
+        const koTitle = (seg.heading_ko || '').trim();
+        const enTitle = (seg.heading || '').trim();
+        const title = isAnnex
+          ? this.esc(enTitle || seg.article_no)
+          : `제${this.esc(seg.article_no)}조` +
+            (koTitle ? ` ${this.esc(koTitle)}` : '') +
+            (enTitle ? ` <span class="fm-toc-en">${this.esc(enTitle)}</span>` : '');
+        html += `<tr class="fm-art-head${isAnnex ? ' fm-annex' : ''}" id="${this.articleId(seg.article_no)}"><td colspan="3">${title}</td></tr>`;
+      }
+      const indent = seg.seg_kind === 'item' ? ' fm-indent' : '';
+      const ko = seg.text_ko
+        ? `<div class="fm-ko">${this.renderRich(seg.text_ko)}</div>`
         : `<div class="fm-ko fm-empty">— 번역 준비중 —</div>`;
-      const memo = memos[p.provision_id];
+      const key = `${seg.article_no}|${seg.seg_index}`;
+      const memo = memos[key];
       const memoCell = canMemo
-        ? `<td class="fm-memo" data-pid="${p.provision_id}" data-code="${this.esc(meta.code)}">
+        ? `<td class="fm-memo" data-code="${this.esc(meta.code)}" data-article="${this.esc(seg.article_no)}" data-seg="${seg.seg_index}">
              <div class="fm-memo-view">${memo ? this.esc(memo) : '<span class="fm-memo-add">+ 메모</span>'}</div>
            </td>`
-        : `<td class="fm-memo fm-locked" title="PRO 전용 — 로그인 후 이용">
-             <i class="fas fa-lock"></i>
-           </td>`;
-      html += `<tr id="fart-${idx}">
-        <td class="fm-en">${head}<div class="fm-en-body">${this.renderRich(p.text_original || '')}</div></td>
+        : `<td class="fm-memo fm-locked" title="PRO 전용 — 로그인 후 이용"><i class="fas fa-lock"></i></td>`;
+      html += `<tr class="fm-seg${indent}">
+        <td class="fm-en"><div class="fm-en-body">${this.renderRich(seg.text_original || '')}</div></td>
         <td>${ko}</td>
         ${memoCell}
       </tr>`;
-    });
+    }
 
     html += `</tbody></table></div>`;
     return html;
   }
 
-  /** 조문 목차(편/장 그룹 + 조 칩). 칩 클릭 시 해당 조(tr#fart-N)로 스크롤. */
+  /** 조문 목차(편/장 그룹 + 조 칩, article 단위). 칩 클릭 시 article 헤더로 스크롤. */
   private buildToc(provisions: ForeignProvision[]): string {
     let body = '';
     let lastPart: string | null = null;
-    provisions.forEach((p, idx) => {
-      if (p.part_no && p.part_no !== lastPart) {
-        lastPart = p.part_no;
-        body += `<div class="fm-toc-part">${this.esc(this.cut(p.part_no, 70))}</div>`;
+    for (const seg of provisions) {
+      if (seg.seg_index !== 1) continue; // article 첫 seg = article 대표
+      if (seg.part_no && seg.part_no !== lastPart) {
+        lastPart = seg.part_no;
+        body += `<div class="fm-toc-part">${this.esc(this.cut(seg.part_no, 70))}</div>`;
       }
-      const isAnnex = /^ANNEX/i.test(p.article_no);
-      const label = isAnnex ? this.esc(p.article_no) : `제${this.esc(p.article_no)}조`;
-      // 한글 제목 + 영문 원문 병기
-      const ko = (p.heading_ko || '').trim();
-      const en = (p.heading || '').trim();
+      const isAnnex = /^ANNEX/i.test(seg.article_no);
+      const label = isAnnex ? this.esc(seg.article_no) : `제${this.esc(seg.article_no)}조`;
+      const ko = (seg.heading_ko || '').trim();
+      const en = (seg.heading || '').trim();
       let h = '';
       if (!isAnnex && (ko || en)) {
         const koPart = ko ? this.esc(this.cut(ko, 20)) : '';
         const enPart = en ? `<span class="fm-toc-en">${this.esc(this.cut(en, 26))}</span>` : '';
         h = ` <span class="fm-toc-h">${[koPart, enPart].filter(Boolean).join(' ')}</span>`;
       }
-      // 호버 시 전체 제목(자르지 않은 한글/영문) 툴팁
       const full = isAnnex
-        ? (p.heading || p.article_no)
-        : `제${p.article_no}조 ${[ko, en].filter(Boolean).join(' / ')}`.trim();
-      body += `<a class="fm-toc-item" href="#fart-${idx}" title="${this.esc(full)}">${label}${h}</a>`;
-    });
+        ? (seg.heading || seg.article_no)
+        : `제${seg.article_no}조 ${[ko, en].filter(Boolean).join(' / ')}`.trim();
+      body += `<a class="fm-toc-item" href="#${this.articleId(seg.article_no)}" title="${this.esc(full)}">${label}${h}</a>`;
+    }
     return `<div class="fm-toc"><div class="fm-toc-title"><i class="fas fa-list-ul"></i> 조문 목차 · 바로가기</div><div class="fm-toc-body">${body}</div></div>`;
   }
 
@@ -114,10 +128,7 @@ export class ForeignView {
     return s.length > n ? s.slice(0, n) + '…' : s;
   }
 
-  /**
-   * 본문 렌더: 마크다운 표(| … |)가 있으면 표로 복원하고, 나머지는 개행 정리 후 문단으로.
-   * 일반 평문(표 없음)은 표 감지에 안 걸려 기존 동작과 동일.
-   */
+  /** 마크다운 표(| … |)가 있으면 표로, 나머지는 개행 정리 후 문단으로. */
   private renderRich(s: string): string {
     const raw = String(s ?? '');
     if (!/^\s*\|.*\|\s*$/m.test(raw)) {
@@ -143,7 +154,6 @@ export class ForeignView {
     return html;
   }
 
-  /** 마크다운 표 행 배열 → HTML 표. |---| 구분행은 제거. */
   private mdTable(rows: string[]): string {
     const cells = (r: string) =>
       r.replace(/^\s*\|/, '').replace(/\|\s*$/, '').split('|').map(c => c.trim());
@@ -157,18 +167,14 @@ export class ForeignView {
     return h + '</tbody></table>';
   }
 
-  /**
-   * 과도한 개행 정리(미국 Code·SG PDF 추출본은 단어 단위로 줄바꿈됨).
-   * 항목 표시자((a)·(1)·1.·1)) 앞 개행만 유지하고 나머지 단일 개행은 공백으로 합친다.
-   * 원문 데이터는 보존하고 표시 단계에서만 적용.
-   */
+  /** 과도한 개행 정리(미국 Code·SG PDF 추출본 등). 항목 표시자 앞 개행만 유지. */
   private normalize(s: string): string {
     return String(s ?? '')
       .replace(/\r/g, '')
-      .replace(/[ \t]*\n[ \t]*/g, '\n')                                  // 개행 주변 공백 제거
-      .replace(/\n(?!\s*(\([0-9a-zA-Z]+\)|[0-9]+[.)]))/g, ' ')           // 표시자 아닌 개행 → 공백
-      .replace(/[ \t]{2,}/g, ' ')                                        // 중복 공백 정리
-      .replace(/\n{2,}/g, '\n')                                          // 빈 줄 정리
+      .replace(/[ \t]*\n[ \t]*/g, '\n')
+      .replace(/\n(?!\s*(\([0-9a-zA-Z]+\)|[0-9]+[.)]))/g, ' ')
+      .replace(/[ \t]{2,}/g, ' ')
+      .replace(/\n{2,}/g, '\n')
       .trim();
   }
 

@@ -18,7 +18,7 @@ export class ForeignController {
   private laws: ForeignLawListItem[] = [];
   private currentCode = '';
   private canMemo = false;
-  private memos: Record<number, string> = {};
+  private memos: Record<string, string> = {}; // "<article_no>|<seg_index>" → memo
 
   async initialize(): Promise<void> {
     const headerEl = document.getElementById('header');
@@ -120,9 +120,11 @@ export class ForeignController {
   }
 
   private openEditor(cell: HTMLElement): void {
-    const pid = Number(cell.dataset.pid);
     const code = cell.dataset.code || this.currentCode;
-    const cur = this.memos[pid] || '';
+    const article = cell.dataset.article || '';
+    const seg = Number(cell.dataset.seg || 0);
+    const key = `${article}|${seg}`;
+    const cur = this.memos[key] || '';
     cell.classList.add('fm-editing');
     cell.innerHTML = `
       <textarea class="form-control fm-memo-input" rows="4" placeholder="이 조문에 대한 메모…">${this.esc(cur)}</textarea>
@@ -137,25 +139,25 @@ export class ForeignController {
 
     const save = async () => {
       const val = ta.value.trim();
-      const ok = await this.model.saveMemo(pid, code, val);
+      const ok = await this.model.saveMemo(code, article, seg, val);
       if (ok) {
-        if (val) this.memos[pid] = val; else delete this.memos[pid];
+        if (val) this.memos[key] = val; else delete this.memos[key];
       } else {
         alert('메모 저장에 실패했습니다.');
       }
-      this.closeEditor(cell, pid);
+      this.closeEditor(cell, key);
     };
     (cell.querySelector('.fm-save') as HTMLElement).onclick = save;
-    (cell.querySelector('.fm-cancel') as HTMLElement).onclick = () => this.closeEditor(cell, pid);
+    (cell.querySelector('.fm-cancel') as HTMLElement).onclick = () => this.closeEditor(cell, key);
     ta.addEventListener('keydown', (ev) => {
       if (ev.key === 'Enter' && (ev.ctrlKey || ev.metaKey)) { ev.preventDefault(); save(); }
-      else if (ev.key === 'Escape') { ev.preventDefault(); this.closeEditor(cell, pid); }
+      else if (ev.key === 'Escape') { ev.preventDefault(); this.closeEditor(cell, key); }
     });
   }
 
-  private closeEditor(cell: HTMLElement, pid: number): void {
+  private closeEditor(cell: HTMLElement, key: string): void {
     cell.classList.remove('fm-editing');
-    const memo = this.memos[pid];
+    const memo = this.memos[key];
     cell.innerHTML = `<div class="fm-memo-view">${memo ? this.esc(memo) : '<span class="fm-memo-add">+ 메모</span>'}</div>`;
   }
 

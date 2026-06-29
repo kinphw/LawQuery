@@ -39,7 +39,7 @@ export class ForeignController {
     }
   };
 
-  // ── 메모(PRO 전용) ──────────────────────────────────────────────────────────
+  // ── 메모(PRO 전용) — 논리키 (code, article_no, seg_index) ────────────────────
   getMemos = async (req: Request, res: Response): Promise<void> => {
     const code = String(req.query.code || '').trim();
     if (!code) {
@@ -47,11 +47,8 @@ export class ForeignController {
       return;
     }
     try {
-      const rows = await this.model.getMemos(req.member!.id, code);
-      // 프론트가 쓰기 쉽도록 { provision_id: memo } 맵으로 변환
-      const map: Record<number, string> = {};
-      rows.forEach(r => { map[r.provision_id] = r.memo; });
-      res.status(200).json({ success: true, data: map });
+      const map = await this.model.getMemos(req.member!.id, code);
+      res.status(200).json({ success: true, data: map }); // { "<article_no>|<seg_index>": memo }
     } catch (e) {
       console.error('[foreign] getMemos', e);
       res.status(500).json({ success: false, error: '메모 조회 실패' });
@@ -60,20 +57,21 @@ export class ForeignController {
 
   /** 메모 저장(upsert). 빈 문자열이면 삭제로 처리. */
   putMemo = async (req: Request, res: Response): Promise<void> => {
-    const provisionId = Number(req.body?.provision_id || 0);
     const lawCode = String(req.body?.law_code || '').trim();
+    const articleNo = String(req.body?.article_no || '').trim();
+    const segIndex = Number(req.body?.seg_index || 0);
     const memo = typeof req.body?.memo === 'string' ? req.body.memo : '';
-    if (!provisionId || !lawCode) {
-      res.status(400).json({ success: false, error: 'provision_id, law_code가 필요합니다.' });
+    if (!lawCode || !articleNo || !segIndex) {
+      res.status(400).json({ success: false, error: 'law_code, article_no, seg_index가 필요합니다.' });
       return;
     }
     try {
       if (!memo.trim()) {
-        await this.model.deleteMemo(req.member!.id, provisionId);
+        await this.model.deleteMemo(req.member!.id, lawCode, articleNo, segIndex);
         res.status(200).json({ success: true, deleted: true });
         return;
       }
-      await this.model.upsertMemo(req.member!.id, provisionId, lawCode, memo);
+      await this.model.upsertMemo(req.member!.id, lawCode, articleNo, segIndex, memo);
       res.status(200).json({ success: true });
     } catch (e) {
       console.error('[foreign] putMemo', e);
@@ -82,13 +80,15 @@ export class ForeignController {
   };
 
   deleteMemo = async (req: Request, res: Response): Promise<void> => {
-    const provisionId = Number(req.query.provision_id || 0);
-    if (!provisionId) {
-      res.status(400).json({ success: false, error: 'provision_id가 필요합니다.' });
+    const lawCode = String(req.query.code || '').trim();
+    const articleNo = String(req.query.article_no || '').trim();
+    const segIndex = Number(req.query.seg_index || 0);
+    if (!lawCode || !articleNo || !segIndex) {
+      res.status(400).json({ success: false, error: 'code, article_no, seg_index가 필요합니다.' });
       return;
     }
     try {
-      await this.model.deleteMemo(req.member!.id, provisionId);
+      await this.model.deleteMemo(req.member!.id, lawCode, articleNo, segIndex);
       res.status(200).json({ success: true });
     } catch (e) {
       console.error('[foreign] deleteMemo', e);

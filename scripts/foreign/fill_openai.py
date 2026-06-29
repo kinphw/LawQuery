@@ -1,117 +1,134 @@
 # -*- coding: utf-8 -*-
 """
-OpenAI(chat completions) 번역 적재 — DeepL 한도 소진 시 대체 경로.
-fill_deepl.py 와 동일하게 조문(article) 단위로 대표 provision(ordinal 최소)에 text_ko 저장.
-이미 번역된 article(대표 text_ko 존재)은 건너뛴다 → 재실행 안전.
-
-키: killEng/key.env 의 OPENAI_API_KEY. 모델 기본 gpt-4o-mini(토큰 절약).
-source_lang 은 law.jurisdiction 으로 자동(jp→Japanese, else English).
+seg-level 번역 — law_provision 의 미번역 seg(text_ko NULL/'')를 OpenAI 로 번역.
+  · 짧은 seg(<=3000자)는 배치(JSON, 여러 seg 한 요청)로 효율 처리.
+  · 긴 seg(article-unit 법령의 큰 조 등)는 개별 + 문단 청크.
+  · source_lang 은 law.jurisdiction 자동(jp→JA, else EN). markdown 표는 구조 보존.
+재실행 안전(미번역분만). text_ko 는 LQ 소유 — STN 은 NULL 적재.
 
 사용
-  FINDB_ROOT_PW=genius python fill_openai.py --code jp_banking,jp_psa,jp_psa_enf,jp_funds_transfer_co
-  FINDB_ROOT_PW=genius python fill_openai.py --code jp_banking --limit 1   # 테스트
-  FINDB_ROOT_PW=genius python fill_openai.py --code jp_banking --model gpt-4o
+  FINDB_ROOT_PW=genius python fill_openai.py --code eu_psd2
+  FINDB_ROOT_PW=genius python fill_openai.py --code eu_crr,eu_crd --model gpt-4o-mini
 """
-import os, sys, io, argparse, time, requests, urllib3, pymysql
+import os, sys, io, json, argparse, time, requests, pymysql
 from dotenv import load_dotenv
 
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-
 load_dotenv(r"c:/projects/killEng/key.env")
-OPENAI_KEY = (os.getenv("OPENAI_API_KEY") or "").strip()
+KEY = (os.getenv("OPENAI_API_KEY") or "").strip()
 URL = "https://api.openai.com/v1/chat/completions"
 LANG = {"JA": "Japanese", "EN": "English"}
 
 
-def translate(text: str, source: str, model: str) -> str:
-    lang = LANG.get(source, "English")
-    system = (
-        f"You are a professional legal translator. Translate the following {lang} "
-        "statutory/legal text into Korean (한국어). Preserve article/paragraph/item "
-        "numbering and legal terminology accurately. Output ONLY the Korean translation, "
-        "with no preamble or notes."
-    )
-    data = {
-        "model": model,
-        "messages": [
-            {"role": "system", "content": system},
-            {"role": "user", "content": text},
-        ],
-        "temperature": 0.2,
-    }
-    r = requests.post(URL, headers={
-        "Content-Type": "application/json",
-        "Authorization": f"Bearer {OPENAI_KEY}",
-    }, json=data, timeout=180)
+def _post(messages, model, response_format=None):
+    d = {"model": model, "temperature": 0.2, "messages": messages}
+    if response_format:
+        d["response_format"] = response_format
+    r = requests.post(URL, headers={"Authorization": f"Bearer {KEY}", "Content-Type": "application/json"},
+                      json=d, timeout=180)
     r.raise_for_status()
-    return r.json()["choices"][0]["message"]["content"].strip()
+    return r.json()["choices"][0]["message"]["content"]
+
+
+def translate_one(text, lang, model):
+    """긴 seg 개별 — 6000자 초과 시 문단 청크."""
+    sysp = (f"Translate the following {lang} statutory/legal text into Korean (한국어). "
+            "Preserve numbering/markers and any markdown tables. Output only the Korean translation.")
+    if len(text) <= 6000:
+        return _post([{"role": "system", "content": sysp}, {"role": "user", "content": text}], model).strip()
+    chunks, buf = [], ""
+    for para in text.split("\n"):
+        if buf and len(buf) + len(para) > 5000:
+            chunks.append(buf); buf = para
+        else:
+            buf = (buf + "\n" + para) if buf else para
+    if buf:
+        chunks.append(buf)
+    return "\n".join(_post([{"role": "system", "content": sysp}, {"role": "user", "content": c}], model).strip()
+                     for c in chunks)
+
+
+def translate_batch(items, lang, model):
+    """짧은 seg 묶음 [(id, text)] → {id: ko}."""
+    sysp = (f"You are a legal translator. Translate each {lang} segment into Korean (한국어). "
+            "Preserve markers ((a),(1),1.) and markdown tables. Return JSON ONLY: "
+            '{"items":[{"i":<i>,"ko":"<번역>"}]}')
+    user = json.dumps([{"i": i, "t": t} for i, t in items], ensure_ascii=False)
+    out = _post([{"role": "system", "content": sysp}, {"role": "user", "content": user}],
+                model, {"type": "json_object"})
+    return {x["i"]: x["ko"] for x in json.loads(out).get("items", [])}
 
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--code", required=True, help="쉼표구분 law code")
-    ap.add_argument("--limit", type=int, default=0, help="법령당 최대 article(0=전체)")
-    ap.add_argument("--model", default="gpt-4o-mini", help="OpenAI 모델(기본 gpt-4o-mini)")
+    ap.add_argument("--code", required=True)
+    ap.add_argument("--model", default="gpt-4o-mini")
+    ap.add_argument("--limit", type=int, default=0)
     args = ap.parse_args()
-
-    if not OPENAI_KEY:
-        print("ERROR: OPENAI_API_KEY 없음(killEng/key.env)"); sys.exit(1)
     pw = os.environ.get("FINDB_ROOT_PW")
-    if not pw:
-        print("ERROR: FINDB_ROOT_PW 필요"); sys.exit(1)
+    if not KEY or not pw:
+        print("ERROR: OPENAI_API_KEY / FINDB_ROOT_PW 필요"); sys.exit(1)
 
     conn = pymysql.connect(host="localhost", user="root", password=pw,
                            database="fin_law_db", charset="utf8mb4", autocommit=False)
     cur = conn.cursor(pymysql.cursors.DictCursor)
 
-    grand = 0
     for code in [c.strip() for c in args.code.split(",") if c.strip()]:
         cur.execute("SELECT id, jurisdiction FROM law WHERE code=%s", (code,))
         law = cur.fetchone()
         if not law:
-            print(f"{code}: DB law 없음"); continue
-        lid = law["id"]
-        src = "JA" if law["jurisdiction"] == "jp" else "EN"
+            print(f"{code}: 없음"); continue
+        lang = LANG.get("JA" if law["jurisdiction"] == "jp" else "EN")
         cur.execute(
-            """SELECT id, article_no, ordinal, text_original, text_ko
-                 FROM law_provision WHERE law_id=%s AND article_no IS NOT NULL
-                ORDER BY ordinal""", (lid,))
+            """SELECT id, text_original FROM law_provision
+                WHERE law_id=%s AND text_original IS NOT NULL AND text_original<>''
+                  AND (text_ko IS NULL OR text_ko='')
+                ORDER BY ordinal""", (law["id"],))
         rows = cur.fetchall()
-
-        groups = {}
-        for r in rows:
-            g = groups.setdefault(r["article_no"], {"rep_id": r["id"], "rep_ko": r["text_ko"], "en": []})
-            if r["text_original"]:
-                g["en"].append(r["text_original"])
-        todo = [(a, g) for a, g in groups.items() if not (g["rep_ko"] and str(g["rep_ko"]).strip())]
         if args.limit:
-            todo = todo[:args.limit]
-        print(f"{code}[{src}/{args.model}]: article {len(groups)}개, 미번역 {len(todo)}개 시작")
+            rows = rows[:args.limit]
+        total = len(rows)
+        print(f"{code}[{lang}]: 미번역 seg {total}")
 
         done = 0
-        for i, (art, g) in enumerate(todo):
-            text = "\n\n".join(g["en"]).strip()
-            if not text:
-                continue
-            try:
-                ko = translate(text, src, args.model)
-            except Exception as e:
-                body = getattr(getattr(e, "response", None), "text", "")
-                print(f"  {code} Art.{art} 실패: {e} {body[:160]}")
-                conn.commit()
-                break
-            cur.execute("UPDATE law_provision SET text_ko=%s WHERE id=%s", (ko, g["rep_id"]))
-            done += 1
-            if i % 10 == 0:
-                conn.commit()
-                print(f"  {i}/{len(todo)} …")
-            time.sleep(0.3)
-        conn.commit()
-        grand += done
-        print(f"  {code} 완료: {done}개 article 적재")
+        batch, batch_chars = [], 0
 
-    print(f"전체 완료: {grand}개 article text_ko 적재")
+        def flush():
+            nonlocal done, batch, batch_chars
+            if not batch:
+                return
+            try:
+                res = translate_batch([(r["id"], r["text_original"]) for r in batch], lang, args.model)
+            except Exception as e:
+                print(f"  batch fail: {e}"); res = {}
+            for r in batch:
+                ko = res.get(r["id"])
+                if ko:
+                    cur.execute("UPDATE law_provision SET text_ko=%s WHERE id=%s", (ko, r["id"]))
+                    done += 1
+            conn.commit()
+            batch, batch_chars = [], 0
+            print(f"  …{done}/{total}")
+
+        for r in rows:
+            t = r["text_original"]
+            if len(t) > 3000:
+                flush()
+                try:
+                    ko = translate_one(t, lang, args.model)
+                    cur.execute("UPDATE law_provision SET text_ko=%s WHERE id=%s", (ko, r["id"]))
+                    done += 1; conn.commit()
+                    print(f"  …{done}/{total} (long seg)")
+                except Exception as e:
+                    print(f"  long seg fail id={r['id']}: {e}")
+            else:
+                batch.append(r); batch_chars += len(t)
+                if len(batch) >= 25 or batch_chars >= 6000:
+                    flush()
+            time.sleep(0.05)
+        flush()
+        print(f"  {code} 완료: {done}/{total} seg 번역")
+
     conn.close()
 
 

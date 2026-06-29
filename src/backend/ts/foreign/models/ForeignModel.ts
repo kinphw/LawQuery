@@ -1,12 +1,13 @@
 import DbContext from '../../common/DbContext';
 
 /**
- * 해외법령 데이터 모델.
- *  - 본문(원문·번역·계층)은 sentinel 소유 fin_law_db(law / law_provision)를 단일 소스로 읽는다.
- *  - 개인 메모(5단)는 회원 DB(ldb_auth.foreign_memo)에서 관리한다.
+ * 해외법령 데이터 모델 (seg-level).
+ *  - 본문은 sentinel 소유 fin_law_db(law / law_provision)를 단일 소스로 읽는다.
+ *    STN 이 article 내부를 개행(항목/문단) 단위 seg 로 적재(1 row = 1 seg).
+ *  - 개인 메모는 회원 DB(ldb_auth.foreign_memo)에서 (law_code, article_no, seg_index) 논리키로 관리.
  *
- * 조회는 조문(article) 단위로 묶는다(원문이 항/호로 쪼개진 경우 ordinal 순으로 합침).
- * 번역(text_ko)은 적재 시 각 article의 대표 provision(ordinal 최소)에만 채웠으므로 MAX로 회수한다.
+ * 조회는 seg 별 행을 그대로 반환(GROUP_CONCAT 안 함). article_no 그룹·렌더는 프론트가 담당.
+ * seg_index = article 내 1-based 순위(ROW_NUMBER PARTITION BY article_no ORDER BY ordinal) = 안정 앵커.
  */
 const FIN_DB = 'fin_law_db';
 const AUTH_DB = process.env.AUTH_DB || 'ldb_auth';
@@ -20,7 +21,7 @@ export interface ForeignLawListItem {
   law_type: string;
   is_crypto: number;
   provision_count: number;
-  ko_count: number; // 번역이 채워진 조문 수(0이면 원문만)
+  ko_count: number; // 번역이 채워진 seg 수(0이면 원문만)
 }
 
 export interface ForeignLawMeta {
@@ -38,11 +39,14 @@ export interface ForeignLawMeta {
 }
 
 export interface ForeignProvision {
-  provision_id: number; // 그 article의 대표 provision id (메모 키)
-  article_no: string;
-  part_no: string | null;
-  heading: string | null;
-  heading_ko: string | null; // 조 제목 한국어(목차·바로가기용)
+  provision_id: number;       // 물리 law_provision.id (UPSERT로 안정, 잠정 참고용)
+  part_no: string | null;     // 편/장 (TITLE/CHAPTER)
+  article_no: string;         // 조/ANNEX 묶음 키
+  seg_index: number;          // article 내 1-based 순위 = 안정 앵커(메모 키)
+  para_no: string | null;     // 법적 마커('1','(a)','(i)') — 표시 전용(article 내 비유일)
+  heading: string | null;     // 조 제목 — 각 조 첫 seg에만
+  heading_ko: string | null;  // 조 제목 한국어(목차용) — 첫 seg에만
+  seg_kind: string;           // 'article'(첫 seg)/'paragraph'/'item'/'other'(표)
   text_original: string | null;
   text_ko: string | null;
 }
@@ -51,7 +55,7 @@ export class ForeignModel {
   private fin(): DbContext { return DbContext.getInstance(FIN_DB); }
   private auth(): DbContext { return DbContext.getInstance(AUTH_DB); }
 
-  /** 드롭다운용 법령 목록(관할별 정렬, 번역 보유 수 포함). */
+  /** 드롭다운용 법령 목록(관할별 정렬, 번역 보유 seg 수 포함). */
   async listLaws(): Promise<ForeignLawListItem[]> {
     return this.fin().query<ForeignLawListItem>(
       `SELECT l.code, l.jurisdiction, l.title_ko, l.abbrev, l.status, l.law_type, l.is_crypto,
@@ -75,49 +79,45 @@ export class ForeignModel {
     return rows[0] || null;
   }
 
-  /** 조문(article) 단위 원문/번역 2단 목록. */
+  /** seg 별 행(ordinal 순). article_no 그룹·seg 정렬은 프론트가 처리. */
   async getProvisions(code: string): Promise<ForeignProvision[]> {
     return this.fin().query<ForeignProvision>(
-      `SELECT
-          (SELECT p2.id FROM law_provision p2
-            WHERE p2.law_id = p.law_id AND p2.article_no = p.article_no
-            ORDER BY p2.ordinal LIMIT 1) AS provision_id,
-          p.article_no,
-          MIN(p.part_no)     AS part_no,
-          MIN(p.heading)     AS heading,
-          MIN(p.heading_ko)  AS heading_ko,
-          GROUP_CONCAT(p.text_original ORDER BY p.ordinal SEPARATOR '\n\n') AS text_original,
-          MAX(p.text_ko)  AS text_ko
+      `SELECT p.id AS provision_id, p.part_no, p.article_no, p.para_no, p.heading, p.heading_ko, p.seg_kind,
+              p.text_original, p.text_ko,
+              ROW_NUMBER() OVER (PARTITION BY p.article_no ORDER BY p.ordinal) AS seg_index
          FROM law_provision p
          JOIN law l ON l.id = p.law_id
         WHERE l.code = ? AND p.article_no IS NOT NULL
-        GROUP BY p.article_no
-        ORDER BY MIN(p.ordinal)`,
+        ORDER BY p.ordinal`,
       [code]
     );
   }
 
-  // ── 메모(ldb_auth.foreign_memo) ─────────────────────────────────────────────
-  async getMemos(memberId: number, code: string): Promise<Array<{ provision_id: number; memo: string }>> {
-    return this.auth().query<{ provision_id: number; memo: string }>(
-      `SELECT provision_id, memo FROM foreign_memo WHERE member_id = ? AND law_code = ?`,
+  // ── 메모(ldb_auth.foreign_memo) — 논리키 (law_code, article_no, seg_index) ─────
+  /** { "<article_no>|<seg_index>": memo } 맵 */
+  async getMemos(memberId: number, code: string): Promise<Record<string, string>> {
+    const rows = await this.auth().query<{ article_no: string; seg_index: number; memo: string }>(
+      `SELECT article_no, seg_index, memo FROM foreign_memo WHERE member_id = ? AND law_code = ?`,
       [memberId, code]
     );
+    const map: Record<string, string> = {};
+    rows.forEach(r => { map[`${r.article_no}|${r.seg_index}`] = r.memo; });
+    return map;
   }
 
-  async upsertMemo(memberId: number, provisionId: number, lawCode: string, memo: string): Promise<void> {
+  async upsertMemo(memberId: number, code: string, articleNo: string, segIndex: number, memo: string): Promise<void> {
     await this.auth().query(
-      `INSERT INTO foreign_memo (member_id, provision_id, law_code, memo)
-            VALUES (?, ?, ?, ?)
-       ON DUPLICATE KEY UPDATE memo = VALUES(memo), law_code = VALUES(law_code)`,
-      [memberId, provisionId, lawCode, memo]
+      `INSERT INTO foreign_memo (member_id, law_code, article_no, seg_index, memo)
+            VALUES (?, ?, ?, ?, ?)
+       ON DUPLICATE KEY UPDATE memo = VALUES(memo)`,
+      [memberId, code, articleNo, segIndex, memo]
     );
   }
 
-  async deleteMemo(memberId: number, provisionId: number): Promise<void> {
+  async deleteMemo(memberId: number, code: string, articleNo: string, segIndex: number): Promise<void> {
     await this.auth().query(
-      `DELETE FROM foreign_memo WHERE member_id = ? AND provision_id = ?`,
-      [memberId, provisionId]
+      `DELETE FROM foreign_memo WHERE member_id = ? AND law_code = ? AND article_no = ? AND seg_index = ?`,
+      [memberId, code, articleNo, segIndex]
     );
   }
 }

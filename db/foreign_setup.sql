@@ -14,22 +14,26 @@ FLUSH PRIVILEGES;
 ALTER TABLE fin_law_db.law_provision ADD COLUMN IF NOT EXISTS heading_ko VARCHAR(512) DEFAULT NULL;
 
 -- 2) 해외법령 개인 메모 — 회원 DB(ldb_auth)에 둔다(member FK).
---    조회는 조문(article) 단위이므로 메모 키는 그 article의 대표 provision_id(fin_law_db).
+--    seg-level 적재(STN)에 맞춰 메모 키 = 안정 논리키 (law_code, article_no, seg_index).
+--    seg_index = article 내 1-based 순위 → 재적재(물리 id 변경)에도 메모 보존.
+--    (구 provision_id 키에서 전환: 기존 메모 0건이라 DROP+재생성.)
 USE ldb_auth;
-CREATE TABLE IF NOT EXISTS foreign_memo (
+DROP TABLE IF EXISTS foreign_memo;
+CREATE TABLE foreign_memo (
   id            BIGINT       NOT NULL AUTO_INCREMENT,
   member_id     BIGINT       NOT NULL,
-  provision_id  BIGINT       NOT NULL  COMMENT 'fin_law_db.law_provision.id (article 대표, cross-DB 논리참조)',
-  law_code      VARCHAR(48)  NOT NULL  COMMENT 'fin_law_db.law.code (조회 편의)',
+  law_code      VARCHAR(48)  NOT NULL  COMMENT 'fin_law_db.law.code',
+  article_no    VARCHAR(32)  NOT NULL  COMMENT 'fin_law_db 조/ANNEX 묶음 키',
+  seg_index     INT          NOT NULL  COMMENT 'article 내 1-based seg 순위(안정 앵커)',
   memo          MEDIUMTEXT   NOT NULL,
   created_at    TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at    TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
-  UNIQUE KEY uq_member_provision (member_id, provision_id),
+  UNIQUE KEY uq_member_seg (member_id, law_code, article_no, seg_index),
   KEY idx_member_law (member_id, law_code),
   CONSTRAINT fk_foreign_memo_member FOREIGN KEY (member_id)
     REFERENCES member (id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
 
--- ANNEX 분리·표 복원·재번역(scripts/foreign/fill_struct.py)은 fin_law_db.law_provision 에 직접 반영한다
--- (별도 보조 테이블 없음). ANNEX 는 article_no='ANNEX I'… 새 행으로 INSERT, 표는 text 에 마크다운으로 저장.
+-- ANNEX 분리·표 markdown 생성은 STN(sentinel ETL)이 적재 시 직접 수행(LQ fill_struct 폐기).
+-- LQ 는 fin_law_db 를 read-only 소비 + 번역(text_ko/heading_ko)만 채운다.
