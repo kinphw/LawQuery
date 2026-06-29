@@ -16,6 +16,7 @@
   <script src="auth-gate.js"></script>
   <style>
     /* 해외법령 전용(원문|번역|메모 2~3단 표) — 기존 style.css 무수정 */
+    .fm-wrap { max-width: 1680px; margin: 0 auto; }  /* 2단 비교라 넓게(과하지 않게 제한) */
     .fm-law-head { padding: .25rem 0 1rem; }
     .fm-table { table-layout: fixed; width: 100%; }
     .fm-table th { background: #212529; color: #fff; text-align: center; }
@@ -23,8 +24,14 @@
     .fm-col-en { width: 44%; }
     .fm-col-ko { width: 41%; }
     .fm-col-memo { width: 15%; }
-    .fm-en-body, .fm-ko, .fm-memo-view { white-space: pre-wrap; word-break: break-word; line-height: 1.55; }
+    .fm-en-body, .fm-ko { word-break: break-word; line-height: 1.55; }
+    .fm-flow { white-space: pre-wrap; word-break: break-word; }
+    .fm-flow + .fm-flow, .fm-flow + .fm-md-table, .fm-md-table + .fm-flow { margin-top: .45rem; }
+    .fm-memo-view { white-space: pre-wrap; word-break: break-word; line-height: 1.55; }
+    .fm-md-table { margin: .5rem 0; font-size: .82rem; width: 100%; }
+    .fm-md-table th { background: #f1f3f5; color: #212529; }
     .fm-head { font-weight: 600; margin-bottom: .35rem; color: #0d6efd; }
+    .fm-head.fm-annex { color: #6f42c1; font-size: 1.02rem; }
     .fm-part td { background: #e9ecef; font-weight: 700; font-size: .95rem; }
     .fm-ko.fm-empty { color: #adb5bd; font-style: italic; }
     .fm-memo { cursor: pointer; background: #fffdf3; }

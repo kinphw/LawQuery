@@ -23,7 +23,7 @@ export class ForeignView {
     const trans = this.transLabel(meta.translation_source);
     const status = this.statusLabel(meta.status);
 
-    let html = `<div class="container fm-wrap">`;
+    let html = `<div class="container-fluid fm-wrap">`;
     html += `<div class="fm-law-head">
       <h4 class="mb-1">${this.esc(meta.title_ko)}${meta.abbrev ? ` <span class="text-muted fs-6">(${this.esc(meta.abbrev)})</span>` : ''}</h4>
       <div class="text-muted small">${this.esc(meta.title_original)}</div>
@@ -52,9 +52,12 @@ export class ForeignView {
         lastPart = p.part_no;
         html += `<tr class="fm-part"><td colspan="3">${this.esc(p.part_no)}</td></tr>`;
       }
-      const head = `<div class="fm-head">Art. ${this.esc(p.article_no)}${p.heading ? ` — ${this.esc(p.heading)}` : ''}</div>`;
+      const isAnnex = /^ANNEX/i.test(p.article_no);
+      const head = isAnnex
+        ? `<div class="fm-head fm-annex">${this.esc(p.heading || p.article_no)}</div>`
+        : `<div class="fm-head">Art. ${this.esc(p.article_no)}${p.heading ? ` — ${this.esc(p.heading)}` : ''}</div>`;
       const ko = p.text_ko
-        ? `<div class="fm-ko">${this.esc(p.text_ko)}</div>`
+        ? `<div class="fm-ko">${this.renderRich(p.text_ko)}</div>`
         : `<div class="fm-ko fm-empty">— 번역 준비중 —</div>`;
       const memo = memos[p.provision_id];
       const memoCell = canMemo
@@ -65,7 +68,7 @@ export class ForeignView {
              <i class="fas fa-lock"></i>
            </td>`;
       html += `<tr>
-        <td class="fm-en">${head}<div class="fm-en-body">${this.esc(p.text_original || '')}</div></td>
+        <td class="fm-en">${head}<div class="fm-en-body">${this.renderRich(p.text_original || '')}</div></td>
         <td>${ko}</td>
         ${memoCell}
       </tr>`;
@@ -73,6 +76,64 @@ export class ForeignView {
 
     html += `</tbody></table></div>`;
     return html;
+  }
+
+  /**
+   * 본문 렌더: 마크다운 표(| … |)가 있으면 표로 복원하고, 나머지는 개행 정리 후 문단으로.
+   * 일반 평문(표 없음)은 표 감지에 안 걸려 기존 동작과 동일.
+   */
+  private renderRich(s: string): string {
+    const raw = String(s ?? '');
+    if (!/^\s*\|.*\|\s*$/m.test(raw)) {
+      return `<div class="fm-flow">${this.esc(this.normalize(raw))}</div>`;
+    }
+    const lines = raw.split('\n');
+    let html = '';
+    let tbl: string[] = [];
+    let para: string[] = [];
+    const flushTable = () => { if (tbl.length) { html += this.mdTable(tbl); tbl = []; } };
+    const flushPara = () => {
+      if (para.length) {
+        const t = para.join('\n').trim();
+        if (t) html += `<div class="fm-flow">${this.esc(this.normalize(t))}</div>`;
+        para = [];
+      }
+    };
+    for (const ln of lines) {
+      if (/^\s*\|.*\|\s*$/.test(ln)) { flushPara(); tbl.push(ln); }
+      else { flushTable(); para.push(ln); }
+    }
+    flushTable(); flushPara();
+    return html;
+  }
+
+  /** 마크다운 표 행 배열 → HTML 표. |---| 구분행은 제거. */
+  private mdTable(rows: string[]): string {
+    const cells = (r: string) =>
+      r.replace(/^\s*\|/, '').replace(/\|\s*$/, '').split('|').map(c => c.trim());
+    const body = rows.filter(r => !/^\s*\|[\s:|-]+\|\s*$/.test(r));
+    if (!body.length) return '';
+    let h = '<table class="table table-sm table-bordered fm-md-table"><thead><tr>';
+    h += cells(body[0]).map(c => `<th>${this.esc(c)}</th>`).join('') + '</tr></thead><tbody>';
+    for (const r of body.slice(1)) {
+      h += '<tr>' + cells(r).map(c => `<td>${this.esc(c)}</td>`).join('') + '</tr>';
+    }
+    return h + '</tbody></table>';
+  }
+
+  /**
+   * 과도한 개행 정리(미국 Code·SG PDF 추출본은 단어 단위로 줄바꿈됨).
+   * 항목 표시자((a)·(1)·1.·1)) 앞 개행만 유지하고 나머지 단일 개행은 공백으로 합친다.
+   * 원문 데이터는 보존하고 표시 단계에서만 적용.
+   */
+  private normalize(s: string): string {
+    return String(s ?? '')
+      .replace(/\r/g, '')
+      .replace(/[ \t]*\n[ \t]*/g, '\n')                                  // 개행 주변 공백 제거
+      .replace(/\n(?!\s*(\([0-9a-zA-Z]+\)|[0-9]+[.)]))/g, ' ')           // 표시자 아닌 개행 → 공백
+      .replace(/[ \t]{2,}/g, ' ')                                        // 중복 공백 정리
+      .replace(/\n{2,}/g, '\n')                                          // 빈 줄 정리
+      .trim();
   }
 
   private esc(s: string): string {

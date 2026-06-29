@@ -27,3 +27,6 @@ CREATE TABLE IF NOT EXISTS foreign_memo (
   CONSTRAINT fk_foreign_memo_member FOREIGN KEY (member_id)
     REFERENCES member (id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
+
+-- ANNEX 분리·표 복원·재번역(scripts/foreign/fill_struct.py)은 fin_law_db.law_provision 에 직접 반영한다
+-- (별도 보조 테이블 없음). ANNEX 는 article_no='ANNEX I'… 새 행으로 INSERT, 표는 text 에 마크다운으로 저장.
