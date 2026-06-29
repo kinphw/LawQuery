@@ -42,6 +42,7 @@ export interface ForeignProvision {
   article_no: string;
   part_no: string | null;
   heading: string | null;
+  heading_ko: string | null; // 조 제목 한국어(목차·바로가기용)
   text_original: string | null;
   text_ko: string | null;
 }
@@ -82,8 +83,9 @@ export class ForeignModel {
             WHERE p2.law_id = p.law_id AND p2.article_no = p.article_no
             ORDER BY p2.ordinal LIMIT 1) AS provision_id,
           p.article_no,
-          MIN(p.part_no)  AS part_no,
-          MIN(p.heading)  AS heading,
+          MIN(p.part_no)     AS part_no,
+          MIN(p.heading)     AS heading,
+          MIN(p.heading_ko)  AS heading_ko,
           GROUP_CONCAT(p.text_original ORDER BY p.ordinal SEPARATOR '\n\n') AS text_original,
           MAX(p.text_ko)  AS text_ko
          FROM law_provision p

@@ -16,7 +16,18 @@
   <script src="auth-gate.js"></script>
   <style>
     /* 해외법령 전용(원문|번역|메모 2~3단 표) — 기존 style.css 무수정 */
+    html { scroll-behavior: smooth; }
     .fm-wrap { max-width: 1680px; margin: 0 auto; }  /* 2단 비교라 넓게(과하지 않게 제한) */
+    /* 조문 목차·바로가기 */
+    .fm-toc { border: 1px solid #dee2e6; border-radius: .5rem; padding: .6rem .85rem; margin-bottom: 1rem; background: #fafbfc; }
+    .fm-toc-title { font-weight: 700; margin-bottom: .45rem; font-size: .95rem; }
+    .fm-toc-body { max-height: 240px; overflow-y: auto; }
+    .fm-toc-part { font-weight: 600; color: #6c757d; font-size: .82rem; margin: .5rem 0 .25rem; }
+    .fm-toc-item { display: inline-block; margin: .12rem .3rem .12rem 0; padding: .12rem .45rem; font-size: .8rem;
+      background: #fff; border: 1px solid #e3e6ea; border-radius: .25rem; text-decoration: none; color: #0d6efd; white-space: nowrap; }
+    .fm-toc-item:hover { background: #e7f1ff; border-color: #0d6efd; }
+    .fm-toc-h { color: #555; }
+    tr[id^="fart-"] { scroll-margin-top: 64px; }  /* 상단 상태바(sticky)에 가리지 않게 */
     .fm-law-head { padding: .25rem 0 1rem; }
     .fm-table { table-layout: fixed; width: 100%; }
     .fm-table th { background: #212529; color: #fff; text-align: center; }

@@ -40,6 +40,8 @@ export class ForeignView {
       return html;
     }
 
+    html += this.buildToc(provisions);
+
     html += `<table class="table table-bordered fm-table"><thead><tr>
       <th class="fm-col-en">원문</th>
       <th class="fm-col-ko">국문 번역</th>
@@ -47,7 +49,7 @@ export class ForeignView {
     </tr></thead><tbody>`;
 
     let lastPart: string | null = null;
-    for (const p of provisions) {
+    provisions.forEach((p, idx) => {
       if (p.part_no && p.part_no !== lastPart) {
         lastPart = p.part_no;
         html += `<tr class="fm-part"><td colspan="3">${this.esc(p.part_no)}</td></tr>`;
@@ -67,15 +69,38 @@ export class ForeignView {
         : `<td class="fm-memo fm-locked" title="PRO 전용 — 로그인 후 이용">
              <i class="fas fa-lock"></i>
            </td>`;
-      html += `<tr>
+      html += `<tr id="fart-${idx}">
         <td class="fm-en">${head}<div class="fm-en-body">${this.renderRich(p.text_original || '')}</div></td>
         <td>${ko}</td>
         ${memoCell}
       </tr>`;
-    }
+    });
 
     html += `</tbody></table></div>`;
     return html;
+  }
+
+  /** 조문 목차(편/장 그룹 + 조 칩). 칩 클릭 시 해당 조(tr#fart-N)로 스크롤. */
+  private buildToc(provisions: ForeignProvision[]): string {
+    let body = '';
+    let lastPart: string | null = null;
+    provisions.forEach((p, idx) => {
+      if (p.part_no && p.part_no !== lastPart) {
+        lastPart = p.part_no;
+        body += `<div class="fm-toc-part">${this.esc(this.cut(p.part_no, 70))}</div>`;
+      }
+      const isAnnex = /^ANNEX/i.test(p.article_no);
+      const label = isAnnex ? this.esc(p.article_no) : `제${this.esc(p.article_no)}조`;
+      const title = p.heading_ko || p.heading;  // 한국어 제목 우선, 없으면 영문 폴백
+      const h = (title && !isAnnex) ? ` <span class="fm-toc-h">${this.esc(this.cut(title, 24))}</span>` : '';
+      body += `<a class="fm-toc-item" href="#fart-${idx}">${label}${h}</a>`;
+    });
+    return `<div class="fm-toc"><div class="fm-toc-title"><i class="fas fa-list-ul"></i> 조문 목차 · 바로가기</div><div class="fm-toc-body">${body}</div></div>`;
+  }
+
+  private cut(s: string, n: number): string {
+    s = String(s ?? '');
+    return s.length > n ? s.slice(0, n) + '…' : s;
   }
 
   /**

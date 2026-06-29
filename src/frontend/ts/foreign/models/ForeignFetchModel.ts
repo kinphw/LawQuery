@@ -33,6 +33,7 @@ export interface ForeignProvision {
   article_no: string;
   part_no: string | null;
   heading: string | null;
+  heading_ko: string | null;
   text_original: string | null;
   text_ko: string | null;
 }
