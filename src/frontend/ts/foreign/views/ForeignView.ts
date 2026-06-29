@@ -100,7 +100,11 @@ export class ForeignView {
         const enPart = en ? `<span class="fm-toc-en">${this.esc(this.cut(en, 26))}</span>` : '';
         h = ` <span class="fm-toc-h">${[koPart, enPart].filter(Boolean).join(' ')}</span>`;
       }
-      body += `<a class="fm-toc-item" href="#fart-${idx}">${label}${h}</a>`;
+      // 호버 시 전체 제목(자르지 않은 한글/영문) 툴팁
+      const full = isAnnex
+        ? (p.heading || p.article_no)
+        : `제${p.article_no}조 ${[ko, en].filter(Boolean).join(' / ')}`.trim();
+      body += `<a class="fm-toc-item" href="#fart-${idx}" title="${this.esc(full)}">${label}${h}</a>`;
     });
     return `<div class="fm-toc"><div class="fm-toc-title"><i class="fas fa-list-ul"></i> 조문 목차 · 바로가기</div><div class="fm-toc-body">${body}</div></div>`;
   }
