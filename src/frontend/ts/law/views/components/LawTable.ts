@@ -102,11 +102,12 @@ export class LawTable {
             </thead>
         `;
 
-        html += '<tbody>';
+        // 각 법조문(루트)을 독립 tbody 블록으로 — content-visibility:auto 가 화면 밖 블록 렌더를 건너뛴다
+        // (자본시장법 600+조 가상화). rowspan 은 블록 내부에 갇혀 안전, 이벤트/검색 영향 없음.
         results.forEach(law => {
-            html += this.renderLawRows(law, searchText);
+            html += `<tbody class="lq-vblock">${this.renderLawRows(law, searchText)}</tbody>`;
         });
-        html += '</tbody></table></div>';
+        html += '</table></div>';
         return html;
     }
 
