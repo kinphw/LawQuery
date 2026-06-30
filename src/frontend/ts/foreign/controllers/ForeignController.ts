@@ -19,8 +19,8 @@ export class ForeignController {
   private header = new Header();
   private laws: ForeignLawListItem[] = [];
   private currentCode = '';
-  private canMemo = false;
-  private memos: Record<string, string> = {}; // "<article_no>|<seg_index>" → memo
+  private canEditMemo = false; // 운영자만 메모 작성·수정(열람은 전체 공개)
+  private memos: Record<string, string> = {}; // "<article_no>|<seg_index>" → memo (전역 운영자 큐레이션)
 
   // 관리자 인라인 수정(개발계 전용) 상태
   private canEdit = false;                         // 백엔드 editable(관리자+개발계)
@@ -35,9 +35,9 @@ export class ForeignController {
       this.header.setInfoButtonHandler();
     }
 
-    // PRO 여부(메모 편집 가능) 판정
+    // 운영자 여부(메모 작성·수정 가능) 판정. 메모 열람은 전체 공개라 별도 게이트 없음.
     const me = await this.resolveMe();
-    this.canMemo = !!(me && me.authenticated && me.plan === 'pro');
+    this.canEditMemo = !!(me && me.authenticated && me.role === 'admin');
 
     this.laws = await this.model.getList();
     const results = document.getElementById('results')!;
@@ -120,7 +120,7 @@ export class ForeignController {
     this.canEdit = !!data.editable;
     this.pidMap.clear();
     for (const p of data.provisions) this.pidMap.set(p.provision_id, p);
-    this.memos = this.canMemo ? (await this.model.getMemos(code) || {}) : {};
+    this.memos = await this.model.getMemos(code); // 전역 운영자 메모 — 전체 공개 열람
     this.renderLaw();
     history.replaceState(null, '', `?code=${code}`);
     this.updateLabel();
@@ -130,20 +130,16 @@ export class ForeignController {
   private renderLaw(): void {
     if (!this.meta) return;
     const results = document.getElementById('results')!;
-    results.innerHTML = this.view.renderTable(this.meta, this.provisions, this.memos, this.canMemo, this.canEdit);
+    results.innerHTML = this.view.renderTable(this.meta, this.provisions, this.memos, this.canEditMemo, this.canEdit);
   }
 
-  // ── 메모 편집 (이벤트 위임) ──────────────────────────────────────────────────
+  // ── 메모 편집 (이벤트 위임) — 운영자만. 일반 사용자에겐 읽기 전용. ───────────────
   private bindMemoDelegation(): void {
     const results = document.getElementById('results')!;
     results.addEventListener('click', (e) => {
       const cell = (e.target as HTMLElement).closest('.fm-memo') as HTMLElement | null;
       if (!cell) return;
-      if (cell.classList.contains('fm-locked')) {
-        const next = encodeURIComponent(location.pathname.replace(/^\//, '') + location.search);
-        location.href = `login.html?next=${next}`;
-        return;
-      }
+      if (!this.canEditMemo) return; // 비운영자: 읽기 전용
       if (cell.classList.contains('fm-editing')) return;
       this.openEditor(cell);
     });

@@ -77,15 +77,14 @@ export class ForeignFetchModel {
     return r.ok;
   }
 
-  /** 메모 맵 { "<article_no>|<seg_index>": memo }. PRO가 아니거나 비로그인이면 null(401/403). */
-  async getMemos(code: string): Promise<Record<string, string> | null> {
+  /** 메모 맵 { "<article_no>|<seg_index>": memo } (운영자 큐레이션, 전역·공개 열람). 실패 시 {}. */
+  async getMemos(code: string): Promise<Record<string, string>> {
     const r = await fetch(`/api/foreign/memo?code=${encodeURIComponent(code)}`, { credentials: 'include' });
-    if (r.status === 401 || r.status === 403) return null;
     const j = await r.json().catch(() => null);
-    return j && j.success ? j.data : null;
+    return j && j.success ? j.data : {};
   }
 
-  /** 메모 저장(빈 문자열이면 서버가 삭제 처리). 논리키 (code, article_no, seg_index). */
+  /** 메모 저장(빈 문자열이면 서버가 삭제 처리). 운영자 전용. 논리키 (code, article_no, seg_index). */
   async saveMemo(code: string, articleNo: string, segIndex: number, memo: string): Promise<boolean> {
     const r = await fetch('/api/foreign/memo', {
       method: 'PUT',

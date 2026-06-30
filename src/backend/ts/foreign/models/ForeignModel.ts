@@ -164,31 +164,32 @@ export class ForeignModel {
     return (result as any)?.affectedRows ?? 0;
   }
 
-  // ── 메모(ldb_auth.foreign_memo) — 논리키 (law_code, article_no, seg_index) ─────
-  /** { "<article_no>|<seg_index>": memo } 맵 */
-  async getMemos(memberId: number, code: string): Promise<Record<string, string>> {
+  // ── 메모(ldb_auth.foreign_memo) — 운영자 큐레이션(전역). 논리키 (law_code, article_no, seg_index) ─
+  //    작성=운영자(adminGuard), 열람=전체 공개. 더는 회원별이 아니라 법조문(seg)별 1건.
+  /** { "<article_no>|<seg_index>": memo } 맵 (전역) */
+  async getMemos(code: string): Promise<Record<string, string>> {
     const rows = await this.auth().query<{ article_no: string; seg_index: number; memo: string }>(
-      `SELECT article_no, seg_index, memo FROM foreign_memo WHERE member_id = ? AND law_code = ?`,
-      [memberId, code]
+      `SELECT article_no, seg_index, memo FROM foreign_memo WHERE law_code = ?`,
+      [code]
     );
     const map: Record<string, string> = {};
     rows.forEach(r => { map[`${r.article_no}|${r.seg_index}`] = r.memo; });
     return map;
   }
 
-  async upsertMemo(memberId: number, code: string, articleNo: string, segIndex: number, memo: string): Promise<void> {
+  async upsertMemo(code: string, articleNo: string, segIndex: number, memo: string): Promise<void> {
     await this.auth().query(
-      `INSERT INTO foreign_memo (member_id, law_code, article_no, seg_index, memo)
-            VALUES (?, ?, ?, ?, ?)
+      `INSERT INTO foreign_memo (law_code, article_no, seg_index, memo)
+            VALUES (?, ?, ?, ?)
        ON DUPLICATE KEY UPDATE memo = VALUES(memo)`,
-      [memberId, code, articleNo, segIndex, memo]
+      [code, articleNo, segIndex, memo]
     );
   }
 
-  async deleteMemo(memberId: number, code: string, articleNo: string, segIndex: number): Promise<void> {
+  async deleteMemo(code: string, articleNo: string, segIndex: number): Promise<void> {
     await this.auth().query(
-      `DELETE FROM foreign_memo WHERE member_id = ? AND law_code = ? AND article_no = ? AND seg_index = ?`,
-      [memberId, code, articleNo, segIndex]
+      `DELETE FROM foreign_memo WHERE law_code = ? AND article_no = ? AND seg_index = ?`,
+      [code, articleNo, segIndex]
     );
   }
 }

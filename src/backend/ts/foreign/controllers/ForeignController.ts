@@ -91,7 +91,8 @@ export class ForeignController {
     }
   };
 
-  // ── 메모(PRO 전용) — 논리키 (code, article_no, seg_index) ────────────────────
+  // ── 메모(운영자 큐레이션, 전역) — 논리키 (code, article_no, seg_index) ──────────
+  //    열람=공개(optionalAuth), 작성/삭제=운영자(adminGuard) — 라우터에서 게이트 적용.
   getMemos = async (req: Request, res: Response): Promise<void> => {
     const code = String(req.query.code || '').trim();
     if (!code) {
@@ -99,7 +100,7 @@ export class ForeignController {
       return;
     }
     try {
-      const map = await this.model.getMemos(req.member!.id, code);
+      const map = await this.model.getMemos(code);
       res.status(200).json({ success: true, data: map }); // { "<article_no>|<seg_index>": memo }
     } catch (e) {
       console.error('[foreign] getMemos', e);
@@ -107,7 +108,7 @@ export class ForeignController {
     }
   };
 
-  /** 메모 저장(upsert). 빈 문자열이면 삭제로 처리. */
+  /** 메모 저장(upsert). 빈 문자열이면 삭제로 처리. 운영자 전용(adminGuard). */
   putMemo = async (req: Request, res: Response): Promise<void> => {
     const lawCode = String(req.body?.law_code || '').trim();
     const articleNo = String(req.body?.article_no || '').trim();
@@ -119,11 +120,11 @@ export class ForeignController {
     }
     try {
       if (!memo.trim()) {
-        await this.model.deleteMemo(req.member!.id, lawCode, articleNo, segIndex);
+        await this.model.deleteMemo(lawCode, articleNo, segIndex);
         res.status(200).json({ success: true, deleted: true });
         return;
       }
-      await this.model.upsertMemo(req.member!.id, lawCode, articleNo, segIndex, memo);
+      await this.model.upsertMemo(lawCode, articleNo, segIndex, memo);
       res.status(200).json({ success: true });
     } catch (e) {
       console.error('[foreign] putMemo', e);
@@ -140,7 +141,7 @@ export class ForeignController {
       return;
     }
     try {
-      await this.model.deleteMemo(req.member!.id, lawCode, articleNo, segIndex);
+      await this.model.deleteMemo(lawCode, articleNo, segIndex);
       res.status(200).json({ success: true });
     } catch (e) {
       console.error('[foreign] deleteMemo', e);

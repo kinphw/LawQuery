@@ -25,9 +25,12 @@ export class ForeignView {
     return 'fa-' + String(articleNo).replace(/[^a-zA-Z0-9]/g, '_');
   }
 
-  renderTable(meta: ForeignLawMeta, provisions: ForeignProvision[], memos: Record<string, string>, canMemo: boolean, canEdit = false): string {
+  renderTable(meta: ForeignLawMeta, provisions: ForeignProvision[], memos: Record<string, string>, canEditMemo: boolean, canEdit = false): string {
     const trans = this.transLabel(meta.translation_source);
     const status = this.statusLabel(meta.status);
+    // 메모(운영자 큐레이션) 칸은 운영자이거나 표시할 메모가 있을 때만 노출 → 빈 칸 낭비 방지.
+    const showMemo = canEditMemo || Object.keys(memos).length > 0;
+    const cols = showMemo ? 3 : 2;
 
     const introHtml = meta.summary ? `<div class="fm-intro">
         <div class="fm-intro-summary">${this.esc(meta.summary)}</div>
@@ -61,7 +64,7 @@ export class ForeignView {
     html += `<table class="table table-bordered fm-table"><thead><tr>
       <th class="fm-col-en">원문</th>
       <th class="fm-col-ko">국문 번역</th>
-      <th class="fm-col-memo">메모${canMemo ? '' : ' <i class="fas fa-lock small"></i>'}</th>
+      ${showMemo ? '<th class="fm-col-memo">메모</th>' : ''}
     </tr></thead><tbody>`;
 
     let lastPart: string | null = null;
@@ -69,25 +72,20 @@ export class ForeignView {
     for (const seg of provisions) {
       if (seg.part_no && seg.part_no !== lastPart) {
         lastPart = seg.part_no;
-        html += `<tr class="fm-part"><td colspan="3">${this.esc(seg.part_no)}</td></tr>`;
+        html += `<tr class="fm-part"><td colspan="${cols}">${this.esc(seg.part_no)}</td></tr>`;
       }
       if (seg.article_no !== lastArticle) {
         lastArticle = seg.article_no;
         const isAnnex = /^ANNEX/i.test(seg.article_no);
-        html += `<tr class="fm-art-head${isAnnex ? ' fm-annex' : ''}" id="${this.articleId(seg.article_no)}" data-pid="${seg.provision_id}"><td colspan="3">${this.headInner(seg, canEdit)}</td></tr>`;
+        html += `<tr class="fm-art-head${isAnnex ? ' fm-annex' : ''}" id="${this.articleId(seg.article_no)}" data-pid="${seg.provision_id}"><td colspan="${cols}">${this.headInner(seg, canEdit)}</td></tr>`;
       }
       const indent = seg.seg_kind === 'item' ? ' fm-indent' : '';
       const key = `${seg.article_no}|${seg.seg_index}`;
       const memo = memos[key];
-      const memoCell = canMemo
-        ? `<td class="fm-memo" data-code="${this.esc(meta.code)}" data-article="${this.esc(seg.article_no)}" data-seg="${seg.seg_index}">
-             <div class="fm-memo-view">${memo ? this.esc(memo) : '<span class="fm-memo-add">+ 메모</span>'}</div>
-           </td>`
-        : `<td class="fm-memo fm-locked" title="PRO 전용 — 로그인 후 이용"><i class="fas fa-lock"></i></td>`;
       html += `<tr class="fm-seg${indent}" data-pid="${seg.provision_id}">
         <td class="fm-en" data-field="text_original">${this.cellInner('text_original', seg, canEdit)}</td>
         <td class="fm-ko-cell" data-field="text_ko">${this.cellInner('text_ko', seg, canEdit)}</td>
-        ${memoCell}
+        ${showMemo ? this.memoCell(meta.code, seg, memo, canEditMemo) : ''}
       </tr>`;
     }
 
@@ -110,6 +108,20 @@ export class ForeignView {
       ? `<div class="fm-ko">${this.renderRich(prov.text_ko)}</div>`
       : `<div class="fm-ko fm-empty">— 번역 준비중 —</div>`;
     return `${pen}${ko}`;
+  }
+
+  /**
+   * 메모 셀(운영자 큐레이션). 운영자=편집 가능(클릭 시 .fm-memo 위임), 일반=읽기 전용 표시.
+   * 빈 메모는 운영자에겐 '+ 메모' 플레이스홀더, 일반 사용자에겐 빈 칸.
+   */
+  private memoCell(code: string, seg: ForeignProvision, memo: string | undefined, canEditMemo: boolean): string {
+    if (canEditMemo) {
+      const inner = memo ? this.esc(memo) : '<span class="fm-memo-add">+ 메모</span>';
+      return `<td class="fm-memo fm-memo-admin" data-code="${this.esc(code)}" data-article="${this.esc(seg.article_no)}" data-seg="${seg.seg_index}">
+             <div class="fm-memo-view">${inner}</div>
+           </td>`;
+    }
+    return `<td class="fm-memo-ro">${memo ? `<div class="fm-memo-view">${this.esc(memo)}</div>` : ''}</td>`;
   }
 
   /** 조 헤더 셀 내부(수정버튼 + 제목). 제목 수정 종료/저장 후 복원에도 재사용. */

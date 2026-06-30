@@ -50,11 +50,12 @@
     .fm-seg.fm-indent td.fm-en, .fm-seg.fm-indent td:nth-child(2) { padding-left: 1.6rem; }
     .fm-part td { background: #e9ecef; font-weight: 700; font-size: .95rem; }
     .fm-ko.fm-empty { color: #adb5bd; font-style: italic; }
+    /* 메모 = 운영자 큐레이션. 운영자 칸(.fm-memo)=편집 가능, 일반 칸(.fm-memo-ro)=읽기 전용 */
     .fm-memo { cursor: pointer; background: #fffdf3; }
     .fm-memo:hover { background: #fff6d6; }
+    .fm-memo-ro { background: #fffdf3; }
     .fm-memo-view { font-size: .85rem; }
     .fm-memo-add { color: #c0a000; font-size: .85rem; }
-    .fm-locked { cursor: pointer; text-align: center; color: #ced4da; background: #f8f9fa; }
     .fm-memo-actions { margin-top: .35rem; display: flex; align-items: center; gap: .35rem; }
     @media (max-width: 768px) {
       .fm-table, .fm-table tbody, .fm-table tr, .fm-table td { display: block; width: 100% !important; }
