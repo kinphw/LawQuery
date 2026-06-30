@@ -1,5 +1,4 @@
 import { ForeignLawMeta, ForeignProvision } from '../models/ForeignFetchModel';
-import { getForeignIntro } from '../foreignIntro';
 
 /**
  * 해외법령 뷰 (seg-level) — 1 row = 1 seg.
@@ -26,15 +25,14 @@ export class ForeignView {
     return 'fa-' + String(articleNo).replace(/[^a-zA-Z0-9]/g, '_');
   }
 
-  renderTable(meta: ForeignLawMeta, provisions: ForeignProvision[], memos: Record<string, string>, canMemo: boolean): string {
+  renderTable(meta: ForeignLawMeta, provisions: ForeignProvision[], memos: Record<string, string>, canMemo: boolean, canEdit = false): string {
     const trans = this.transLabel(meta.translation_source);
     const status = this.statusLabel(meta.status);
 
-    const intro = getForeignIntro(meta.code);
-    const introHtml = intro ? `<div class="fm-intro">
-        <div class="fm-intro-summary">${this.esc(intro.summary)}</div>
-        ${intro.highlights && intro.highlights.length
-          ? `<ul class="fm-intro-hi">${intro.highlights.map(h => `<li>${this.esc(h)}</li>`).join('')}</ul>`
+    const introHtml = meta.summary ? `<div class="fm-intro">
+        <div class="fm-intro-summary">${this.esc(meta.summary)}</div>
+        ${meta.highlights && meta.highlights.length
+          ? `<ul class="fm-intro-hi">${meta.highlights.map(h => `<li>${this.esc(h)}</li>`).join('')}</ul>`
           : ''}
         ${meta.source_url ? `<div class="fm-intro-src"><a href="${this.esc(meta.source_url)}" target="_blank" rel="noopener"><i class="fas fa-up-right-from-square"></i> 원문 출처</a></div>` : ''}
       </div>` : '';
@@ -76,19 +74,9 @@ export class ForeignView {
       if (seg.article_no !== lastArticle) {
         lastArticle = seg.article_no;
         const isAnnex = /^ANNEX/i.test(seg.article_no);
-        const koTitle = (seg.heading_ko || '').trim();
-        const enTitle = (seg.heading || '').trim();
-        const title = isAnnex
-          ? this.esc(enTitle || seg.article_no)
-          : `제${this.esc(seg.article_no)}조` +
-            (koTitle ? ` ${this.esc(koTitle)}` : '') +
-            (enTitle ? ` <span class="fm-toc-en">${this.esc(enTitle)}</span>` : '');
-        html += `<tr class="fm-art-head${isAnnex ? ' fm-annex' : ''}" id="${this.articleId(seg.article_no)}"><td colspan="3">${title}</td></tr>`;
+        html += `<tr class="fm-art-head${isAnnex ? ' fm-annex' : ''}" id="${this.articleId(seg.article_no)}" data-pid="${seg.provision_id}"><td colspan="3">${this.headInner(seg, canEdit)}</td></tr>`;
       }
       const indent = seg.seg_kind === 'item' ? ' fm-indent' : '';
-      const ko = seg.text_ko
-        ? `<div class="fm-ko">${this.renderRich(seg.text_ko)}</div>`
-        : `<div class="fm-ko fm-empty">— 번역 준비중 —</div>`;
       const key = `${seg.article_no}|${seg.seg_index}`;
       const memo = memos[key];
       const memoCell = canMemo
@@ -96,15 +84,53 @@ export class ForeignView {
              <div class="fm-memo-view">${memo ? this.esc(memo) : '<span class="fm-memo-add">+ 메모</span>'}</div>
            </td>`
         : `<td class="fm-memo fm-locked" title="PRO 전용 — 로그인 후 이용"><i class="fas fa-lock"></i></td>`;
-      html += `<tr class="fm-seg${indent}">
-        <td class="fm-en"><div class="fm-en-body">${this.renderRich(seg.text_original || '')}</div></td>
-        <td>${ko}</td>
+      html += `<tr class="fm-seg${indent}" data-pid="${seg.provision_id}">
+        <td class="fm-en" data-field="text_original">${this.cellInner('text_original', seg, canEdit)}</td>
+        <td class="fm-ko-cell" data-field="text_ko">${this.cellInner('text_ko', seg, canEdit)}</td>
         ${memoCell}
       </tr>`;
     }
 
     html += `</tbody></table></div>`;
     return html;
+  }
+
+  /**
+   * 원문/번역 셀 내부(관리자 수정버튼 + 본문). 인라인 수정 종료/저장 후 셀 복원에도 재사용.
+   * → 셀 단위 교체라 거대 표라도 그 셀만 다시 그린다(table-layout:fixed → 열너비 재계산 없음).
+   */
+  cellInner(field: 'text_original' | 'text_ko', prov: ForeignProvision, canEdit: boolean): string {
+    const pen = canEdit
+      ? `<button type="button" class="fm-admin-edit fm-edit-cell" title="${field === 'text_ko' ? '번역' : '원문'} 수정"><i class="fas fa-pen"></i></button>`
+      : '';
+    if (field === 'text_original') {
+      return `${pen}<div class="fm-en-body">${this.renderRich(prov.text_original || '')}</div>`;
+    }
+    const ko = prov.text_ko
+      ? `<div class="fm-ko">${this.renderRich(prov.text_ko)}</div>`
+      : `<div class="fm-ko fm-empty">— 번역 준비중 —</div>`;
+    return `${pen}${ko}`;
+  }
+
+  /** 조 헤더 셀 내부(수정버튼 + 제목). 제목 수정 종료/저장 후 복원에도 재사용. */
+  headInner(prov: ForeignProvision, canEdit: boolean): string {
+    const isAnnex = /^ANNEX/i.test(prov.article_no);
+    const koTitle = (prov.heading_ko || '').trim();
+    const enTitle = (prov.heading || '').trim();
+    const title = isAnnex
+      ? this.esc(enTitle || prov.article_no)
+      : `제${this.esc(prov.article_no)}조` +
+        (koTitle ? ` ${this.esc(koTitle)}` : '') +
+        (enTitle ? ` <span class="fm-toc-en">${this.esc(enTitle)}</span>` : '');
+    const pen = canEdit
+      ? `<button type="button" class="fm-admin-edit fm-edit-head" title="제목 수정"><i class="fas fa-pen"></i></button>`
+      : '';
+    return `${pen}<span class="fm-art-title">${title}</span>`;
+  }
+
+  /** 목차 HTML(관리자 제목 수정 후 목차만 가볍게 갱신용 공개 래퍼 — article 수만큼이라 저렴). */
+  buildTocHtml(provisions: ForeignProvision[]): string {
+    return this.buildToc(provisions);
   }
 
   /** 조문 목차(편/장 그룹 + 조 칩, article 단위). 칩 클릭 시 article 헤더로 스크롤. */

@@ -65,6 +65,21 @@
       .fm-table td:nth-child(2)::before { content: '번역'; display: block; font-size: .7rem; color: #888; }
     }
 
+    /* ── 관리자 인라인 수정(개발계 전용) — 칸 단위 그 자리 편집 ── */
+    .fm-admin-edit { float: right; margin: 0 0 .25rem .4rem; padding: .05rem .4rem; font-size: .72rem;
+      line-height: 1.4; color: #fff; background: #6f42c1; border: 0; border-radius: .25rem; cursor: pointer; opacity: .35; }
+    .fm-en:hover .fm-admin-edit, .fm-ko-cell:hover .fm-admin-edit, .fm-art-head:hover .fm-admin-edit,
+    .fm-admin-edit:hover { opacity: 1; }
+    .fm-art-head .fm-admin-edit { background: #0d6efd; }
+    .fm-cell-editing { background: #f6f2fc !important; }
+    .fm-ed-input { font-size: .9rem; width: 100%; }
+    .fm-en .fm-ed-input { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .85rem; }
+    .fm-ed-warn { font-size: .76rem; color: #b8860b; margin-top: .3rem; }
+    .fm-edit-grid { display: flex; flex-direction: column; gap: .2rem; }
+    .fm-edit-label { font-size: .82rem; font-weight: 600; color: #495057; margin: .3rem 0 .1rem; }
+    .fm-edit-label:first-child { margin-top: 0; }
+    .fm-edit-actions { margin-top: .5rem; display: flex; align-items: center; gap: .4rem; flex-wrap: wrap; }
+
     /* ── 뷰어 상단: 목록 백링크 + 소개 카드 ── */
     .fm-back { margin-bottom: .5rem; }
     .fm-back a { font-size: .9rem; color: #6c757d; text-decoration: none; }

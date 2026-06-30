@@ -13,6 +13,11 @@ export interface ForeignLawListItem {
   is_crypto: number;
   provision_count: number;
   ko_count: number;
+  summary: string | null;
+  tags: string[] | null;
+  highlights: string[] | null;
+  sort_order: number;
+  hidden: number;
 }
 
 export interface ForeignLawMeta {
@@ -28,6 +33,8 @@ export interface ForeignLawMeta {
   official_citation: string | null;
   source_url: string | null;
   translation_source: string;
+  summary: string | null;
+  highlights: string[] | null;
 }
 
 export interface ForeignProvision {
@@ -50,10 +57,24 @@ export class ForeignFetchModel {
     return j && j.success ? j.data : [];
   }
 
-  async getProvisions(code: string): Promise<{ meta: ForeignLawMeta; provisions: ForeignProvision[] } | null> {
+  async getProvisions(code: string): Promise<{ meta: ForeignLawMeta; provisions: ForeignProvision[]; editable?: boolean } | null> {
     const r = await fetch(`/api/foreign/provisions?code=${encodeURIComponent(code)}`, { credentials: 'include' });
     const j = await r.json().catch(() => null);
     return j && j.success ? j.data : null;
+  }
+
+  /**
+   * 관리자 본문 수정(개발계 전용). fields = { text_original?, text_ko?, heading?, heading_ko? }.
+   * 성공 true / 실패 false(권한 없음·운영 차단·오류).
+   */
+  async updateProvision(provisionId: number, fields: Record<string, string>): Promise<boolean> {
+    const r = await fetch('/api/foreign/admin/provision', {
+      method: 'PUT',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ provision_id: provisionId, ...fields }),
+    });
+    return r.ok;
   }
 
   /** 메모 맵 { "<article_no>|<seg_index>": memo }. PRO가 아니거나 비로그인이면 null(401/403). */

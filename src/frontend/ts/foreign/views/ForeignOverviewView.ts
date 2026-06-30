@@ -1,5 +1,4 @@
 import { ForeignLawListItem } from '../models/ForeignFetchModel';
-import { getForeignIntro } from '../foreignIntro';
 
 /**
  * 해외법령 랜딩 = 국가별 소개 카탈로그.
@@ -58,13 +57,12 @@ export class ForeignOverviewView {
   }
 
   private card(l: ForeignLawListItem): string {
-    const intro = getForeignIntro(l.code);
     const abbrev = l.abbrev ? `<span class="badge bg-dark me-1">${this.esc(l.abbrev)}</span>` : '';
     const crypto = l.is_crypto ? '<span class="badge bg-info text-dark">가상자산</span>' : '';
-    const summary = intro?.summary
-      ? `<p class="fx-card-summary">${this.esc(intro.summary)}</p>`
+    const summary = l.summary
+      ? `<p class="fx-card-summary">${this.esc(l.summary)}</p>`
       : `<p class="fx-card-summary text-muted fst-italic">소개 준비중 — 본문은 바로 보실 수 있어요.</p>`;
-    const tags = (intro?.tags || [])
+    const tags = (l.tags || [])
       .map(t => `<span class="fx-tag">${this.esc(t)}</span>`).join('');
 
     return `<div class="col-12 col-md-6 col-xl-4">

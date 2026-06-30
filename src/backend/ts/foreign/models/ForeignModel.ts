@@ -23,6 +23,12 @@ export interface ForeignLawListItem {
   is_crypto: number;
   provision_count: number;
   ko_count: number; // 번역이 채워진 seg 수(0이면 원문만)
+  // foreign_catalog(LQ 큐레이션) — 카드 설명/태그/하이라이트
+  summary: string | null;
+  tags: string[] | null;
+  highlights: string[] | null;
+  sort_order: number;
+  hidden: number;
 }
 
 export interface ForeignLawMeta {
@@ -38,6 +44,8 @@ export interface ForeignLawMeta {
   official_citation: string | null;
   source_url: string | null;
   translation_source: string;
+  summary: string | null;      // foreign_catalog(LQ)
+  highlights: string[] | null; // foreign_catalog(LQ)
 }
 
 export interface ForeignProvision {
@@ -57,28 +65,63 @@ export class ForeignModel {
   private fin(): DbContext { return DbContext.getInstance(FIN_DB); }
   private auth(): DbContext { return DbContext.getInstance(AUTH_DB); }
 
+  // MariaDB JSON 컬럼은 LONGTEXT alias 라 mysql2 가 문자열로 반환 → 배열로 파싱.
+  private parseArr(v: any): string[] | null {
+    if (v == null) return null;
+    if (Array.isArray(v)) return v;
+    try { const a = JSON.parse(v); return Array.isArray(a) ? a : null; } catch { return null; }
+  }
+
   /** 드롭다운용 법령 목록(관할별 정렬, 번역 보유 seg 수 포함). */
   async listLaws(): Promise<ForeignLawListItem[]> {
-    return this.fin().query<ForeignLawListItem>(
-      `SELECT l.code, l.jurisdiction, l.title_ko, l.title_original, l.abbrev, l.status, l.law_type, l.is_crypto,
+    // law(sentinel 원문 메타, 폴백) ⊕ foreign_catalog(LQ 큐레이션, 우선). hidden 제외.
+    const rows = await this.fin().query<any>(
+      `SELECT l.code,
+              COALESCE(c.jurisdiction, l.jurisdiction) AS jurisdiction,
+              COALESCE(c.title_ko, l.title_ko)         AS title_ko,
+              l.title_original,
+              COALESCE(c.abbrev, l.abbrev)             AS abbrev,
+              COALESCE(c.status, l.status)             AS status,
+              COALESCE(c.law_type, l.law_type)         AS law_type,
+              COALESCE(c.is_crypto, l.is_crypto)       AS is_crypto,
               l.provision_count,
-              CAST(SUM(p.text_ko IS NOT NULL AND p.text_ko <> '') AS UNSIGNED) AS ko_count
+              CAST(SUM(p.text_ko IS NOT NULL AND p.text_ko <> '') AS UNSIGNED) AS ko_count,
+              c.summary, c.tags, c.highlights,
+              COALESCE(c.sort_order, 100) AS sort_order,
+              COALESCE(c.hidden, 0)       AS hidden
          FROM law l
+         LEFT JOIN ${AUTH_DB}.foreign_catalog c ON c.code = l.code
          LEFT JOIN law_provision p ON p.law_id = l.id
+        WHERE COALESCE(c.hidden, 0) = 0
         GROUP BY l.id
-        ORDER BY FIELD(l.jurisdiction, 'eu', 'us', 'jp', 'hk', 'sg', 'other'), l.code`
+        ORDER BY FIELD(COALESCE(c.jurisdiction, l.jurisdiction), 'eu', 'us', 'jp', 'hk', 'sg', 'other'),
+                 COALESCE(c.sort_order, 100), l.code`
     );
+    return rows.map((r: any) => ({ ...r, tags: this.parseArr(r.tags), highlights: this.parseArr(r.highlights) })) as ForeignLawListItem[];
   }
 
   /** 단일 법령 메타. */
   async getLawMeta(code: string): Promise<ForeignLawMeta | null> {
     const rows = await this.fin().query<ForeignLawMeta>(
-      `SELECT id, code, jurisdiction, title_original, title_ko, abbrev, status, law_type, is_crypto,
-              official_citation, source_url, translation_source
-         FROM law WHERE code = ? LIMIT 1`,
+      `SELECT l.id, l.code,
+              COALESCE(c.jurisdiction, l.jurisdiction) AS jurisdiction,
+              l.title_original,
+              COALESCE(c.title_ko, l.title_ko)   AS title_ko,
+              COALESCE(c.abbrev, l.abbrev)        AS abbrev,
+              COALESCE(c.status, l.status)        AS status,
+              COALESCE(c.law_type, l.law_type)    AS law_type,
+              COALESCE(c.is_crypto, l.is_crypto)  AS is_crypto,
+              l.official_citation, l.source_url, l.translation_source,
+              c.summary, c.highlights
+         FROM law l
+         LEFT JOIN ${AUTH_DB}.foreign_catalog c ON c.code = l.code
+        WHERE l.code = ? LIMIT 1`,
       [code]
     );
-    return rows[0] || null;
+    const r: any = rows[0];
+    if (!r) return null;
+    r.highlights = this.parseArr(r.highlights);
+    return r as ForeignLawMeta;
   }
 
   /** seg 별 행(ordinal 순). article_no 그룹·seg 정렬은 프론트가 처리. */
@@ -93,6 +136,32 @@ export class ForeignModel {
         ORDER BY p.ordinal`,
       [code]
     );
+  }
+
+  // ── 관리자 본문 수정(fin_law_db.law_provision) — 개발계 전용 ──────────────────
+  /** 인라인 수정 가능 컬럼 화이트리스트. 구조 키(article_no/part_no/seg_kind)는 제외(메모 논리키·목차 앵커 보호). */
+  static readonly EDITABLE_FIELDS = ['text_original', 'text_ko', 'heading', 'heading_ko'] as const;
+
+  /**
+   * 물리 provision_id 의 본문/제목을 수정한다(개발계 직접 UPDATE).
+   * fields 는 화이트리스트 컬럼만 반영하며, 빈 문자열은 NULL 로 저장(번역 비움 등).
+   * 반영된 행 수를 반환(0이면 없는 id).
+   */
+  async updateProvision(provisionId: number, fields: Record<string, string | null>): Promise<number> {
+    const cols = ForeignModel.EDITABLE_FIELDS.filter(c => Object.prototype.hasOwnProperty.call(fields, c));
+    if (!cols.length) return 0;
+    const sets = cols.map(c => `${c} = ?`).join(', ');
+    const values = cols.map(c => {
+      const v = fields[c];
+      const s = v == null ? '' : String(v);
+      return s.trim() === '' ? null : s; // 빈 입력 → NULL
+    });
+    const result = await this.fin().query<any>(
+      `UPDATE law_provision SET ${sets} WHERE id = ?`,
+      [...values, provisionId]
+    );
+    // mysql2 의 UPDATE 결과는 ResultSetHeader(affectedRows). DbContext.query 가 rows 로 캐스팅하므로 any 로 받는다.
+    return (result as any)?.affectedRows ?? 0;
   }
 
   // ── 메모(ldb_auth.foreign_memo) — 논리키 (law_code, article_no, seg_index) ─────

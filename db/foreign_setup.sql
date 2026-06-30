@@ -8,6 +8,9 @@
 
 -- 1) LawQuery 런타임 계정(ldbuser)에 해외법령 DB 읽기 권한 부여
 GRANT SELECT ON fin_law_db.* TO 'ldbuser'@'localhost';
+-- 1-a) 관리자 인라인 수정(뷰 화면 '수정' 버튼)을 위한 본문 UPDATE 권한(개발계 전용).
+--      운영은 root 계정+백엔드 production 차단이라 불필요. 권한만 별도 적용하려면 db/foreign_admin_grant.sql.
+GRANT UPDATE ON fin_law_db.law_provision TO 'ldbuser'@'localhost';
 FLUSH PRIVILEGES;
 
 -- 1-b) 조 제목 한국어 컬럼(목차·바로가기용). 값은 scripts/foreign/fill_heading.py 로 적재.
