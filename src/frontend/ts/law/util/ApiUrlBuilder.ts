@@ -3,9 +3,12 @@ export default class ApiUrlBuilder {
         const urlParams = new URLSearchParams(window.location.search);
         const law = urlParams.get('law') || 'j'; // 기본값: 'j'
         const step = urlParams.get('step') || '4'; // 기본값: '4'
+        const track = urlParams.get('track'); // 멀티트랙 선택(있을 때만)
 
         // 매개변수를 붙여서 반환
-        return `${baseUrl}?law=${law}&step=${step}`;
+        let url = `${baseUrl}?law=${law}&step=${step}`;
+        if (track) url += `&track=${encodeURIComponent(track)}`;
+        return url;
     }
 
     static buildWithParams(baseUrl: string, additionalParams: Record<string, string | string[]>): string {

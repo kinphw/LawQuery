@@ -15,8 +15,12 @@ CREATE TABLE IF NOT EXISTS law_registry (
   PRIMARY KEY (code)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
 
--- 현재 법령 시드(기존 드롭다운 순서 j → y → s 보존). label NULL = db_meta 의 법령명 사용.
+-- 현재 법령 시드(드롭다운 순서 j → y → s → g → c 보존). label NULL = db_meta 의 법령명 사용.
 INSERT IGNORE INTO law_registry (code, sort_order, kind) VALUES
   ('j', 10, 'law'),
   ('y', 20, 'law'),
-  ('s', 30, 'law');
+  ('s', 30, 'law'),
+  ('g', 40, 'law'),
+  ('c', 50, 'law'),
+  ('t', 60, 'law'),
+  ('z', 70, 'law');

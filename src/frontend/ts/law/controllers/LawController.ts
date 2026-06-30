@@ -270,9 +270,45 @@ export class LawController implements ILawController {
                 params.set('step', String(entry.step));
                 history.replaceState(null, '', `?${params.toString()}`);
             }
+            // 멀티트랙(행정규칙 병렬): track 미지정/무효면 첫 트랙으로 보정(없으면 양 트랙 r/b 혼합됨) + 토글 렌더.
+            if (entry && entry.tracks && entry.tracks.length) {
+                const codes = entry.tracks.map(t => t.code);
+                let tk = params.get('track') || '';
+                if (!codes.includes(tk)) {
+                    tk = entry.tracks[0].code;
+                    params.set('track', tk);
+                    history.replaceState(null, '', `?${params.toString()}`);
+                }
+                this.renderTrackToggle(entry, tk);
+            }
         }
 
         this.renderLawDropdown(list, lawParam || 'j');
+    }
+
+    /** 행정규칙 트랙 토글(멀티트랙 법령). 클릭 시 ?track= 갱신 후 리로드 → 전 데이터 그 트랙으로 재fetch. */
+    private renderTrackToggle(entry: LawListEntry, current: string): void {
+        const host = document.getElementById('lawTrackHost');
+        if (!host || !entry.tracks || !entry.tracks.length) return;
+        const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        const btns = entry.tracks.map(t => {
+            const active = t.code === current ? 'btn-success' : 'btn-outline-success';
+            return `<button type="button" class="btn ${active} lq-track-btn" data-track="${t.code}">${esc(t.label)}</button>`;
+        }).join('');
+        host.innerHTML = `
+            <div class="d-flex align-items-center gap-1">
+                <span class="text-muted small">행정규칙</span>
+                <div class="btn-group btn-group-sm" role="group" aria-label="행정규칙 트랙">${btns}</div>
+            </div>`;
+        host.querySelectorAll('.lq-track-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const next = (btn as HTMLElement).dataset.track!;
+                if (next === current) return;
+                const p = new URLSearchParams(window.location.search);
+                p.set('track', next);
+                window.location.search = p.toString(); // 리로드 → initialize가 그 트랙으로 전체 렌더
+            });
+        });
     }
 
     /** 법령 선택 드롭다운을 목록으로 생성(링크에 올바른 step 자동 첨부). */

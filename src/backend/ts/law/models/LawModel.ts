@@ -37,15 +37,26 @@ const PIVOT_LEVELS = ['a', 'e', 's', 'r', 'b'] as const;
 export class LawModel extends LawBaseModel {
 
   /**
+   * 멀티트랙(행정규칙 병렬) 필터 절. track 이 주어지면 rdb 탐색을 '공유 엣지(track NULL) + 해당 트랙'으로 제한.
+   * 단일트랙 법령은 track 미지정 → 빈 문자열(rdb.track 컬럼 참조 안 함 → 구버전 DB 호환).
+   * track 은 [a-z0-9_] 화이트리스트로만 인라인(주입 차단). 컨트롤러가 db_track 코드로 1차 검증.
+   */
+  private trackClause(track?: string): string {
+    if (!track || !/^[a-z0-9_]+$/.test(track)) return '';
+    return ` AND (rdb.track IS NULL OR rdb.track = '${track}')`;
+  }
+
+  /**
    * 기준(base) 전환 피벗 — 기준조가 속한 계층 '체인 전체'를 양방향 전이로 가져온다(원래 5단표를 기준점에서 재루팅).
    *  - 상향(up):  기준조의 상위 조문을 전이로(역방향 rdb 재귀) — 예) 시행세칙→감독규정→시행령→법 까지 타고 올라감.
    *  - 하향(down): 기준조의 하위 조문을 전이로(정방향 rdb 재귀) — 예) 시행령→감독규정→시행세칙 까지 타고 내려감.
    *  - 양쪽 모두 parent_id(트리상 '기준점에 가까운' 노드)를 함께 내려 프론트에서 5단표와 동일하게 중첩 렌더.
    * base/step 은 컨트롤러에서 검증되지만, 여기서도 화이트리스트(PIVOT_LEVELS)로만 SQL 식별자를 구성해 주입을 차단.
    */
-  async getPivot(dbContext: DbContext, step: number, base: string): Promise<PivotRow[]> {
+  async getPivot(dbContext: DbContext, step: number, base: string, track?: string): Promise<PivotRow[]> {
     this.setDbContext(dbContext);
 
+    const tf = this.trackClause(track);   // 멀티트랙 필터
     const levels = PIVOT_LEVELS.slice(0, step);
     const bi = levels.indexOf(base as typeof PIVOT_LEVELS[number]);
     if (bi < 0) return []; // base 가 레벨 목록에 없으면(=화이트리스트 통과 실패) 빈 결과
@@ -91,7 +102,7 @@ export class LawModel extends LawBaseModel {
         FROM db_${base} b WHERE b.id_${base} IS NOT NULL AND b.content_${base} IS NOT NULL
         UNION ALL
         SELECT d.base_id, d.base_seq, rdb.id_end, d.node_id, d.depth + 1
-        FROM down_ids d JOIN rdb ON rdb.id_start = d.node_id AND rdb.id_end <> d.node_id
+        FROM down_ids d JOIN rdb ON rdb.id_start = d.node_id AND rdb.id_end <> d.node_id${tf}
         WHERE d.depth < ${step} AND (${descend})
       )`);
       unionParts.push(sideSelect('down_ids', below, 'down'));
@@ -103,7 +114,7 @@ export class LawModel extends LawBaseModel {
         FROM db_${base} b WHERE b.id_${base} IS NOT NULL AND b.content_${base} IS NOT NULL
         UNION ALL
         SELECT u.base_id, u.base_seq, rdb.id_start, u.node_id, u.depth + 1
-        FROM up_ids u JOIN rdb ON rdb.id_end = u.node_id AND rdb.id_start <> u.node_id
+        FROM up_ids u JOIN rdb ON rdb.id_end = u.node_id AND rdb.id_start <> u.node_id${tf}
         WHERE u.depth < ${step} AND (${ascend})
       )`);
       unionParts.push(sideSelect('up_ids', above, 'up'));
@@ -126,10 +137,11 @@ export class LawModel extends LawBaseModel {
     return this.db.query<PivotRow>(query);
   }
 
-  async getAllLaws(dbContext: DbContext, step: number = 4): Promise<LawResult[]> {
+  async getAllLaws(dbContext: DbContext, step: number = 4, track?: string): Promise<LawResult[]> {
 
     this.setDbContext(dbContext); // DbContext 설정
 
+    const tf = this.trackClause(track);   // 멀티트랙 필터(단일트랙=빈문자열)
     let query: string = '';
 
     if (step === 4) {
@@ -162,7 +174,7 @@ export class LawModel extends LawBaseModel {
           CASE WHEN rdb.id_end LIKE 'R%' THEN rdb.id_end ELSE p.id_r END,
           p.depth + 1
         FROM paths p
-        JOIN rdb ON rdb.id_start = p.current_node
+        JOIN rdb ON rdb.id_start = p.current_node${tf}
         WHERE p.depth < 3
           AND (
             (p.current_node LIKE 'A%' AND (rdb.id_end LIKE 'E%' OR rdb.id_end LIKE 'S%' OR rdb.id_end LIKE 'R%'))
@@ -195,7 +207,7 @@ export class LawModel extends LawBaseModel {
         LEFT JOIN db_r r ON r.id_r = p.id_r
         WHERE NOT EXISTS (
           SELECT 1 FROM rdb
-          WHERE id_start = p.current_node
+          WHERE id_start = p.current_node${tf}
             AND (
               (p.current_node LIKE 'A%' AND (id_end LIKE 'E%' OR id_end LIKE 'S%' OR id_end LIKE 'R%'))
               OR (p.current_node LIKE 'E%' AND (id_end LIKE 'S%' OR id_end LIKE 'R%'))
@@ -267,7 +279,7 @@ export class LawModel extends LawBaseModel {
           CASE WHEN rdb.id_end LIKE 'B%' THEN rdb.id_end ELSE p.id_b END,
           p.depth + 1
         FROM paths p
-        JOIN rdb ON rdb.id_start = p.current_node
+        JOIN rdb ON rdb.id_start = p.current_node${tf}
         WHERE p.depth < 4
           AND (
             (p.current_node LIKE 'A%' AND (rdb.id_end LIKE 'E%' OR rdb.id_end LIKE 'S%' OR rdb.id_end LIKE 'R%' OR rdb.id_end LIKE 'B%'))
@@ -306,7 +318,7 @@ export class LawModel extends LawBaseModel {
         LEFT JOIN db_b b ON b.id_b = p.id_b
         WHERE NOT EXISTS (
           SELECT 1 FROM rdb
-          WHERE id_start = p.current_node
+          WHERE id_start = p.current_node${tf}
             AND (
               (p.current_node LIKE 'A%' AND (id_end LIKE 'E%' OR id_end LIKE 'S%' OR id_end LIKE 'R%' OR id_end LIKE 'B%'))
               OR (p.current_node LIKE 'E%' AND (id_end LIKE 'S%' OR id_end LIKE 'R%' OR id_end LIKE 'B%'))
@@ -353,10 +365,11 @@ export class LawModel extends LawBaseModel {
     return rows;
   }
 
-  async getLawByIds(dbContext: DbContext, step: number, lawIds: string[]): Promise<LawResult[]> {
+  async getLawByIds(dbContext: DbContext, step: number, lawIds: string[], track?: string): Promise<LawResult[]> {
 
-    this.setDbContext(dbContext); // DbContext 설정    
+    this.setDbContext(dbContext); // DbContext 설정
     if (!lawIds.length) return [];
+    const tf = this.trackClause(track);   // 멀티트랙 필터
 
     const placeholders = new Array(lawIds.length).fill('?').join(',');
 
@@ -391,7 +404,7 @@ export class LawModel extends LawBaseModel {
           CASE WHEN rdb.id_end LIKE 'R%' THEN rdb.id_end ELSE p.id_r END,
           p.depth + 1
         FROM paths p
-        JOIN rdb ON rdb.id_start = p.current_node
+        JOIN rdb ON rdb.id_start = p.current_node${tf}
         WHERE p.depth < 3
           AND (
             (p.current_node LIKE 'A%' AND (rdb.id_end LIKE 'E%' OR rdb.id_end LIKE 'S%' OR rdb.id_end LIKE 'R%'))
@@ -424,7 +437,7 @@ export class LawModel extends LawBaseModel {
         LEFT JOIN db_r r ON r.id_r = p.id_r
         WHERE NOT EXISTS (
           SELECT 1 FROM rdb
-          WHERE id_start = p.current_node
+          WHERE id_start = p.current_node${tf}
             AND (
               (p.current_node LIKE 'A%' AND (id_end LIKE 'E%' OR id_end LIKE 'S%' OR id_end LIKE 'R%'))
               OR (p.current_node LIKE 'E%' AND (id_end LIKE 'S%' OR id_end LIKE 'R%'))
@@ -494,7 +507,7 @@ export class LawModel extends LawBaseModel {
           CASE WHEN rdb.id_end LIKE 'B%' THEN rdb.id_end ELSE p.id_b END,
           p.depth + 1
         FROM paths p
-        JOIN rdb ON rdb.id_start = p.current_node
+        JOIN rdb ON rdb.id_start = p.current_node${tf}
         WHERE p.depth < 4
           AND (
             (p.current_node LIKE 'A%' AND (rdb.id_end LIKE 'E%' OR rdb.id_end LIKE 'S%' OR rdb.id_end LIKE 'R%' OR rdb.id_end LIKE 'B%'))
@@ -533,7 +546,7 @@ export class LawModel extends LawBaseModel {
         LEFT JOIN db_b b ON b.id_b = p.id_b
         WHERE NOT EXISTS (
           SELECT 1 FROM rdb
-          WHERE id_start = p.current_node
+          WHERE id_start = p.current_node${tf}
             AND (
               (p.current_node LIKE 'A%' AND (id_end LIKE 'E%' OR id_end LIKE 'S%' OR id_end LIKE 'R%' OR id_end LIKE 'B%'))
               OR (p.current_node LIKE 'E%' AND (id_end LIKE 'S%' OR id_end LIKE 'R%' OR id_end LIKE 'B%'))
@@ -595,9 +608,12 @@ export class LawModel extends LawBaseModel {
     return await this.db.query<LawTitle>(query);
   }
 
-  async getMeta(dbContext: DbContext): Promise<{ origin: string; full_name: string; short_name: string }[]> {
+  async getMeta(dbContext: DbContext, track?: string): Promise<{ origin: string; full_name: string; short_name: string }[]> {
     this.setDbContext(dbContext);
-    const query = `SELECT origin, full_name, short_name FROM db_meta ORDER BY _pk`;
+    // 멀티트랙: 공유단(track NULL) + 활성 트랙 r/b 만(5행). 단일트랙은 track 미지정 → WHERE 없음(track 컬럼 미참조 = 구버전 DB 호환).
+    const tk = track && /^[a-z0-9_]+$/.test(track) ? track : null;
+    const where = tk ? `WHERE track IS NULL OR track = '${tk}'` : ``;
+    const query = `SELECT origin, full_name, short_name FROM db_meta ${where} ORDER BY _pk`;
     return await this.db.query(query);
   }
 
@@ -607,7 +623,7 @@ export class LawModel extends LawBaseModel {
    * 새 법령 = ldb_<code> 적재 + law_registry 에 1행 INSERT. (db/law_registry.sql 참고)
    * law_registry 테이블이 없으면 [] 반환 → 프론트가 하드코딩 드롭다운으로 폴백.
    */
-  async getLawRegistry(): Promise<Array<{ code: string; label: string; step: number; names: string[]; originMap: Record<string, string>; kind: string }>> {
+  async getLawRegistry(): Promise<Array<{ code: string; label: string; step: number; names: string[]; originMap: Record<string, string>; kind: string; tracks?: Array<{ code: string; label: string; rName: string; bName: string; rShort: string; bShort: string }> }>> {
     const LEVELS = ['a', 'e', 's', 'r', 'b'];
     const authDb = process.env.AUTH_DB || 'ldb_auth';
 
@@ -621,25 +637,51 @@ export class LawModel extends LawBaseModel {
       return []; // law_registry 미설치 → 폴백
     }
 
-    const out: Array<{ code: string; label: string; step: number; names: string[]; originMap: Record<string, string>; kind: string }> = [];
+    const out: Array<{ code: string; label: string; step: number; names: string[]; originMap: Record<string, string>; kind: string; tracks?: Array<{ code: string; label: string; rName: string; bName: string; rShort: string; bShort: string }> }> = [];
     for (const reg of regs) {
       try {
         const ctx = DbContext.getInstance(`ldb_${reg.code}`);
-        const meta = await ctx.query<{ origin: string; full_name: string; short_name: string }>(
-          `SELECT origin, full_name, short_name FROM db_meta ORDER BY _pk`,
-        );
-        const levels = meta.filter(m => LEVELS.includes(m.origin)); // 트리 레벨 행만(잡행 방어)
-        if (!levels.length) continue;
+        let meta: Array<{ origin: string; full_name: string; short_name: string; track: string | null }>;
+        try {
+          meta = await ctx.query(`SELECT origin, full_name, short_name, track FROM db_meta ORDER BY _pk`);
+        } catch {
+          // 구버전 DB(track 컬럼 없음, 단일트랙) → track 없이 조회 후 null 채움
+          meta = (await ctx.query<{ origin: string; full_name: string; short_name: string }>(
+            `SELECT origin, full_name, short_name FROM db_meta ORDER BY _pk`)).map(m => ({ ...m, track: null }));
+        }
+        const levelMeta = meta.filter(m => LEVELS.includes(m.origin)); // 트리 레벨 행만(잡행 방어)
+        if (!levelMeta.length) continue;
+
+        // 멀티트랙 트랙 목록(db_track). 없으면 빈 배열(단일트랙).
+        let tracks: Array<{ track_code: string; label: string }> = [];
+        try { tracks = await ctx.query(`SELECT track_code, label FROM db_track ORDER BY sort_order`); } catch { tracks = []; }
+
+        // origin → (track||'_') → meta. r/b 는 멀티트랙이면 트랙별 행.
+        const byOT: Record<string, Record<string, { full_name: string; short_name: string }>> = {};
+        levelMeta.forEach(m => { (byOT[m.origin] = byOT[m.origin] || {})[m.track || '_'] = m; });
+        const firstTrack = tracks.length ? tracks[0].track_code : '_';
+        const pick = (o: string) => (byOT[o] && (byOT[o][firstTrack] || byOT[o]['_'] || Object.values(byOT[o])[0])) || undefined;
+        const presentOrigins = LEVELS.filter(o => byOT[o]);     // distinct origin = 실제 단수(트랙 중복 제거)
         const originMap: Record<string, string> = {};
-        meta.forEach(m => { originMap[m.origin] = m.short_name; });
+        presentOrigins.forEach(o => { originMap[o] = pick(o)?.short_name || o; });
+
+        const trackList = tracks.map(t => ({
+          code: t.track_code, label: t.label,
+          rName: byOT['r']?.[t.track_code]?.full_name || '',
+          bName: byOT['b']?.[t.track_code]?.full_name || '',
+          rShort: byOT['r']?.[t.track_code]?.short_name || '',
+          bShort: byOT['b']?.[t.track_code]?.short_name || '',
+        }));
+
         out.push({
           code: reg.code,
           // 라벨: registry override 우선, 없으면 법(a) full_name 첫 줄(=법령명).
-          label: reg.label || (levels[0].full_name || '').split('\n')[0] || levels[0].short_name,
-          step: levels.length,
-          names: levels.map(m => m.full_name),
+          label: reg.label || (pick('a')?.full_name || '').split('\n')[0] || pick('a')?.short_name || reg.code,
+          step: presentOrigins.length,                          // 단수(트랙 무관, 항상 a/e/s/r/b 개수)
+          names: presentOrigins.map(o => pick(o)?.full_name || ''),
           originMap,
           kind: reg.kind,
+          ...(trackList.length ? { tracks: trackList } : {}),
         });
       } catch {
         // ldb_<code> 미존재/비정상 → 목록에서 제외(등록만 됐고 아직 적재 전 등)

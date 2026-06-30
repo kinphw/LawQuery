@@ -24,9 +24,10 @@ export class LawController extends BaseLawController<LawModel> {
     // 요청별 구조를 읽는다
     const dbName: string = req.query.law as string;
     const step: number = parseInt(req.query.step as string);
+    const track: string | undefined = (req.query.track as string) || undefined;  // 멀티트랙 선택(없으면 단일)
     const dbContext = this.getDbContext(dbName);
 
-    const dataTemp = await this.model.getAllLaws(dbContext, step);
+    const dataTemp = await this.model.getAllLaws(dbContext, step, track);
     const data = this.model.toLawTree(dataTemp);
 
     // pro가 아니면 상위 3개 조까지만 잘라서 보내고 locked 플래그/전체 조 수(total)를 함께 내려준다.
@@ -58,6 +59,7 @@ export class LawController extends BaseLawController<LawModel> {
     // 요청별 구조를 읽는다 (선택 연계표 = PRO 전용)
     const dbName: string = req.query.law as string;
     const step: number = parseInt(req.query.step as string);
+    const track: string | undefined = (req.query.track as string) || undefined;
     const dbContext = this.getDbContext(dbName);
 
     // req.query.id를 배열로 변환
@@ -76,7 +78,7 @@ export class LawController extends BaseLawController<LawModel> {
     }
 
     // const data = await this.service.getLawById(id);
-    const dataTemp = await this.model.getLawByIds(dbContext, step, lawIds);
+    const dataTemp = await this.model.getLawByIds(dbContext, step, lawIds, track);
     const data = this.model.toLawTree(dataTemp);
     // res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
     // res.end(JSON.stringify(data));
@@ -108,8 +110,9 @@ export class LawController extends BaseLawController<LawModel> {
   // 법령명 메타 조회 (/api/law/meta)
   async getMeta(req: Request, res: Response): Promise<void> {
     const dbName: string = req.query.law as string;
+    const track: string | undefined = (req.query.track as string) || undefined;
     const dbContext = this.getDbContext(dbName);
-    const data = await this.model.getMeta(dbContext);
+    const data = await this.model.getMeta(dbContext, track);
     res.status(200).json({ success: true, data });
   }
 
@@ -162,6 +165,7 @@ export class LawController extends BaseLawController<LawModel> {
     const dbName: string = req.query.law as string;
     const step: number = parseInt(req.query.step as string);
     const base = (req.query.base as string || '').toLowerCase();
+    const track: string | undefined = (req.query.track as string) || undefined;
 
     const levels = ['a', 'e', 's', 'r', 'b'].slice(0, step || 0);
     if (base === 'a' || !levels.includes(base)) {
@@ -170,7 +174,7 @@ export class LawController extends BaseLawController<LawModel> {
     }
 
     const dbContext = this.getDbContext(dbName);
-    const rows = await this.model.getPivot(dbContext, step, base);
+    const rows = await this.model.getPivot(dbContext, step, base, track);
 
     // parent_id 로 기준조별 LawTreeNode 트리를 구성한다(기존 5단표와 동일 렌더 경로로 흘려보내려고).
     // 기준조 = 루트, 상향(직접)·하향(전이) 조문 = 자식. 컬럼 배치는 프론트(LawTable)가 id 접두사(레벨)로 처리.
