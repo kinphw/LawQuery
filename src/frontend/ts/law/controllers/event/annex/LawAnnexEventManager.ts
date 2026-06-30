@@ -35,16 +35,20 @@ export class LawAnnexEventManager implements ILawEventManager {
         }
     }
 
+    private articleDelegated = false;
     private bindArticleAnnexButtons(): void {
-        const buttons = document.querySelectorAll('.law-annex-btn');
-        buttons.forEach(btn => {
-            btn.addEventListener('click', async (e) => {
-                const mouseEvent = e as MouseEvent;
-                const id_src = (e.currentTarget as HTMLElement).getAttribute('data-id_src');
-                if (!id_src) return;
-
-                await this.buttonHandler.handleArticleAnnexClick(id_src, mouseEvent.clientX, mouseEvent.clientY);
-            });
+        // #results 위임(한 번만). 지연 렌더(가상화)된 버튼도 동작, 재렌더에도 생존.
+        if (this.articleDelegated) return;
+        const host = document.getElementById('results');
+        if (!host) return;
+        this.articleDelegated = true;
+        host.addEventListener('click', async (e) => {
+            const btn = (e.target as HTMLElement).closest('.law-annex-btn');
+            if (!btn) return;
+            const me = e as MouseEvent;
+            const id_src = btn.getAttribute('data-id_src');
+            if (!id_src) return;
+            await this.buttonHandler.handleArticleAnnexClick(id_src, me.clientX, me.clientY);
         });
     }
 

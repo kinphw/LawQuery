@@ -68,6 +68,7 @@ export class LawView {
         document.getElementById('results')!.innerHTML =
             // this.lawTable.render(results, searchText);
             this.lawTable.render(results, searchText);
+        this.lawTable.mountWindowing();   // 대형 법령 가상화: placeholder를 스크롤 시 채움(소·중형은 no-op)
     }
 
     /** 헤더만 렌더(토글바가 그 아래 위치하도록 모드와 무관하게 1회 호출). */

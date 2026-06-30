@@ -9,16 +9,22 @@ export class ReferenceButtonHandler {
         this.popupManager = new ReferencePopupManager();
     }
 
+    private delegated = false;
     bindReferenceButtons(): void {
-        const law = new URLSearchParams(window.location.search).get('law') || 'j';
-        const originMap = getLawConfig(law).originMap;
-
-        document.querySelectorAll('.law-ref-btn').forEach(btn => {
-            btn.addEventListener('click', async (e) => {
+        // #results 위임(한 번만). 지연 렌더(가상화)된 버튼도 동작, 재렌더에도 생존.
+        if (this.delegated) return;
+        const host = document.getElementById('results');
+        if (!host) return;
+        this.delegated = true;
+        host.addEventListener('click', async (e) => {
+                const btn = (e.target as HTMLElement).closest('.law-ref-btn');
+                if (!btn) return;
                 e.stopPropagation();
-                const id = (btn as HTMLElement).getAttribute('data-id');
+                const id = btn.getAttribute('data-id');
                 if (!id) return;
 
+                const law = new URLSearchParams(window.location.search).get('law') || 'j';
+                const originMap = getLawConfig(law).originMap;
                 this.popupManager.closePopup();
 
                 const url = ApiUrlBuilder.buildWithParams('/api/law/reference', { id });
@@ -41,7 +47,6 @@ export class ReferenceButtonHandler {
 
                 const mouseEvent = e as MouseEvent;
                 this.popupManager.showPopup(content, mouseEvent.clientX + 10, mouseEvent.clientY + 10);
-            });
         });
     }
 }

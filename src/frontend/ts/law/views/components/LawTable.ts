@@ -72,6 +72,13 @@ export class LawTable {
 
     private currentTextSize: string = ''; // Add text size state
 
+    // ── 가상화(윈도잉): 대형 법령(자본시장법 등)만 적용 ──
+    private static readonly WINDOW_MIN = 150;   // 루트 블록 수가 이보다 많으면 윈도잉
+    private static readonly WINDOW_INITIAL = 12; // 즉시 렌더할 첫 블록 수('누르면 바로')
+    private winResults: LawTreeNode[] | null = null;
+    private winSearch = '';
+    private observer: IntersectionObserver | null = null;
+
 
     render(results: LawTreeNode[], searchText: string = ''): string {
         if (!results.length) {
@@ -86,7 +93,15 @@ export class LawTable {
             if (arr) arr.push(h); else this.hlIndex.set(k, [h]);
         }
 
+        const windowed = results.length > LawTable.WINDOW_MIN;   // 대형 법령만 가상화(소·중형은 기존 경로)
+        this.winResults = null;                                  // 매 렌더마다 초기화
+
         let html = '<div class="table-responsive law-table-wrap"><table class="table table-bordered law-table">';
+        // 윈도잉 시 placeholder(colspan 행)가 열폭을 깨지 않도록 colgroup으로 폭 고정(table-layout:fixed)
+        if (windowed) {
+            const w = (100 / this.step).toFixed(4);
+            html += '<colgroup>' + Array(this.step).fill(`<col style="width:${w}%">`).join('') + '</colgroup>';
+        }
         html += `
             <thead class="table-dark sticky-top">
                 <tr>
@@ -102,13 +117,59 @@ export class LawTable {
             </thead>
         `;
 
-        // 각 법조문(루트)을 독립 tbody 블록으로 — content-visibility:auto 가 화면 밖 블록 렌더를 건너뛴다
-        // (자본시장법 600+조 가상화). rowspan 은 블록 내부에 갇혀 안전, 이벤트/검색 영향 없음.
-        results.forEach(law => {
-            html += `<tbody class="lq-vblock">${this.renderLawRows(law, searchText)}</tbody>`;
-        });
+        if (!windowed) {
+            // 소·중형: 각 법조문(루트)을 독립 tbody 블록으로 — content-visibility:auto 가 화면 밖 페인트를 건너뜀.
+            results.forEach(law => {
+                html += `<tbody class="lq-vblock">${this.renderLawRows(law, searchText)}</tbody>`;
+            });
+        } else {
+            // 대형(가상화): 처음 INITIAL 블록만 실제 렌더(즉시 표시='누르면 바로'), 나머지는 높이추정 placeholder.
+            // 스크롤 시 mountWindowing()의 IntersectionObserver가 채움 → DOM이 작아 초기·전체 모두 가벼움.
+            this.winResults = results;
+            this.winSearch = searchText;
+            results.forEach((law, i) => {
+                if (i < LawTable.WINDOW_INITIAL) {
+                    html += `<tbody class="lq-vblock" data-widx="${i}">${this.renderLawRows(law, searchText)}</tbody>`;
+                } else {
+                    const h = this.estBlockHeight(law);
+                    html += `<tbody class="lq-vblock lq-ph" data-widx="${i}"><tr><td colspan="${this.step}"><div style="height:${h}px"></div></td></tr></tbody>`;
+                }
+            });
+        }
         html += '</table></div>';
         return html;
+    }
+
+    /** placeholder 높이 추정(px) — 리프 행 수 기반. 정확할 필요는 없고 스크롤바 근사·관찰자 트리거용. */
+    private estBlockHeight(root: LawTreeNode): number {
+        const leaves = this.collectPaths(root).length || 1;
+        return Math.max(56, leaves * 110);
+    }
+
+    /**
+     * 윈도잉 마운트 — 렌더 후 LawView가 호출. placeholder(tbody.lq-ph)가 뷰포트에 접근하면
+     * 실제 내용으로 채운다(rootMargin으로 미리 렌더 → 스크롤 시 빈칸 안 보임). 버튼 이벤트는
+     * #results에 위임(delegation)되어 있어 지연 생성된 버튼도 바로 동작한다.
+     */
+    mountWindowing(): void {
+        this.observer?.disconnect();
+        this.observer = null;
+        if (!this.winResults) return;                 // 윈도잉 안 한 렌더면 종료
+        const host = document.getElementById('results');
+        if (!host) return;
+        const obs = new IntersectionObserver((entries) => {
+            for (const en of entries) {
+                if (!en.isIntersecting) continue;
+                const tb = en.target as HTMLElement;
+                obs.unobserve(tb);
+                const i = parseInt(tb.dataset.widx || '-1', 10);
+                if (i < 0 || !this.winResults || !this.winResults[i]) continue;
+                tb.classList.remove('lq-ph');
+                tb.innerHTML = this.renderLawRows(this.winResults[i], this.winSearch);
+            }
+        }, { root: null, rootMargin: '1400px 0px' });
+        host.querySelectorAll('tbody.lq-ph').forEach(tb => obs.observe(tb));
+        this.observer = obs;
     }
 
     /** 분할 항/호 노드 id → 소속 조('A2_3h'→'A2', 'E14_2_1h'→'E14_2') + 표시 라벨. 조 자체/별표면 null. */

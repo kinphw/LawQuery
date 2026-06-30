@@ -36,17 +36,19 @@ export class LawPenaltyEventManager implements ILawEventManager {
         }
     }
 
-    // 조문별 벌칙 버튼 이벤트 바인딩
+    // 조문별 벌칙 버튼 — #results 위임(한 번만). 지연 렌더(가상화)된 버튼도 동작, 재렌더에도 생존.
+    private articleDelegated = false;
     private bindArticlePenaltyButtons(): void {
-        const buttons = document.querySelectorAll('.law-penalty-btn');
-        buttons.forEach(btn => {
-            btn.addEventListener('click', async (e) => {
-                const id_a = (e.currentTarget as HTMLElement).getAttribute('data-id_a');
-                if (!id_a) return;
-                
-                // 처리 로직을 PenaltyButtonHandler로 위임
-                await this.buttonHandler.handleArticlePenaltyClick(id_a);
-            });
+        if (this.articleDelegated) return;
+        const host = document.getElementById('results');
+        if (!host) return;
+        this.articleDelegated = true;
+        host.addEventListener('click', async (e) => {
+            const btn = (e.target as HTMLElement).closest('.law-penalty-btn');
+            if (!btn) return;
+            const id_a = btn.getAttribute('data-id_a');
+            if (!id_a) return;
+            await this.buttonHandler.handleArticlePenaltyClick(id_a);
         });
     }
 
