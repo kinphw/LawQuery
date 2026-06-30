@@ -1,4 +1,5 @@
 import express from 'express';
+import compression from 'compression';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
@@ -20,6 +21,9 @@ const PORT = 4000;
 app.set('trust proxy', true);
 
 // 미들웨어 설정
+// gzip 압축 — 연계표(자본시장법 등 대형 법령)는 JSON이 수 MB라 무압축 전송이 초기 로드의 큰 병목.
+// 텍스트라 7MB→~1.5MB 수준으로 줄어 전송시간·체감 로딩 대폭 개선. (Apache 프록시는 Content-Encoding 통과)
+app.use(compression());
 app.use(cors({ origin: true, credentials: true })); // 쿠키 인증 위해 credentials 허용
 app.use(express.json());
 app.use(cookieParser());
