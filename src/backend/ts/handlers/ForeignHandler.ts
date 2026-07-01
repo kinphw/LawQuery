@@ -27,7 +27,7 @@ export class ForeignHandler {
     this.router.put('/memo', adminGuard, this.c.putMemo);
     this.router.delete('/memo', adminGuard, this.c.deleteMemo);
 
-    // ── 관리자 본문 인라인 수정(개발계 전용) ──
-    this.router.put('/admin/provision', adminGuard, this.c.updateProvision);
+    // ── 관리자 본문 교정(오버레이) — 원본 보존, 이관에 안 지워짐 ──
+    this.router.put('/admin/override', adminGuard, this.c.saveOverride);
   }
 }

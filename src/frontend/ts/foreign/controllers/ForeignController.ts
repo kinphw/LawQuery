@@ -27,6 +27,8 @@ export class ForeignController {
   private meta: ForeignLawMeta | null = null;      // 현재 법령 메타(재렌더용)
   private provisions: ForeignProvision[] = [];     // 현재 법령 seg 배열(재렌더·수정 원본)
   private pidMap = new Map<number, ForeignProvision>(); // provision_id → seg
+  private modalEl: HTMLElement | null = null;      // 열린 편집 팝오버(표 바깥 오버레이)
+  private popCleanup: (() => void) | null = null;  // 팝오버 바깥클릭 리스너 해제
 
   async initialize(): Promise<void> {
     const headerEl = document.getElementById('header');
@@ -140,56 +142,31 @@ export class ForeignController {
       const cell = (e.target as HTMLElement).closest('.fm-memo') as HTMLElement | null;
       if (!cell) return;
       if (!this.canEditMemo) return; // 비운영자: 읽기 전용
-      if (cell.classList.contains('fm-editing')) return;
-      this.openEditor(cell);
+      this.openMemoEditor(cell);
     });
   }
 
-  private openEditor(cell: HTMLElement): void {
+  /** 메모 편집 = 표 바깥 모달. 저장 시 해당 메모 셀만 갱신. */
+  private openMemoEditor(cell: HTMLElement): void {
     const code = cell.dataset.code || this.currentCode;
     const article = cell.dataset.article || '';
     const seg = Number(cell.dataset.seg || 0);
     const key = `${article}|${seg}`;
-    const cur = this.memos[key] || '';
-    cell.classList.add('fm-editing');
-    cell.innerHTML = `
-      <textarea class="form-control fm-memo-input" rows="4" placeholder="이 조문에 대한 메모…">${this.esc(cur)}</textarea>
-      <div class="fm-memo-actions">
-        <button type="button" class="btn btn-sm btn-primary fm-save">저장</button>
-        <button type="button" class="btn btn-sm btn-link fm-cancel">취소</button>
-        <span class="text-muted small ms-auto">Ctrl+Enter 저장</span>
-      </div>`;
-    const ta = cell.querySelector('textarea') as HTMLTextAreaElement;
-    ta.focus();
-    ta.setSelectionRange(ta.value.length, ta.value.length);
-
-    const save = async () => {
-      const val = ta.value.trim();
-      const ok = await this.model.saveMemo(code, article, seg, val);
-      if (ok) {
+    this.openAnchoredEditor(cell, {
+      title: `메모 · 제${article}조 (${seg}번째 문단) — 모든 사용자에게 공개`,
+      fields: [{ key: 'memo', label: '운영자 메모(해설)', value: this.memos[key] || '', rows: 6 }],
+      onSave: async (v) => {
+        const val = v.memo.trim();
+        const ok = await this.model.saveMemo(code, article, seg, val);
+        if (!ok) return false;
         if (val) this.memos[key] = val; else delete this.memos[key];
-      } else {
-        alert('메모 저장에 실패했습니다.');
-      }
-      this.closeEditor(cell, key);
-    };
-    (cell.querySelector('.fm-save') as HTMLElement).onclick = save;
-    (cell.querySelector('.fm-cancel') as HTMLElement).onclick = () => this.closeEditor(cell, key);
-    ta.addEventListener('keydown', (ev) => {
-      if (ev.key === 'Enter' && (ev.ctrlKey || ev.metaKey)) { ev.preventDefault(); save(); }
-      else if (ev.key === 'Escape') { ev.preventDefault(); this.closeEditor(cell, key); }
+        cell.innerHTML = `<div class="fm-memo-view">${val ? this.esc(val) : '<span class="fm-memo-add">+ 메모</span>'}</div>`;
+        return true;
+      },
     });
   }
 
-  private closeEditor(cell: HTMLElement, key: string): void {
-    cell.classList.remove('fm-editing');
-    const memo = this.memos[key];
-    cell.innerHTML = `<div class="fm-memo-view">${memo ? this.esc(memo) : '<span class="fm-memo-add">+ 메모</span>'}</div>`;
-  }
-
-  // ── 관리자 본문 인라인 수정 (개발계 전용, 이벤트 위임) ────────────────────────
-  // 칸(셀) 단위로 그 자리에서 편집한다. 표 전체가 아니라 클릭한 셀 하나만 textarea로 바뀌고
-  // 저장 시에도 그 셀만 다시 그린다 → 8천 행짜리 대형 법령에서도 렉이 없다.
+  // ── 관리자 본문 수정 (개발계 전용, 이벤트 위임) ──────────────────────────────
   private bindAdminEditDelegation(): void {
     const results = document.getElementById('results')!;
     results.addEventListener('click', (e) => {
@@ -204,99 +181,129 @@ export class ForeignController {
     });
   }
 
-  /** 원문(text_original) 또는 번역(text_ko) 셀을 그 자리에서 textarea로 편집. */
+  /** 원문(text_original) 또는 번역(text_ko) 셀을 모달로 편집. 저장 시 그 셀만 갱신. */
   private openCellEditor(td: HTMLElement | null): void {
-    if (!td || td.classList.contains('fm-cell-editing')) return;
+    if (!td) return;
     const field = td.dataset.field as 'text_original' | 'text_ko';
     if (field !== 'text_original' && field !== 'text_ko') return;
     const pid = Number((td.closest('tr') as HTMLElement)?.dataset.pid || 0);
     const prov = this.pidMap.get(pid);
     if (!prov) return;
-
-    td.classList.add('fm-cell-editing');
-    const warn = field === 'text_original'
-      ? `<div class="fm-ed-warn">⚠ 원문 수정은 STN 재적재 시 덮어쓰일 수 있습니다.</div>` : '';
-    td.innerHTML = `
-      <textarea class="form-control fm-ed-input" rows="8">${this.esc(prov[field] || '')}</textarea>${warn}
-      <div class="fm-edit-actions">
-        <button type="button" class="btn btn-sm btn-primary fm-ed-save">저장</button>
-        <button type="button" class="btn btn-sm btn-link fm-ed-cancel">취소</button>
-        <span class="fm-ed-msg text-muted small ms-2"></span>
-        <span class="text-muted small ms-auto">Ctrl+Enter 저장 · Esc 취소</span>
-      </div>`;
-    const ta = td.querySelector('textarea') as HTMLTextAreaElement;
-    const msgEl = td.querySelector('.fm-ed-msg') as HTMLElement;
-    ta.focus();
-    ta.setSelectionRange(ta.value.length, ta.value.length);
-
-    const restore = () => {
-      td.classList.remove('fm-cell-editing');
-      td.innerHTML = this.view.cellInner(field, prov, this.canEdit);
-    };
-    const save = async () => {
-      const val = ta.value;
-      msgEl.textContent = '저장 중…';
-      const ok = await this.model.updateProvision(pid, { [field]: val });
-      if (!ok) { msgEl.textContent = '저장 실패 (권한·운영 차단 확인)'; return; }
-      prov[field] = val.trim() ? val : null; // 빈값 → null(서버 저장 의미와 동일)
-      restore();
-    };
-    (td.querySelector('.fm-ed-save') as HTMLElement).onclick = save;
-    (td.querySelector('.fm-ed-cancel') as HTMLElement).onclick = restore;
-    ta.addEventListener('keydown', (ev) => {
-      if (ev.key === 'Enter' && (ev.ctrlKey || ev.metaKey)) { ev.preventDefault(); save(); }
-      else if (ev.key === 'Escape') { ev.preventDefault(); restore(); }
+    this.openAnchoredEditor(td, {
+      title: field === 'text_ko' ? '국문 번역 교정' : '원문 교정',
+      fields: [{
+        key: field,
+        label: field === 'text_ko' ? '국문 번역 (text_ko · 비우면 원본 복귀)' : '원문 (text_original · 비우면 원본 복귀)',
+        value: prov[field] || '', rows: 12, mono: field === 'text_original',
+        warn: '원본은 보존되고 교정 레이어로 저장됩니다(이관에도 유지). 비우면 원본으로 되돌아갑니다.',
+      }],
+      onSave: async (v) => {
+        const eff = await this.model.saveOverride(this.currentCode, prov.article_no, prov.seg_index, { [field]: v[field] });
+        if (!eff) return false;
+        prov[field] = eff[field] ? String(eff[field]) : null; // 실효값(교정값 또는 복귀된 원본)
+        td.innerHTML = this.view.cellInner(field, prov, this.canEdit);
+        return true;
+      },
     });
   }
 
-  /** 조 헤더(제목 국문 heading_ko / 원문 heading)를 그 자리에서 편집. 저장 시 목차도 갱신. */
+  /** 조 헤더(제목 국문 heading_ko / 원문 heading)를 모달로 편집. 저장 시 헤더 셀 + 목차 갱신. */
   private openHeadEditor(row: HTMLElement | null): void {
     const td = row?.querySelector('td') as HTMLElement | null;
-    if (!td || td.classList.contains('fm-cell-editing')) return;
+    if (!td) return;
     const pid = Number(row!.dataset.pid || 0);
     const prov = this.pidMap.get(pid);
     if (!prov) return;
+    this.openAnchoredEditor(td, {
+      title: `조 제목 교정 · 제${prov.article_no}조`,
+      fields: [
+        { key: 'heading_ko', label: '조 제목 · 국문 (heading_ko · 목차에도 반영, 비우면 원본 복귀)', value: prov.heading_ko || '', rows: 2 },
+        { key: 'heading', label: '조 제목 · 원문 (heading · 비우면 원본 복귀)', value: prov.heading || '', rows: 2 },
+      ],
+      onSave: async (v) => {
+        const eff = await this.model.saveOverride(this.currentCode, prov.article_no, prov.seg_index, { heading_ko: v.heading_ko, heading: v.heading });
+        if (!eff) return false;
+        prov.heading_ko = eff.heading_ko ? String(eff.heading_ko) : null;
+        prov.heading = eff.heading ? String(eff.heading) : null;
+        td.innerHTML = this.view.headInner(prov, this.canEdit);
+        const toc = document.querySelector('.fm-toc'); // 목차(조 칩)도 갱신 — article 수만큼이라 가볍다.
+        if (toc) toc.outerHTML = this.view.buildTocHtml(this.provisions);
+        return true;
+      },
+    });
+  }
 
-    td.classList.add('fm-cell-editing');
-    td.innerHTML = `
-      <div class="fm-edit-grid">
-        <label class="fm-edit-label">조 제목 · 국문 <span class="text-muted small">(목차에도 반영)</span></label>
-        <input type="text" class="form-control fm-ed-hko" value="${this.esc(prov.heading_ko || '')}">
-        <label class="fm-edit-label">조 제목 · 원문</label>
-        <input type="text" class="form-control fm-ed-h" value="${this.esc(prov.heading || '')}">
-      </div>
-      <div class="fm-edit-actions">
-        <button type="button" class="btn btn-sm btn-primary fm-ed-save">저장</button>
-        <button type="button" class="btn btn-sm btn-link fm-ed-cancel">취소</button>
-        <span class="fm-ed-msg text-muted small ms-2"></span>
-        <span class="text-muted small ms-auto">Enter 저장 · Esc 취소</span>
+  // ── 공용 편집 팝오버 (클릭한 칸에 붙는 오버레이) ─────────────────────────────
+  // 표 DOM 을 전혀 건드리지 않으므로 표 높이가 그대로 유지된다 → 열기/취소 시 대형 표
+  // reflow(렉·프리즈)가 없다. 화면 중앙 모달이 아니라 클릭한 칸 바로 아래에 나타난다.
+  // 저장 성공 시에만 호출자가 해당 셀 하나를 갱신한다.
+  private openAnchoredEditor(anchor: HTMLElement, opts: {
+    title: string;
+    fields: Array<{ key: string; label: string; value: string; rows?: number; mono?: boolean; warn?: string }>;
+    onSave: (values: Record<string, string>) => Promise<boolean>;
+  }): void {
+    this.closeModal();
+    const fieldsHtml = opts.fields.map((f) => `
+      <label class="fm-modal-label">${this.esc(f.label)}</label>
+      ${f.warn ? `<div class="fm-ed-warn">${this.esc(f.warn)}</div>` : ''}
+      <textarea class="form-control fm-modal-input${f.mono ? ' fm-mono' : ''}" data-key="${this.esc(f.key)}" rows="${f.rows || 6}">${this.esc(f.value)}</textarea>`).join('');
+    const panel = document.createElement('div');
+    panel.className = 'fm-pop';
+    panel.setAttribute('role', 'dialog');
+    panel.innerHTML = `
+      <div class="fm-pop-head">${this.esc(opts.title)}</div>
+      <div class="fm-modal-body">${fieldsHtml}</div>
+      <div class="fm-modal-foot">
+        <span class="fm-modal-msg text-muted small"></span>
+        <button type="button" class="btn btn-sm btn-link fm-modal-cancel">취소</button>
+        <button type="button" class="btn btn-sm btn-primary fm-modal-save">저장</button>
+        <span class="text-muted small ms-2">Ctrl+Enter 저장 · Esc 취소</span>
       </div>`;
-    const hko = td.querySelector('.fm-ed-hko') as HTMLInputElement;
-    const h = td.querySelector('.fm-ed-h') as HTMLInputElement;
-    const msgEl = td.querySelector('.fm-ed-msg') as HTMLElement;
-    hko.focus();
+    document.body.appendChild(panel);
+    this.modalEl = panel;
 
-    const restore = () => {
-      td.classList.remove('fm-cell-editing');
-      td.innerHTML = this.view.headInner(prov, this.canEdit);
+    // 위치: 클릭한 칸 바로 아래(뷰포트 밖으로 안 나가게 클램프). position:absolute + 문서좌표라 스크롤에 따라온다.
+    const rect = anchor.getBoundingClientRect();
+    const width = Math.min(Math.max(rect.width, 440), window.innerWidth - 24);
+    let left = rect.left + window.scrollX;
+    left = Math.min(left, window.scrollX + window.innerWidth - width - 12);
+    left = Math.max(left, window.scrollX + 8);
+    panel.style.width = width + 'px';
+    panel.style.left = left + 'px';
+    panel.style.top = (rect.bottom + window.scrollY + 4) + 'px';
+
+    const msg = panel.querySelector('.fm-modal-msg') as HTMLElement;
+    const collect = (): Record<string, string> => {
+      const v: Record<string, string> = {};
+      panel.querySelectorAll('.fm-modal-input').forEach((el) => {
+        v[(el as HTMLElement).dataset.key!] = (el as HTMLTextAreaElement).value;
+      });
+      return v;
     };
     const save = async () => {
-      msgEl.textContent = '저장 중…';
-      const ok = await this.model.updateProvision(pid, { heading_ko: hko.value, heading: h.value });
-      if (!ok) { msgEl.textContent = '저장 실패'; return; }
-      prov.heading_ko = hko.value.trim() ? hko.value : null;
-      prov.heading = h.value.trim() ? h.value : null;
-      restore();
-      // 목차(조 칩)도 갱신 — article 수만큼이라 가볍다.
-      const toc = document.querySelector('.fm-toc');
-      if (toc) toc.outerHTML = this.view.buildTocHtml(this.provisions);
+      msg.textContent = '저장 중…';
+      const ok = await opts.onSave(collect());
+      if (ok) this.closeModal();
+      else msg.textContent = '저장 실패 (권한·운영 차단을 확인하세요)';
     };
-    (td.querySelector('.fm-ed-save') as HTMLElement).onclick = save;
-    (td.querySelector('.fm-ed-cancel') as HTMLElement).onclick = restore;
-    td.addEventListener('keydown', (ev: KeyboardEvent) => {
-      if (ev.key === 'Enter') { ev.preventDefault(); save(); }
-      else if (ev.key === 'Escape') { ev.preventDefault(); restore(); }
+    (panel.querySelector('.fm-modal-save') as HTMLElement).onclick = save;
+    (panel.querySelector('.fm-modal-cancel') as HTMLElement).onclick = () => this.closeModal();
+    panel.addEventListener('keydown', (ev: KeyboardEvent) => {
+      if (ev.key === 'Escape') { ev.preventDefault(); this.closeModal(); }
+      else if (ev.key === 'Enter' && (ev.ctrlKey || ev.metaKey)) { ev.preventDefault(); save(); }
     });
+    // 바깥 클릭 시 닫기(여는 클릭이 곧바로 닫지 않도록 다음 tick부터 감시).
+    const onDocDown = (e: MouseEvent) => { if (!panel.contains(e.target as Node)) this.closeModal(); };
+    const t = window.setTimeout(() => document.addEventListener('mousedown', onDocDown), 0);
+    this.popCleanup = () => { window.clearTimeout(t); document.removeEventListener('mousedown', onDocDown); };
+
+    const first = panel.querySelector('.fm-modal-input') as HTMLTextAreaElement | null;
+    if (first) { first.focus(); first.setSelectionRange(first.value.length, first.value.length); }
+  }
+
+  private closeModal(): void {
+    if (this.popCleanup) { this.popCleanup(); this.popCleanup = null; }
+    if (this.modalEl) { this.modalEl.remove(); this.modalEl = null; }
   }
 
   private esc(s: string): string {

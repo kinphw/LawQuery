@@ -30,6 +30,9 @@
     tr[id^="fart-"] { scroll-margin-top: 64px; }  /* 상단 상태바(sticky)에 가리지 않게 */
     .fm-law-head { padding: .25rem 0 1rem; }
     .fm-table { table-layout: fixed; width: 100%; }
+    /* 조(article)별 tbody 윈도잉: 화면 밖 조는 레이아웃/페인트 스킵 → 대형 법령(수천 행) 편집 시
+       셀 하나 바꿔도 표 전체가 아니라 '보이는 조'만 재배치(reflow). 미지원 브라우저는 전체 렌더(무해 폴백). */
+    .fm-table tbody.fm-art-group { content-visibility: auto; contain-intrinsic-size: auto 200px; }
     .fm-table th { background: #212529; color: #fff; text-align: center; }
     .fm-table td { vertical-align: top; font-size: .92rem; }
     .fm-col-en { width: 44%; }
@@ -66,20 +69,24 @@
       .fm-table td:nth-child(2)::before { content: '번역'; display: block; font-size: .7rem; color: #888; }
     }
 
-    /* ── 관리자 인라인 수정(개발계 전용) — 칸 단위 그 자리 편집 ── */
+    /* ── 관리자 수정 버튼(✎) ── */
     .fm-admin-edit { float: right; margin: 0 0 .25rem .4rem; padding: .05rem .4rem; font-size: .72rem;
       line-height: 1.4; color: #fff; background: #6f42c1; border: 0; border-radius: .25rem; cursor: pointer; opacity: .35; }
     .fm-en:hover .fm-admin-edit, .fm-ko-cell:hover .fm-admin-edit, .fm-art-head:hover .fm-admin-edit,
-    .fm-admin-edit:hover { opacity: 1; }
+    .fm-memo:hover .fm-admin-edit, .fm-admin-edit:hover { opacity: 1; }
     .fm-art-head .fm-admin-edit { background: #0d6efd; }
-    .fm-cell-editing { background: #f6f2fc !important; }
-    .fm-ed-input { font-size: .9rem; width: 100%; }
-    .fm-en .fm-ed-input { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .85rem; }
-    .fm-ed-warn { font-size: .76rem; color: #b8860b; margin-top: .3rem; }
-    .fm-edit-grid { display: flex; flex-direction: column; gap: .2rem; }
-    .fm-edit-label { font-size: .82rem; font-weight: 600; color: #495057; margin: .3rem 0 .1rem; }
-    .fm-edit-label:first-child { margin-top: 0; }
-    .fm-edit-actions { margin-top: .5rem; display: flex; align-items: center; gap: .4rem; flex-wrap: wrap; }
+
+    /* ── 편집 팝오버 — 클릭한 칸 바로 아래(표를 안 건드려 표 높이 유지 → reflow/프리즈 없음) ── */
+    .fm-pop { position: absolute; z-index: 1081; background: #fff; border: 1px solid #b9a3e0;
+      border-radius: .5rem; box-shadow: 0 .6rem 1.6rem rgba(0,0,0,.28); padding: .7rem .85rem; }
+    .fm-pop-head { font-weight: 700; font-size: .88rem; color: #4b2e83; margin-bottom: .5rem; }
+    .fm-modal-body { display: flex; flex-direction: column; gap: .2rem; }
+    .fm-modal-label { font-size: .82rem; font-weight: 600; color: #495057; margin: .3rem 0 .1rem; }
+    .fm-modal-label:first-child { margin-top: 0; }
+    .fm-modal-input { font-size: .9rem; width: 100%; }
+    .fm-modal-input.fm-mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .85rem; }
+    .fm-ed-warn { font-size: .78rem; color: #b8860b; margin: .1rem 0 .4rem; }
+    .fm-modal-foot { margin-top: .6rem; display: flex; align-items: center; gap: .4rem; flex-wrap: wrap; }
 
     /* ── 뷰어 상단: 목록 백링크 + 소개 카드 ── */
     .fm-back { margin-bottom: .5rem; }

@@ -138,30 +138,51 @@ export class ForeignModel {
     );
   }
 
-  // ── 관리자 본문 수정(fin_law_db.law_provision) — 개발계 전용 ──────────────────
-  /** 인라인 수정 가능 컬럼 화이트리스트. 구조 키(article_no/part_no/seg_kind)는 제외(메모 논리키·목차 앵커 보호). */
+  // ── 본문 교정 레이어(ldb_auth.foreign_override) — 운영에서도 안전한 오탈자 교정 ──
+  //    원본(fin_law_db.law_provision)은 STN·번역스크립트 관리 베이스로 불변. 사람 교정은 여기에.
+  //    조회 시 베이스 위에 덮어 보여준다(getProvisions). 이관은 fin_law_db만 건드려 교정 무영향.
+  /** 교정 가능 컬럼 화이트리스트. 구조 키(article_no/part_no/seg_kind)는 제외(논리키·목차 앵커 보호). */
   static readonly EDITABLE_FIELDS = ['text_original', 'text_ko', 'heading', 'heading_ko'] as const;
 
-  /**
-   * 물리 provision_id 의 본문/제목을 수정한다(개발계 직접 UPDATE).
-   * fields 는 화이트리스트 컬럼만 반영하며, 빈 문자열은 NULL 로 저장(번역 비움 등).
-   * 반영된 행 수를 반환(0이면 없는 id).
-   */
-  async updateProvision(provisionId: number, fields: Record<string, string | null>): Promise<number> {
-    const cols = ForeignModel.EDITABLE_FIELDS.filter(c => Object.prototype.hasOwnProperty.call(fields, c));
-    if (!cols.length) return 0;
-    const sets = cols.map(c => `${c} = ?`).join(', ');
-    const values = cols.map(c => {
-      const v = fields[c];
-      const s = v == null ? '' : String(v);
-      return s.trim() === '' ? null : s; // 빈 입력 → NULL
-    });
-    const result = await this.fin().query<any>(
-      `UPDATE law_provision SET ${sets} WHERE id = ?`,
-      [...values, provisionId]
+  /** 법령 전체 교정 맵 { "<article_no>|<seg_index>|<field>": value }. */
+  async getOverrides(code: string): Promise<Record<string, string>> {
+    const rows = await this.auth().query<{ article_no: string; seg_index: number; field: string; value: string }>(
+      `SELECT article_no, seg_index, field, value FROM foreign_override WHERE law_code = ?`,
+      [code]
     );
-    // mysql2 의 UPDATE 결과는 ResultSetHeader(affectedRows). DbContext.query 가 rows 로 캐스팅하므로 any 로 받는다.
-    return (result as any)?.affectedRows ?? 0;
+    const map: Record<string, string> = {};
+    rows.forEach(r => { map[`${r.article_no}|${r.seg_index}|${r.field}`] = r.value; });
+    return map;
+  }
+
+  async upsertOverride(code: string, articleNo: string, segIndex: number, field: string, value: string): Promise<void> {
+    await this.auth().query(
+      `INSERT INTO foreign_override (law_code, article_no, seg_index, field, value)
+            VALUES (?, ?, ?, ?, ?)
+       ON DUPLICATE KEY UPDATE value = VALUES(value)`,
+      [code, articleNo, segIndex, field, value]
+    );
+  }
+
+  async deleteOverride(code: string, articleNo: string, segIndex: number, field: string): Promise<void> {
+    await this.auth().query(
+      `DELETE FROM foreign_override WHERE law_code = ? AND article_no = ? AND seg_index = ? AND field = ?`,
+      [code, articleNo, segIndex, field]
+    );
+  }
+
+  /** 교정 삭제(원본 복귀) 시 프론트가 표시할 베이스 값. field 는 화이트리스트 검증 후만 전달(인터폴레이션 안전). */
+  async getBaseField(code: string, articleNo: string, segIndex: number, field: string): Promise<string | null> {
+    const rows = await this.fin().query<{ val: string | null }>(
+      `SELECT t.val FROM (
+         SELECT p.${field} AS val,
+                ROW_NUMBER() OVER (PARTITION BY p.article_no ORDER BY p.ordinal) AS seg_index
+           FROM law_provision p JOIN law l ON l.id = p.law_id
+          WHERE l.code = ? AND p.article_no = ?
+       ) t WHERE t.seg_index = ?`,
+      [code, articleNo, segIndex]
+    );
+    return rows[0] ? rows[0].val : null;
   }
 
   // ── 메모(ldb_auth.foreign_memo) — 운영자 큐레이션(전역). 논리키 (law_code, article_no, seg_index) ─

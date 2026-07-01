@@ -64,17 +64,21 @@ export class ForeignFetchModel {
   }
 
   /**
-   * 관리자 본문 수정(개발계 전용). fields = { text_original?, text_ko?, heading?, heading_ko? }.
-   * 성공 true / 실패 false(권한 없음·운영 차단·오류).
+   * 관리자 본문 교정(오버레이). 논리키 (code, article_no, seg_index) + fields = { text_original?, text_ko?, heading?, heading_ko? }.
+   * 값이 있으면 교정 저장, 빈 문자열이면 원본 복귀. 성공 시 effective(저장 후 실효값) 맵, 실패 시 null.
    */
-  async updateProvision(provisionId: number, fields: Record<string, string>): Promise<boolean> {
-    const r = await fetch('/api/foreign/admin/provision', {
+  async saveOverride(
+    code: string, articleNo: string, segIndex: number, fields: Record<string, string>
+  ): Promise<Record<string, string | null> | null> {
+    const r = await fetch('/api/foreign/admin/override', {
       method: 'PUT',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ provision_id: provisionId, ...fields }),
+      body: JSON.stringify({ law_code: code, article_no: articleNo, seg_index: segIndex, ...fields }),
     });
-    return r.ok;
+    if (!r.ok) return null;
+    const j = await r.json().catch(() => null);
+    return j && j.success ? (j.effective || {}) : null;
   }
 
   /** 메모 맵 { "<article_no>|<seg_index>": memo } (운영자 큐레이션, 전역·공개 열람). 실패 시 {}. */

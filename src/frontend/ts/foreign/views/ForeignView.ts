@@ -65,19 +65,30 @@ export class ForeignView {
       <th class="fm-col-en">원문</th>
       <th class="fm-col-ko">국문 번역</th>
       ${showMemo ? '<th class="fm-col-memo">메모</th>' : ''}
-    </tr></thead><tbody>`;
+    </tr></thead>`;
 
+    // 조(article)마다 별도 <tbody class="fm-art-group"> + content-visibility:auto →
+    // 화면 밖 조는 레이아웃/페인트를 건너뛴다(국내 대형 연계표와 동일 윈도잉).
+    // ⇒ 8천 행짜리 대형 법령에서도 셀 편집(메모·본문) 시 표 전체가 아니라 '보이는 조'만 재배치 → 렉 제거.
     let lastPart: string | null = null;
     let lastArticle: string | null = null;
+    let openGroup = false;
     for (const seg of provisions) {
-      if (seg.part_no && seg.part_no !== lastPart) {
-        lastPart = seg.part_no;
-        html += `<tr class="fm-part"><td colspan="${cols}">${this.esc(seg.part_no)}</td></tr>`;
-      }
       if (seg.article_no !== lastArticle) {
+        if (openGroup) html += `</tbody>`;
+        html += `<tbody class="fm-art-group">`;
+        openGroup = true;
         lastArticle = seg.article_no;
+        if (seg.part_no && seg.part_no !== lastPart) {
+          lastPart = seg.part_no;
+          html += `<tr class="fm-part"><td colspan="${cols}">${this.esc(seg.part_no)}</td></tr>`;
+        }
         const isAnnex = /^ANNEX/i.test(seg.article_no);
         html += `<tr class="fm-art-head${isAnnex ? ' fm-annex' : ''}" id="${this.articleId(seg.article_no)}" data-pid="${seg.provision_id}"><td colspan="${cols}">${this.headInner(seg, canEdit)}</td></tr>`;
+      } else if (seg.part_no && seg.part_no !== lastPart) {
+        // (드묾) 조 중간에서 편/장이 바뀌는 경우 — 현재 그룹 안에 편/장 행을 넣는다.
+        lastPart = seg.part_no;
+        html += `<tr class="fm-part"><td colspan="${cols}">${this.esc(seg.part_no)}</td></tr>`;
       }
       const indent = seg.seg_kind === 'item' ? ' fm-indent' : '';
       const key = `${seg.article_no}|${seg.seg_index}`;
@@ -88,8 +99,8 @@ export class ForeignView {
         ${showMemo ? this.memoCell(meta.code, seg, memo, canEditMemo) : ''}
       </tr>`;
     }
-
-    html += `</tbody></table></div>`;
+    if (openGroup) html += `</tbody>`;
+    html += `</table></div>`;
     return html;
   }
 
