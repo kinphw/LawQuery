@@ -105,20 +105,25 @@ export class ForeignView {
   }
 
   /**
-   * 원문/번역 셀 내부(관리자 수정버튼 + 본문). 인라인 수정 종료/저장 후 셀 복원에도 재사용.
+   * 원문/번역 셀 내부(복사버튼 + 관리자 수정버튼 + 본문). 인라인 수정 종료/저장 후 셀 복원에도 재사용.
    * → 셀 단위 교체라 거대 표라도 그 셀만 다시 그린다(table-layout:fixed → 열너비 재계산 없음).
+   * 복사는 렌더된 HTML이 아니라 원본 문자열을 그대로 복사(컨트롤러가 pidMap 원본값 사용) — 여기선 버튼만 표시.
    */
   cellInner(field: 'text_original' | 'text_ko', prov: ForeignProvision, canEdit: boolean): string {
+    const text = field === 'text_original' ? prov.text_original : prov.text_ko;
+    const copy = text
+      ? `<button type="button" class="fm-copy-btn" data-field="${field}" title="클립보드에 복사"><i class="fas fa-copy"></i></button>`
+      : '';
     const pen = canEdit
       ? `<button type="button" class="fm-admin-edit fm-edit-cell" title="${field === 'text_ko' ? '번역' : '원문'} 수정"><i class="fas fa-pen"></i></button>`
       : '';
     if (field === 'text_original') {
-      return `${pen}<div class="fm-en-body">${this.renderRich(prov.text_original || '')}</div>`;
+      return `${copy}${pen}<div class="fm-en-body">${this.renderRich(prov.text_original || '')}</div>`;
     }
     const ko = prov.text_ko
       ? `<div class="fm-ko">${this.renderRich(prov.text_ko)}</div>`
       : `<div class="fm-ko fm-empty">— 번역 준비중 —</div>`;
-    return `${pen}${ko}`;
+    return `${copy}${pen}${ko}`;
   }
 
   /**

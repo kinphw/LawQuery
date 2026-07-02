@@ -27,7 +27,9 @@
     .fm-toc-item:hover { background: #e7f1ff; border-color: #0d6efd; }
     .fm-toc-h { color: #555; }
     .fm-toc-en { color: #9aa0a6; font-size: .92em; }
-    tr[id^="fart-"] { scroll-margin-top: 64px; }  /* 상단 상태바(sticky)에 가리지 않게 */
+    /* 상단 회원바(--lq-userbar-h, auth-gate.js가 동적 측정 — 모바일은 버튼 줄바꿈으로 높이가 커짐)에
+       목차 점프 대상이 가리지 않게. law/interpretation과 동일 패턴(assets/scss/law/_responsive.scss). */
+    tr[id^="fa-"] { scroll-margin-top: calc(var(--lq-userbar-h, 0px) + 8px); }
     .fm-law-head { padding: .25rem 0 1rem; }
     .fm-table { table-layout: fixed; width: 100%; }
     /* 조(article)별 tbody 윈도잉: 화면 밖 조는 레이아웃/페인트 스킵 → 대형 법령(수천 행) 편집 시
@@ -75,6 +77,13 @@
     .fm-en:hover .fm-admin-edit, .fm-ko-cell:hover .fm-admin-edit, .fm-art-head:hover .fm-admin-edit,
     .fm-memo:hover .fm-admin-edit, .fm-admin-edit:hover { opacity: 1; }
     .fm-art-head .fm-admin-edit { background: #0d6efd; }
+
+    /* ── 복사 버튼: 모든 사용자, 터치기기는 hover가 없으므로 상시 은은하게 보이게 ── */
+    .fm-copy-btn { float: right; margin: 0 0 .25rem .4rem; padding: .05rem .4rem; font-size: .72rem;
+      line-height: 1.4; color: #495057; background: #f1f3f5; border: 1px solid #dee2e6;
+      border-radius: .25rem; cursor: pointer; opacity: .55; }
+    .fm-copy-btn:hover { opacity: 1; background: #e9ecef; }
+    .fm-copy-btn.fm-copy-done { background: #d1e7dd; border-color: #a3cfbb; color: #0f5132; opacity: 1; }
 
     /* ── 편집 팝오버 — 클릭한 칸 바로 아래(표를 안 건드려 표 높이 유지 → reflow/프리즈 없음) ── */
     .fm-pop { position: absolute; z-index: 1081; background: #fff; border: 1px solid #b9a3e0;

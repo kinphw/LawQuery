@@ -2,6 +2,7 @@ import { ForeignFetchModel, ForeignLawListItem, ForeignProvision, ForeignLawMeta
 import { ForeignView } from '../views/ForeignView';
 import { ForeignOverviewView } from '../views/ForeignOverviewView';
 import { Header } from '../../common/components/Header';
+import { ToastManager } from '../../common/components/ToastManager';
 
 /**
  * 해외법령 컨트롤러. 드롭다운으로 법령 선택 → 원문/번역 2단 표 + 메모(PRO).
@@ -17,13 +18,14 @@ export class ForeignController {
   private view = new ForeignView();
   private overview = new ForeignOverviewView();
   private header = new Header();
+  private toast = new ToastManager();
   private laws: ForeignLawListItem[] = [];
   private currentCode = '';
   private canEditMemo = false; // 운영자만 메모 작성·수정(열람은 전체 공개)
   private memos: Record<string, string> = {}; // "<article_no>|<seg_index>" → memo (전역 운영자 큐레이션)
 
-  // 관리자 인라인 수정(개발계 전용) 상태
-  private canEdit = false;                         // 백엔드 editable(관리자+개발계)
+  // 관리자 본문 교정(오버레이, 환경 무관) 상태
+  private canEdit = false;                         // 백엔드 editable(관리자 여부)
   private meta: ForeignLawMeta | null = null;      // 현재 법령 메타(재렌더용)
   private provisions: ForeignProvision[] = [];     // 현재 법령 seg 배열(재렌더·수정 원본)
   private pidMap = new Map<number, ForeignProvision>(); // provision_id → seg
@@ -51,6 +53,7 @@ export class ForeignController {
     this.renderDropdown();
     this.bindMemoDelegation();
     this.bindAdminEditDelegation();
+    this.bindCopyDelegation();
 
     // ?code 가 있으면 그 법 본문(드릴다운), 없으면 국가별 소개 카탈로그(랜딩).
     const params = new URLSearchParams(location.search);
@@ -166,7 +169,7 @@ export class ForeignController {
     });
   }
 
-  // ── 관리자 본문 수정 (개발계 전용, 이벤트 위임) ──────────────────────────────
+  // ── 관리자 본문 교정 (이벤트 위임) ────────────────────────────────────────────
   private bindAdminEditDelegation(): void {
     const results = document.getElementById('results')!;
     results.addEventListener('click', (e) => {
@@ -231,6 +234,55 @@ export class ForeignController {
         return true;
       },
     });
+  }
+
+  // ── 원문/번역 복사 (이벤트 위임, 전체 사용자) ─────────────────────────────────
+  // 렌더된 HTML(마크다운 표 등)이 아니라 pidMap에 있는 원본 문자열을 그대로 복사한다.
+  private bindCopyDelegation(): void {
+    const results = document.getElementById('results')!;
+    results.addEventListener('click', (e) => {
+      const btn = (e.target as HTMLElement).closest('.fm-copy-btn') as HTMLElement | null;
+      if (!btn) return;
+      e.preventDefault();
+      const field = btn.dataset.field as 'text_original' | 'text_ko';
+      const pid = Number((btn.closest('tr') as HTMLElement)?.dataset.pid || 0);
+      const prov = this.pidMap.get(pid);
+      const text = prov ? prov[field] : null;
+      if (!text) return;
+      this.copyToClipboard(text, btn);
+    });
+  }
+
+  private async copyToClipboard(text: string, btn: HTMLElement): Promise<void> {
+    let ok = false;
+    try {
+      await navigator.clipboard.writeText(text);
+      ok = true;
+    } catch {
+      // 클립보드 API 미지원/거부 시 폴백(구형 브라우저·비보안 컨텍스트).
+      try {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        ok = document.execCommand('copy');
+        document.body.removeChild(ta);
+      } catch { ok = false; }
+    }
+    if (ok) {
+      this.toast.showToast('클립보드에 복사했습니다');
+      const icon = btn.querySelector('i');
+      btn.classList.add('fm-copy-done');
+      if (icon) icon.className = 'fas fa-check';
+      window.setTimeout(() => {
+        btn.classList.remove('fm-copy-done');
+        if (icon) icon.className = 'fas fa-copy';
+      }, 1200);
+    } else {
+      this.toast.showToast('복사에 실패했습니다');
+    }
   }
 
   // ── 공용 편집 팝오버 (클릭한 칸에 붙는 오버레이) ─────────────────────────────
