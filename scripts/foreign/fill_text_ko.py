@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-해외법령 영한 번역 적재: stn-crawler 엑셀(원문|번역 2열) → fin_law_db.law_provision.text_ko
+해외법령 영한 번역 적재: LawQuery-law/foreign/data_law 엑셀(원문|번역 2열) → fin_law_db.law_provision.text_ko
 
 원리
   - sentinel fin_law_db 는 조문 앵커(article_no)가 정확히 채워져 있다(원문·계층 우수).
@@ -18,7 +18,7 @@ import os, re, sys, io, argparse, openpyxl, pymysql
 
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
 
-DATA = r"c:/projects/stn-crawler/data_law"
+DATA = os.environ.get("DATA_LAW_DIR", r"c:/projects/LawQuery-law/foreign/data_law")
 
 # 엑셀파일 → (law.code, 관할 파서키).  PSD2 는 엑셀이 없어 DeepL 별도 적재(fill_psd2_deepl.py).
 JOBS = [
