@@ -70,13 +70,17 @@ export class ForeignView {
     // 조(article)마다 별도 <tbody class="fm-art-group"> + content-visibility:auto →
     // 화면 밖 조는 레이아웃/페인트를 건너뛴다(국내 대형 연계표와 동일 윈도잉).
     // ⇒ 8천 행짜리 대형 법령에서도 셀 편집(메모·본문) 시 표 전체가 아니라 '보이는 조'만 재배치 → 렉 제거.
+    // contain-intrinsic-size 는 조별 실제 콘텐츠 길이로 미리 계산해 넣는다(고정 200px이면 화면 밖
+    // 조들의 높이를 심하게 과소평가해 목차 바로가기가 실제 위치보다 한참 못 미친 곳으로 스크롤된다).
+    const groupHeights = this.computeGroupHeights(provisions);
     let lastPart: string | null = null;
     let lastArticle: string | null = null;
     let openGroup = false;
     for (const seg of provisions) {
       if (seg.article_no !== lastArticle) {
         if (openGroup) html += `</tbody>`;
-        html += `<tbody class="fm-art-group">`;
+        const h = groupHeights.get(seg.article_no) || 200;
+        html += `<tbody class="fm-art-group" style="contain-intrinsic-size: auto ${h}px;">`;
         openGroup = true;
         lastArticle = seg.article_no;
         if (seg.part_no && seg.part_no !== lastPart) {
@@ -102,6 +106,51 @@ export class ForeignView {
     if (openGroup) html += `</tbody>`;
     html += `</table></div>`;
     return html;
+  }
+
+  /** 조(article_no)별 세그를 묶어 estimateGroupHeight 를 미리 계산한다. */
+  private computeGroupHeights(provisions: ForeignProvision[]): Map<string, number> {
+    const byArticle = new Map<string, ForeignProvision[]>();
+    for (const p of provisions) {
+      const arr = byArticle.get(p.article_no);
+      if (arr) arr.push(p); else byArticle.set(p.article_no, [p]);
+    }
+    const heights = new Map<string, number>();
+    byArticle.forEach((segs, articleNo) => heights.set(articleNo, this.estimateGroupHeight(segs)));
+    return heights;
+  }
+
+  /**
+   * 조 하나(tbody.fm-art-group)의 예상 렌더 높이(px, 대략치) — content-visibility:auto 의
+   * contain-intrinsic-size 로 쓰인다. 정확할 필요는 없고 실제와 자릿수만 맞으면 된다(고정
+   * 200px 추정치는 원문/번역 텍스트가 긴 조에서 실제보다 훨씬 작아 목차 바로가기가 크게
+   * 빗나간다). 모바일은 원문·번역 셀이 세로로 쌓이므로(반응형 @media max-width:768px) 두
+   * 필드를 더하는 쪽(둘 중 큰 값이 아니라)으로 보수적으로 잡는다.
+   */
+  private estimateGroupHeight(segs: ForeignProvision[]): number {
+    const CHARS_PER_LINE = 42; // 좁은 화면 기준 보수적으로(과소추정 방지)
+    const LINE_H = 24;         // line-height 1.55 * ~15px 폰트
+    const ROW_OVERHEAD = 28;   // 셀 패딩 + tr 경계/여백
+    let h = 64; // 조 헤더 행(fm-art-head) + 표 상단 여백
+    for (const seg of segs) {
+      h += this.estimateCellHeight(seg.text_original, CHARS_PER_LINE, LINE_H);
+      h += this.estimateCellHeight(seg.text_ko, CHARS_PER_LINE, LINE_H);
+      h += ROW_OVERHEAD;
+    }
+    // 실측 보정 계수: 위 문자수 기반 어림값은 실제 렌더 높이보다 평균 26~36% 작게 나온다
+    // (줄바꿈 여백·마크다운 표 셀 패딩 등 미반영분). 과소추정이 "한참 못 미친 곳" 버그의
+    // 원인이었으므로 넉넉히 보정한다(다소 과대추정돼도 목차 점프 UX엔 지장 없음).
+    return Math.round(h * 1.4);
+  }
+
+  private estimateCellHeight(text: string | null | undefined, charsPerLine: number, lineH: number): number {
+    const s = String(text ?? '');
+    if (!s) return lineH; // 빈 칸도 "번역 준비중" 한 줄
+    let lines = 0;
+    for (const ln of s.split('\n')) {
+      lines += /^\s*\|.*\|\s*$/.test(ln) ? 1.4 : Math.max(1, Math.ceil(ln.length / charsPerLine));
+    }
+    return Math.max(1, lines) * lineH;
   }
 
   /**

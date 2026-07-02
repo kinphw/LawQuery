@@ -16,6 +16,12 @@
   <script src="auth-gate.js"></script>
   <style>
     /* 해외법령 전용(원문|번역|메모 2~3단 표) — 기존 style.css 무수정 */
+    /* bootstrap.min.css가 :root{scroll-behavior:smooth}를 걸어놓아 목차 바로가기(#fa-…)가
+       애니메이션 스크롤을 탄다. content-visibility:auto 로 윈도잉된 대형 표에서는 스크롤
+       도중 화면 밖 조들이 실측 높이로 갱신되며 목표 위치가 이동하는데, 애니메이션은 처음
+       계산한 거리만큼만 움직이고 멈춰 실제 목표보다 한참 못 미친 곳에 떨어진다. 즉시 이동으로
+       되돌린다(law/interpretation은 이런 대형 windowing이 없어 영향 없음). */
+    html { scroll-behavior: auto !important; }
     .fm-wrap { max-width: 1680px; margin: 0 auto; }  /* 2단 비교라 넓게(과하지 않게 제한) */
     /* 조문 목차·바로가기 */
     .fm-toc { border: 1px solid #dee2e6; border-radius: .5rem; padding: .6rem .85rem; margin-bottom: 1rem; background: #fafbfc; }
