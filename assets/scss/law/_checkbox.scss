@@ -1,11 +1,22 @@
 #lawCheckboxes {
     display: flex;
     flex-direction: column;
-    /* max-height: 300px; */
+    /* 펼침 높이 제한: 자본시장법(616조) 같은 대형 법령에서 페이지가 수천 px 늘어나며
+       아래 연계표 전체가 밀리는 것 방지(렉의 증폭 요인). 목록은 내부 스크롤로 탐색. */
+    max-height: min(60vh, 520px);
     overflow-y: auto;
     padding: 0 2rem;
     /* padding : 0; */
     gap: 0px;  /* Minimal gap between items */
+  }
+
+  /* 조문별 선택조회 펼침/접힘 애니메이션 제거(렉 근본 원인).
+     Bootstrap .collapsing의 height 350ms 전환은 매 프레임 아래의 거대한 연계표를
+     재배치·재페인트시킨다(레이아웃 밀림은 스크롤과 달리 컴포지터 fast-path 불가).
+     즉시 전환으로 프레임 자체를 없앤다(Bootstrap은 duration 0을 정상 처리 —
+     prefers-reduced-motion에서 자신이 같은 규칙을 쓴다). */
+  #lawSearchContent.collapsing {
+    transition: none;
   }
   
   /* ⚠️ 법령 조문선택 체크박스 전용. #lawCheckboxes로 한정해야 함.
