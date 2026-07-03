@@ -5,7 +5,7 @@
     overflow-y: auto;
     padding: 0 2rem;
     /* padding : 0; */
-    gap: 0px;  /* Minimal gap between items */      
+    gap: 0px;  /* Minimal gap between items */
   }
   
   /* ⚠️ 법령 조문선택 체크박스 전용. #lawCheckboxes로 한정해야 함.
@@ -19,6 +19,23 @@
   #lawCheckboxes .form-check-label {
     font-size: 0.875rem;  /* Match Bootstrap's small */
     line-height: 1.2;     /* Tighter line height */
+  }
+
+  /* 조문 라벨 클릭 → 본문 해당 조문으로 이동(선택 체크는 왼쪽 네모) */
+  #lawCheckboxes .lq-goto {
+    cursor: pointer;
+    color: #0d6efd;
+
+    &:hover { text-decoration: underline; }
+  }
+
+  /* 이동 도착 조문 잠깐 강조 */
+  .law-table td.lq-goto-flash {
+    animation: lqGotoFlash 1.6s ease-out;
+  }
+  @keyframes lqGotoFlash {
+    0%, 20% { background-color: #fff3cd; }
+    100%    { background-color: transparent; }
   }
 
   #lawCheckboxes .form-check-input {

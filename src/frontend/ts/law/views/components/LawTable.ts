@@ -172,6 +172,34 @@ export class LawTable {
         this.observer = obs;
     }
 
+    /**
+     * 조문 id로 본문 셀(td[data-id])을 반환 — 조문 목록(체크박스) 클릭 시 이동 대상.
+     * 윈도잉 placeholder에 묻힌 조라면 그 루트 블록을 먼저 채운 뒤 다시 찾는다(관찰 해제 → 중복 렌더 방지).
+     * base=a(조문 목록이 뜨는 유일한 기준)에선 루트 id === 조문 id 라 findIndex로 루트를 특정할 수 있다.
+     */
+    revealArticleCell(id: string): HTMLElement | null {
+        const host = document.getElementById('results');
+        if (!host) return null;
+        const sel = `td[data-id="${(window as any).CSS?.escape ? CSS.escape(id) : id}"]`;
+        let cell = host.querySelector(sel) as HTMLElement | null;
+        if (cell) return cell;
+
+        // 화면 밖(placeholder)이라 아직 렌더 안 된 조 — 해당 루트를 채운다.
+        if (this.winResults) {
+            const i = this.winResults.findIndex(r => String(r.id) === id);
+            if (i >= 0) {
+                const tb = host.querySelector(`tbody.lq-vblock[data-widx="${i}"]`) as HTMLElement | null;
+                if (tb && tb.classList.contains('lq-ph')) {
+                    this.observer?.unobserve(tb);
+                    tb.classList.remove('lq-ph');
+                    tb.innerHTML = this.renderLawRows(this.winResults[i], this.winSearch);
+                }
+                cell = host.querySelector(sel) as HTMLElement | null;
+            }
+        }
+        return cell;
+    }
+
     /** 분할 항/호 노드 id → 소속 조('A2_3h'→'A2', 'E14_2_1h'→'E14_2') + 표시 라벨. 조 자체/별표면 null. */
     private joInfo(id: string): { joId: string; label: string } | null {
         const joId = id.replace(/_\d+h(?:_.*)?$/, '');

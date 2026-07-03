@@ -98,4 +98,26 @@ export class LawView {
         this.toastManager.showToast(message);
     }
 
+    /**
+     * 조문 목록(체크박스) 클릭 → 본문의 해당 조문으로 스크롤.
+     * 오프셋 = sticky 회원바(--lq-userbar-h) + sticky thead 높이(둘 다 top:0)라 그 아래로 정렬.
+     */
+    scrollToArticle(id: string): void {
+        const cell = this.lawTable.revealArticleCell(id);
+        if (!cell) { this.showToast('본문에서 해당 조문을 찾지 못했습니다.'); return; }
+
+        const cs = getComputedStyle(document.documentElement);
+        const userbarH = parseFloat(cs.getPropertyValue('--lq-userbar-h')) || 0;
+        const thead = document.querySelector('.law-table thead') as HTMLElement | null;
+        const theadH = thead ? thead.getBoundingClientRect().height : 0;
+        const y = cell.getBoundingClientRect().top + window.scrollY - userbarH - theadH - 8;
+        window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
+
+        // 도착 조문 잠깐 강조(어디로 왔는지 시선 유도)
+        cell.classList.remove('lq-goto-flash');
+        void cell.offsetWidth;            // reflow로 애니메이션 재시작 보장
+        cell.classList.add('lq-goto-flash');
+        setTimeout(() => cell.classList.remove('lq-goto-flash'), 1600);
+    }
+
 }

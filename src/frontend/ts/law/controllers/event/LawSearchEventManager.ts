@@ -2,11 +2,26 @@ import { ILawController } from "../LawController";
 import { ILawEventManager } from "./ILawEventManager";
 
 export class LawSearchEventManager implements ILawEventManager {
+    private gotoBound = false;
     constructor(private controller: ILawController) {}
 
     bindEvents(): void {
         this.bindSearchEvents();
         this.bindToggleButtonEvents();
+        this.bindArticleGoto();
+    }
+
+    /** 조문 목록의 조문 라벨(.lq-goto) 클릭 → 본문 해당 조문으로 이동. #lawCheckboxes에 위임(1회). */
+    private bindArticleGoto(): void {
+        if (this.gotoBound) return;
+        const host = document.getElementById('lawCheckboxes');
+        if (!host) return;
+        host.addEventListener('click', (e: Event) => {
+            const lbl = (e.target as HTMLElement).closest('.lq-goto') as HTMLElement | null;
+            if (!lbl || !lbl.dataset.goto) return;
+            this.controller.view.scrollToArticle(lbl.dataset.goto);
+        });
+        this.gotoBound = true;
     }
 
     private bindSearchEvents(): void {
