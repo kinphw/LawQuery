@@ -25,7 +25,7 @@ export class ForeignView {
     return 'fa-' + String(articleNo).replace(/[^a-zA-Z0-9]/g, '_');
   }
 
-  renderTable(meta: ForeignLawMeta, provisions: ForeignProvision[], memos: Record<string, string>, canEditMemo: boolean, canEdit = false, favorites: Set<string> = new Set()): string {
+  renderTable(meta: ForeignLawMeta, provisions: ForeignProvision[], memos: Record<string, string>, canEditMemo: boolean, canEdit = false, favorites: Set<string> = new Set(), canFavorite = false): string {
     const trans = this.transLabel(meta.translation_source);
     const status = this.statusLabel(meta.status);
     // 메모(운영자 큐레이션) 칸은 운영자이거나 표시할 메모가 있을 때만 노출 → 빈 칸 낭비 방지.
@@ -97,12 +97,14 @@ export class ForeignView {
       const indent = seg.seg_kind === 'item' ? ' fm-indent' : '';
       const key = `${seg.article_no}|${seg.seg_index}`;
       const memo = memos[key];
-      // 즐겨찾기(운영자 개인 강조) — 강조색은 운영자에게만 노출(favorites는 운영자만 로드).
-      const fav = canEditMemo && favorites.has(key);
+      // 즐겨찾기(회원별 개인 북마크) — 로그인 회원에게만 별·강조 노출(favorites는 회원만 로드).
+      // 별 버튼은 원문셀(fm-en)에 둔다(모든 회원에게 있는 셀 — 메모칸은 운영자에게만 있으므로).
+      const fav = canFavorite && favorites.has(key);
+      const favBtn = canFavorite ? this.favBtn(seg, fav) : '';
       html += `<tr class="fm-seg${indent}${fav ? ' fm-fav' : ''}" data-pid="${seg.provision_id}">
-        <td class="fm-en" data-field="text_original">${this.cellInner('text_original', seg, canEdit)}</td>
+        <td class="fm-en" data-field="text_original">${favBtn}${this.cellInner('text_original', seg, canEdit)}</td>
         <td class="fm-ko-cell" data-field="text_ko">${this.cellInner('text_ko', seg, canEdit)}</td>
-        ${showMemo ? this.memoCell(meta.code, seg, memo, canEditMemo, fav) : ''}
+        ${showMemo ? this.memoCell(meta.code, seg, memo, canEditMemo) : ''}
       </tr>`;
     }
     if (openGroup) html += `</tbody>`;
@@ -178,16 +180,22 @@ export class ForeignView {
   }
 
   /**
+   * 즐겨찾기(★) 토글 버튼 — 회원별 개인 북마크. 원문셀(fm-en) 우상단에 복사버튼과 함께 뜬다.
+   * 켜면 행 전체가 강조색(fm-fav). data-article/data-seg 로 논리키를 실어 컨트롤러가 토글.
+   */
+  private favBtn(seg: ForeignProvision, fav: boolean): string {
+    return `<button type="button" class="fm-fav-toggle${fav ? ' fm-fav-on' : ''}" aria-pressed="${fav}" data-article="${this.esc(seg.article_no)}" data-seg="${seg.seg_index}" title="즐겨찾기 — 내 강조표시(나만 보임)"><i class="fas fa-star"></i></button>`;
+  }
+
+  /**
    * 메모 셀(운영자 큐레이션). 운영자=편집 가능(클릭 시 .fm-memo 위임), 일반=읽기 전용 표시.
    * 빈 메모는 운영자에겐 '+ 메모' 플레이스홀더, 일반 사용자에겐 빈 칸.
-   * 운영자 셀 우측 상단엔 즐겨찾기(★) 토글 — 켜면 행 전체가 강조색(fm-fav). 강조색은 운영자만 노출.
    */
-  private memoCell(code: string, seg: ForeignProvision, memo: string | undefined, canEditMemo: boolean, fav = false): string {
+  private memoCell(code: string, seg: ForeignProvision, memo: string | undefined, canEditMemo: boolean): string {
     if (canEditMemo) {
       const inner = memo ? this.esc(memo) : '<span class="fm-memo-add">+ 메모</span>';
-      const star = `<button type="button" class="fm-fav-toggle${fav ? ' fm-fav-on' : ''}" aria-pressed="${fav}" title="이 조문 강조표시(즐겨찾기) — 운영자에게만 보임"><i class="fas fa-star"></i></button>`;
       return `<td class="fm-memo fm-memo-admin" data-code="${this.esc(code)}" data-article="${this.esc(seg.article_no)}" data-seg="${seg.seg_index}">
-             ${star}<div class="fm-memo-view">${inner}</div>
+             <div class="fm-memo-view">${inner}</div>
            </td>`;
     }
     return `<td class="fm-memo-ro">${memo ? `<div class="fm-memo-view">${this.esc(memo)}</div>` : ''}</td>`;
@@ -286,15 +294,24 @@ export class ForeignView {
     return h + '</tbody></table>';
   }
 
-  /** 과도한 개행 정리(미국 Code·SG PDF 추출본 등). 항목 표시자 앞 개행만 유지. */
+  /**
+   * 본문 정리 — 개행·들여쓰기는 보존한다(.fm-flow 는 white-space:pre-wrap 로 렌더).
+   * STN 적재 본문은 항목/중첩 구조를 개행 + 2칸/단계 들여쓰기로 표현하므로 그대로 살린다.
+   * 하는 일은 (1) CRLF→LF, (2) 줄 내부 잡공백(2칸↑)·줄끝 공백만 제거(선두 들여쓰기는 유지),
+   * (3) 빈 줄 3개↑ → 1개로 축소, (4) 앞뒤 빈 줄 제거 뿐이다.
+   * ※ 과거엔 '항목마커 앞을 뺀 모든 개행을 공백으로 합침'(PDF 하드랩 가정)이었으나,
+   *   실제 데이터는 의도된 구조 개행이라 중첩 계층이 통째로 사라지는 버그였다.
+   */
   private normalize(s: string): string {
-    return String(s ?? '')
-      .replace(/\r/g, '')
-      .replace(/[ \t]*\n[ \t]*/g, '\n')
-      .replace(/\n(?!\s*(\([0-9a-zA-Z]+\)|[0-9]+[.)]))/g, ' ')
-      .replace(/[ \t]{2,}/g, ' ')
-      .replace(/\n{2,}/g, '\n')
-      .trim();
+    const lines = String(s ?? '')
+      .replace(/\r\n?/g, '\n')
+      .split('\n')
+      .map(ln => {
+        const indent = (ln.match(/^[ \t]*/) as RegExpMatchArray)[0];
+        const body = ln.slice(indent.length).replace(/[ \t]{2,}/g, ' ').replace(/[ \t]+$/, '');
+        return indent + body;
+      });
+    return lines.join('\n').replace(/\n{3,}/g, '\n\n').replace(/^\n+|\n+$/g, '');
   }
 
   private esc(s: string): string {

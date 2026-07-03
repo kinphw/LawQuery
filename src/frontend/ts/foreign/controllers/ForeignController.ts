@@ -23,8 +23,9 @@ export class ForeignController {
   private laws: ForeignLawListItem[] = [];
   private currentCode = '';
   private canEditMemo = false; // 운영자만 메모 작성·수정(열람은 전체 공개)
+  private canFavorite = false; // 로그인+승인 회원이면 즐겨찾기(개인 북마크) 가능
   private memos: Record<string, string> = {}; // "<article_no>|<seg_index>" → memo (전역 운영자 큐레이션)
-  private favorites = new Set<string>(); // "<article_no>|<seg_index>" (운영자 개인 강조표시 — 운영자만 로드·노출)
+  private favorites = new Set<string>(); // "<article_no>|<seg_index>" (회원별 즐겨찾기 — 로그인 회원만 로드·노출)
 
   // 관리자 본문 교정(오버레이, 환경 무관) 상태
   private canEdit = false;                         // 백엔드 editable(관리자 여부)
@@ -42,8 +43,10 @@ export class ForeignController {
     }
 
     // 운영자 여부(메모 작성·수정 가능) 판정. 메모 열람은 전체 공개라 별도 게이트 없음.
+    // 즐겨찾기(개인 북마크)는 로그인+승인 회원이면 누구나 가능(me.authenticated).
     const me = await this.resolveMe();
     this.canEditMemo = !!(me && me.authenticated && me.role === 'admin');
+    this.canFavorite = !!(me && me.authenticated);
 
     this.laws = await this.model.getList();
     const results = document.getElementById('results')!;
@@ -129,8 +132,8 @@ export class ForeignController {
     this.pidMap.clear();
     for (const p of data.provisions) this.pidMap.set(p.provision_id, p);
     this.memos = await this.model.getMemos(code); // 전역 운영자 메모 — 전체 공개 열람
-    // 즐겨찾기(운영자 개인 강조) — 운영자만 로드(비운영자는 서버가 차단 → 빈 Set).
-    this.favorites = this.canEditMemo ? await this.model.getFavorites(code) : new Set();
+    // 즐겨찾기(회원별 개인 북마크) — 로그인 회원만 로드(비로그인은 서버가 차단 → 빈 Set).
+    this.favorites = this.canFavorite ? await this.model.getFavorites(code) : new Set();
     this.renderLaw();
     history.replaceState(null, '', `?code=${code}`);
     this.updateLabel();
@@ -144,7 +147,7 @@ export class ForeignController {
   private renderLaw(): void {
     if (!this.meta) return;
     const results = document.getElementById('results')!;
-    results.innerHTML = this.view.renderTable(this.meta, this.provisions, this.memos, this.canEditMemo, this.canEdit, this.favorites);
+    results.innerHTML = this.view.renderTable(this.meta, this.provisions, this.memos, this.canEditMemo, this.canEdit, this.favorites, this.canFavorite);
   }
 
   // ── 메모 편집 (이벤트 위임) — 운영자만. 일반 사용자에겐 읽기 전용. ───────────────
@@ -160,32 +163,30 @@ export class ForeignController {
     });
   }
 
-  // ── 즐겨찾기 토글 (이벤트 위임) — 운영자만. 켜면 행 강조(fm-fav), 영속 저장. ──────
+  // ── 즐겨찾기 토글 (이벤트 위임) — 로그인 회원만. 켜면 행 강조(fm-fav), 영속 저장. ──────
   private bindFavoriteDelegation(): void {
     const results = document.getElementById('results')!;
     results.addEventListener('click', (e) => {
       const btn = (e.target as HTMLElement).closest('.fm-fav-toggle') as HTMLElement | null;
       if (!btn) return;
       e.preventDefault();
-      if (!this.canEditMemo) return;
+      if (!this.canFavorite) return;
       this.toggleFavorite(btn);
     });
   }
 
-  /** 별 토글 → 행 강조(fm-fav) on/off + 서버 저장. 저장 실패 시 UI 롤백. */
+  /** 별 토글 → 행 강조(fm-fav) on/off + 서버 저장. 저장 실패 시 UI 롤백. 별 버튼은 원문셀에 위치. */
   private async toggleFavorite(btn: HTMLElement): Promise<void> {
-    const cell = btn.closest('.fm-memo') as HTMLElement | null;
     const row = btn.closest('tr.fm-seg') as HTMLElement | null;
-    if (!cell || !row) return;
-    const code = cell.dataset.code || this.currentCode;
-    const article = cell.dataset.article || '';
-    const seg = Number(cell.dataset.seg || 0);
+    if (!row) return;
+    const article = btn.dataset.article || '';
+    const seg = Number(btn.dataset.seg || 0);
     const key = `${article}|${seg}`;
     const on = !this.favorites.has(key); // 다음 상태(현재 꺼져 있으면 켜기)
 
     // 낙관적 업데이트(즉시 반영) — 대형 표라도 클래스 토글만이라 reflow 최소.
     this.applyFavoriteState(row, btn, key, on);
-    const ok = await this.model.setFavorite(code, article, seg, on);
+    const ok = await this.model.setFavorite(this.currentCode, article, seg, on);
     if (!ok) {
       this.applyFavoriteState(row, btn, key, !on); // 롤백
       this.toast.showToast('즐겨찾기 저장에 실패했습니다');

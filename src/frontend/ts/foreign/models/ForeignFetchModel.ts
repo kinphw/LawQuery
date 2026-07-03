@@ -99,21 +99,24 @@ export class ForeignFetchModel {
     return r.ok;
   }
 
-  /** 즐겨찾기(운영자 개인 강조표시) 키 집합 { "<article_no>|<seg_index>" }. 운영자 전용(비운영자·실패 시 빈 Set). */
+  /**
+   * 즐겨찾기(회원별 북마크) 키 집합 { "<article_no>|<seg_index>" }. 통합 /api/favorite(scope=foreign).
+   * 로그인+승인 회원 전용(비로그인·실패 시 빈 Set).
+   */
   async getFavorites(code: string): Promise<Set<string>> {
-    const r = await fetch(`/api/foreign/favorite?code=${encodeURIComponent(code)}`, { credentials: 'include' });
+    const r = await fetch(`/api/favorite?scope=foreign&code=${encodeURIComponent(code)}`, { credentials: 'include' });
     if (!r.ok) return new Set();
     const j = await r.json().catch(() => null);
     return new Set<string>(j && j.success && Array.isArray(j.data) ? j.data : []);
   }
 
-  /** 즐겨찾기 토글(on=true 켜기 / false 끄기). 운영자 전용. 논리키 (code, article_no, seg_index). */
+  /** 즐겨찾기 토글(on=true 켜기 / false 끄기). 회원별. node_key = "<article_no>|<seg_index>". */
   async setFavorite(code: string, articleNo: string, segIndex: number, on: boolean): Promise<boolean> {
-    const r = await fetch('/api/foreign/favorite', {
+    const r = await fetch('/api/favorite', {
       method: 'PUT',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ law_code: code, article_no: articleNo, seg_index: segIndex, on }),
+      body: JSON.stringify({ scope: 'foreign', law_code: code, node_key: `${articleNo}|${segIndex}`, on }),
     });
     return r.ok;
   }

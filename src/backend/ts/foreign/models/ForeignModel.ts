@@ -213,29 +213,5 @@ export class ForeignModel {
       [code, articleNo, segIndex]
     );
   }
-
-  // ── 즐겨찾기(ldb_auth.foreign_favorite) — 운영자 개인 강조표시(북마크). 논리키 (law_code, article_no, seg_index) ─
-  //    행 존재 = 즐겨찾기 ON. 열람·토글 모두 운영자 전용(강조색은 운영자에게만 노출).
-  /** 즐겨찾기 키 목록 ["<article_no>|<seg_index>", …] (해당 법령). */
-  async getFavorites(code: string): Promise<string[]> {
-    const rows = await this.auth().query<{ article_no: string; seg_index: number }>(
-      `SELECT article_no, seg_index FROM foreign_favorite WHERE law_code = ?`,
-      [code]
-    );
-    return rows.map(r => `${r.article_no}|${r.seg_index}`);
-  }
-
-  async addFavorite(code: string, articleNo: string, segIndex: number): Promise<void> {
-    await this.auth().query(
-      `INSERT IGNORE INTO foreign_favorite (law_code, article_no, seg_index) VALUES (?, ?, ?)`,
-      [code, articleNo, segIndex]
-    );
-  }
-
-  async removeFavorite(code: string, articleNo: string, segIndex: number): Promise<void> {
-    await this.auth().query(
-      `DELETE FROM foreign_favorite WHERE law_code = ? AND article_no = ? AND seg_index = ?`,
-      [code, articleNo, segIndex]
-    );
-  }
+  // (즐겨찾기는 회원별 북마크로 일반화 → FavoriteModel/ldb_auth.favorite 로 이전)
 }
