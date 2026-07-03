@@ -1,6 +1,7 @@
 import { ForeignFetchModel, ForeignLawListItem, ForeignProvision, ForeignLawMeta } from '../models/ForeignFetchModel';
 import { ForeignView } from '../views/ForeignView';
 import { ForeignOverviewView } from '../views/ForeignOverviewView';
+import { ForeignScrollAnchor } from '../util/ForeignScrollAnchor';
 import { Header } from '../../common/components/Header';
 import { ToastManager } from '../../common/components/ToastManager';
 
@@ -23,6 +24,7 @@ export class ForeignController {
   private currentCode = '';
   private canEditMemo = false; // 운영자만 메모 작성·수정(열람은 전체 공개)
   private memos: Record<string, string> = {}; // "<article_no>|<seg_index>" → memo (전역 운영자 큐레이션)
+  private favorites = new Set<string>(); // "<article_no>|<seg_index>" (운영자 개인 강조표시 — 운영자만 로드·노출)
 
   // 관리자 본문 교정(오버레이, 환경 무관) 상태
   private canEdit = false;                         // 백엔드 editable(관리자 여부)
@@ -52,6 +54,7 @@ export class ForeignController {
 
     this.renderDropdown();
     this.bindMemoDelegation();
+    this.bindFavoriteDelegation();
     this.bindAdminEditDelegation();
     this.bindCopyDelegation();
 
@@ -126,27 +129,74 @@ export class ForeignController {
     this.pidMap.clear();
     for (const p of data.provisions) this.pidMap.set(p.provision_id, p);
     this.memos = await this.model.getMemos(code); // 전역 운영자 메모 — 전체 공개 열람
+    // 즐겨찾기(운영자 개인 강조) — 운영자만 로드(비운영자는 서버가 차단 → 빈 Set).
+    this.favorites = this.canEditMemo ? await this.model.getFavorites(code) : new Set();
     this.renderLaw();
     history.replaceState(null, '', `?code=${code}`);
     this.updateLabel();
+
+    // 조 단위 위치 저장·복원 — 모바일 탭 폐기→리로드 복귀 시 위치가 바뀌던 버그의 해법.
+    // (entry에서 scrollRestoration='manual'로 브라우저 픽셀 복원을 껐고, 여기서 앵커로 복원)
+    new ForeignScrollAnchor(code).start();
   }
 
   /** 현재 법령 표를 처음 그린다(법령 로드 시 1회). 인라인 수정은 셀 단위로만 갱신(여기 안 거침). */
   private renderLaw(): void {
     if (!this.meta) return;
     const results = document.getElementById('results')!;
-    results.innerHTML = this.view.renderTable(this.meta, this.provisions, this.memos, this.canEditMemo, this.canEdit);
+    results.innerHTML = this.view.renderTable(this.meta, this.provisions, this.memos, this.canEditMemo, this.canEdit, this.favorites);
   }
 
   // ── 메모 편집 (이벤트 위임) — 운영자만. 일반 사용자에겐 읽기 전용. ───────────────
   private bindMemoDelegation(): void {
     const results = document.getElementById('results')!;
     results.addEventListener('click', (e) => {
-      const cell = (e.target as HTMLElement).closest('.fm-memo') as HTMLElement | null;
+      const target = e.target as HTMLElement;
+      if (target.closest('.fm-fav-toggle')) return; // 메모 셀 안의 즐겨찾기 별은 별도 처리(메모 편집 안 열림)
+      const cell = target.closest('.fm-memo') as HTMLElement | null;
       if (!cell) return;
       if (!this.canEditMemo) return; // 비운영자: 읽기 전용
       this.openMemoEditor(cell);
     });
+  }
+
+  // ── 즐겨찾기 토글 (이벤트 위임) — 운영자만. 켜면 행 강조(fm-fav), 영속 저장. ──────
+  private bindFavoriteDelegation(): void {
+    const results = document.getElementById('results')!;
+    results.addEventListener('click', (e) => {
+      const btn = (e.target as HTMLElement).closest('.fm-fav-toggle') as HTMLElement | null;
+      if (!btn) return;
+      e.preventDefault();
+      if (!this.canEditMemo) return;
+      this.toggleFavorite(btn);
+    });
+  }
+
+  /** 별 토글 → 행 강조(fm-fav) on/off + 서버 저장. 저장 실패 시 UI 롤백. */
+  private async toggleFavorite(btn: HTMLElement): Promise<void> {
+    const cell = btn.closest('.fm-memo') as HTMLElement | null;
+    const row = btn.closest('tr.fm-seg') as HTMLElement | null;
+    if (!cell || !row) return;
+    const code = cell.dataset.code || this.currentCode;
+    const article = cell.dataset.article || '';
+    const seg = Number(cell.dataset.seg || 0);
+    const key = `${article}|${seg}`;
+    const on = !this.favorites.has(key); // 다음 상태(현재 꺼져 있으면 켜기)
+
+    // 낙관적 업데이트(즉시 반영) — 대형 표라도 클래스 토글만이라 reflow 최소.
+    this.applyFavoriteState(row, btn, key, on);
+    const ok = await this.model.setFavorite(code, article, seg, on);
+    if (!ok) {
+      this.applyFavoriteState(row, btn, key, !on); // 롤백
+      this.toast.showToast('즐겨찾기 저장에 실패했습니다');
+    }
+  }
+
+  private applyFavoriteState(row: HTMLElement, btn: HTMLElement, key: string, on: boolean): void {
+    row.classList.toggle('fm-fav', on);
+    btn.classList.toggle('fm-fav-on', on);
+    btn.setAttribute('aria-pressed', String(on));
+    if (on) this.favorites.add(key); else this.favorites.delete(key);
   }
 
   /** 메모 편집 = 표 바깥 모달. 저장 시 해당 메모 셀만 갱신. */
@@ -163,7 +213,9 @@ export class ForeignController {
         const ok = await this.model.saveMemo(code, article, seg, val);
         if (!ok) return false;
         if (val) this.memos[key] = val; else delete this.memos[key];
-        cell.innerHTML = `<div class="fm-memo-view">${val ? this.esc(val) : '<span class="fm-memo-add">+ 메모</span>'}</div>`;
+        // 메모 뷰 div만 갱신(셀 전체 교체 시 우측 즐겨찾기 별이 지워짐).
+        const view = cell.querySelector('.fm-memo-view');
+        if (view) view.innerHTML = val ? this.esc(val) : '<span class="fm-memo-add">+ 메모</span>';
         return true;
       },
     });

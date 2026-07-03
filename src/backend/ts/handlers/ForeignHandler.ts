@@ -6,6 +6,7 @@ import { optionalAuth, adminGuard } from '../auth/middleware/authGuard';
  * 해외법령 라우터 (/api/foreign/*). 기존 LawHandler(국내 5단)와 독립.
  *  - 본문(목록·조문): 무료 공개(optionalAuth)
  *  - 메모: 열람=공개(optionalAuth) / 작성·삭제=운영자 큐레이션(adminGuard)
+ *  - 즐겨찾기(행 강조): 열람·토글 모두 운영자 전용(adminGuard) — 강조색은 운영자만 노출
  *  - 관리자 본문 수정: adminGuard(+컨트롤러에서 운영 차단)
  */
 export class ForeignHandler {
@@ -26,6 +27,10 @@ export class ForeignHandler {
     this.router.get('/memo', optionalAuth, this.c.getMemos);
     this.router.put('/memo', adminGuard, this.c.putMemo);
     this.router.delete('/memo', adminGuard, this.c.deleteMemo);
+
+    // ── 즐겨찾기(운영자 개인 강조표시): 열람·토글 모두 운영자 전용(강조색은 운영자만 노출) ──
+    this.router.get('/favorite', adminGuard, this.c.getFavorites);
+    this.router.put('/favorite', adminGuard, this.c.putFavorite);
 
     // ── 관리자 본문 교정(오버레이) — 원본 보존, 이관에 안 지워짐 ──
     this.router.put('/admin/override', adminGuard, this.c.saveOverride);

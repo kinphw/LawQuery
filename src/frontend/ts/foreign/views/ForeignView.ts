@@ -25,7 +25,7 @@ export class ForeignView {
     return 'fa-' + String(articleNo).replace(/[^a-zA-Z0-9]/g, '_');
   }
 
-  renderTable(meta: ForeignLawMeta, provisions: ForeignProvision[], memos: Record<string, string>, canEditMemo: boolean, canEdit = false): string {
+  renderTable(meta: ForeignLawMeta, provisions: ForeignProvision[], memos: Record<string, string>, canEditMemo: boolean, canEdit = false, favorites: Set<string> = new Set()): string {
     const trans = this.transLabel(meta.translation_source);
     const status = this.statusLabel(meta.status);
     // 메모(운영자 큐레이션) 칸은 운영자이거나 표시할 메모가 있을 때만 노출 → 빈 칸 낭비 방지.
@@ -97,10 +97,12 @@ export class ForeignView {
       const indent = seg.seg_kind === 'item' ? ' fm-indent' : '';
       const key = `${seg.article_no}|${seg.seg_index}`;
       const memo = memos[key];
-      html += `<tr class="fm-seg${indent}" data-pid="${seg.provision_id}">
+      // 즐겨찾기(운영자 개인 강조) — 강조색은 운영자에게만 노출(favorites는 운영자만 로드).
+      const fav = canEditMemo && favorites.has(key);
+      html += `<tr class="fm-seg${indent}${fav ? ' fm-fav' : ''}" data-pid="${seg.provision_id}">
         <td class="fm-en" data-field="text_original">${this.cellInner('text_original', seg, canEdit)}</td>
         <td class="fm-ko-cell" data-field="text_ko">${this.cellInner('text_ko', seg, canEdit)}</td>
-        ${showMemo ? this.memoCell(meta.code, seg, memo, canEditMemo) : ''}
+        ${showMemo ? this.memoCell(meta.code, seg, memo, canEditMemo, fav) : ''}
       </tr>`;
     }
     if (openGroup) html += `</tbody>`;
@@ -178,12 +180,14 @@ export class ForeignView {
   /**
    * 메모 셀(운영자 큐레이션). 운영자=편집 가능(클릭 시 .fm-memo 위임), 일반=읽기 전용 표시.
    * 빈 메모는 운영자에겐 '+ 메모' 플레이스홀더, 일반 사용자에겐 빈 칸.
+   * 운영자 셀 우측 상단엔 즐겨찾기(★) 토글 — 켜면 행 전체가 강조색(fm-fav). 강조색은 운영자만 노출.
    */
-  private memoCell(code: string, seg: ForeignProvision, memo: string | undefined, canEditMemo: boolean): string {
+  private memoCell(code: string, seg: ForeignProvision, memo: string | undefined, canEditMemo: boolean, fav = false): string {
     if (canEditMemo) {
       const inner = memo ? this.esc(memo) : '<span class="fm-memo-add">+ 메모</span>';
+      const star = `<button type="button" class="fm-fav-toggle${fav ? ' fm-fav-on' : ''}" aria-pressed="${fav}" title="이 조문 강조표시(즐겨찾기) — 운영자에게만 보임"><i class="fas fa-star"></i></button>`;
       return `<td class="fm-memo fm-memo-admin" data-code="${this.esc(code)}" data-article="${this.esc(seg.article_no)}" data-seg="${seg.seg_index}">
-             <div class="fm-memo-view">${inner}</div>
+             ${star}<div class="fm-memo-view">${inner}</div>
            </td>`;
     }
     return `<td class="fm-memo-ro">${memo ? `<div class="fm-memo-view">${this.esc(memo)}</div>` : ''}</td>`;

@@ -153,4 +153,41 @@ export class ForeignController {
       res.status(500).json({ success: false, error: '메모 삭제 실패' });
     }
   };
+
+  // ── 즐겨찾기(운영자 개인 강조표시) — 논리키 (code, article_no, seg_index) ─────────
+  //    열람·토글 모두 운영자 전용(adminGuard) — 강조색은 운영자에게만 노출.
+  getFavorites = async (req: Request, res: Response): Promise<void> => {
+    const code = String(req.query.code || '').trim();
+    if (!code) {
+      res.status(400).json({ success: false, error: 'code 파라미터가 필요합니다.' });
+      return;
+    }
+    try {
+      const keys = await this.model.getFavorites(code);
+      res.status(200).json({ success: true, data: keys }); // ["<article_no>|<seg_index>", …]
+    } catch (e) {
+      console.error('[foreign] getFavorites', e);
+      res.status(500).json({ success: false, error: '즐겨찾기 조회 실패' });
+    }
+  };
+
+  /** 즐겨찾기 토글. on=true 추가 / on=false 삭제. 운영자 전용(adminGuard). */
+  putFavorite = async (req: Request, res: Response): Promise<void> => {
+    const lawCode = String(req.body?.law_code || '').trim();
+    const articleNo = String(req.body?.article_no || '').trim();
+    const segIndex = Number(req.body?.seg_index || 0);
+    const on = req.body?.on === true || req.body?.on === 'true';
+    if (!lawCode || !articleNo || !segIndex) {
+      res.status(400).json({ success: false, error: 'law_code, article_no, seg_index가 필요합니다.' });
+      return;
+    }
+    try {
+      if (on) await this.model.addFavorite(lawCode, articleNo, segIndex);
+      else await this.model.removeFavorite(lawCode, articleNo, segIndex);
+      res.status(200).json({ success: true, on });
+    } catch (e) {
+      console.error('[foreign] putFavorite', e);
+      res.status(500).json({ success: false, error: '즐겨찾기 저장 실패' });
+    }
+  };
 }

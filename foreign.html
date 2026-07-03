@@ -68,6 +68,14 @@
     .fm-memo-view { font-size: .85rem; }
     .fm-memo-add { color: #c0a000; font-size: .85rem; }
     .fm-memo-actions { margin-top: .35rem; display: flex; align-items: center; gap: .35rem; }
+    /* ── 즐겨찾기(★) 토글 = 운영자 개인 강조표시(북마크). 메모 셀 우측 상단, 켜면 행 전체 강조 ── */
+    /* 강조색·별은 운영자에게만 노출(favorites는 운영자만 로드). 데스크톱/모바일 동일하게 동작. */
+    .fm-fav-toggle { float: right; margin: 0 0 .2rem .35rem; padding: .05rem .3rem; font-size: .85rem;
+      line-height: 1.4; color: #ccc; background: transparent; border: 0; cursor: pointer; }
+    .fm-fav-toggle:hover { color: #e0a800; }
+    .fm-fav-toggle.fm-fav-on { color: #f0ad4e; }
+    .fm-seg.fm-fav > td { background: #fff3cd; }
+    .fm-seg.fm-fav > td.fm-en { box-shadow: inset 3px 0 0 #f0ad4e; } /* 강조 행 좌측 액센트 바 */
     @media (max-width: 768px) {
       .fm-table, .fm-table tbody, .fm-table tr, .fm-table td { display: block; width: 100% !important; }
       .fm-table thead { display: none; }
