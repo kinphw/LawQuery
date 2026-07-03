@@ -80,7 +80,9 @@ CREATE TABLE IF NOT EXISTS law_provision (
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
 
 -- ── RAG 의미검색용 청크 임베딩 — sentinel 파생물(쓰기 주체 = sentinel 인덱서) ────
---    LQ 가 원문을 재적재/추가하면 sentinel 쪽 재인덱싱 필요 (backend/scripts/rag/index-foreign-law.ts)
+--    LQ 가 원문을 재적재/추가하면 sentinel 쪽 재인덱싱 필요 (backend/scripts/rag/index-foreign-law.ts).
+--    embedding_vec = MariaDB 네이티브 VECTOR(3072) — VEC_DISTANCE_COSINE 로 의미검색.
+--    ※ 이 테이블은 sentinel 인덱서가 생성·관리하므로 LQ 프로비저닝에선 없어도 무방(참고용 정의).
 CREATE TABLE IF NOT EXISTS law_provision_chunks (
   id              BIGINT       NOT NULL AUTO_INCREMENT,
   provision_id    BIGINT       NOT NULL COMMENT 'law_provision.id',
@@ -88,10 +90,10 @@ CREATE TABLE IF NOT EXISTS law_provision_chunks (
   chunk_index     INT          NOT NULL,
   chunk_text      MEDIUMTEXT   NOT NULL COMMENT '임베딩 대상(원문 또는 한글)',
   lang            ENUM('orig','ko') NOT NULL DEFAULT 'ko',
-  embedding       LONGBLOB     NOT NULL COMMENT 'Float32 LE bytes (3072d)',
   embedding_model VARCHAR(64)  NOT NULL,
   embedding_dim   INT          NOT NULL,
   created_at      TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  embedding_vec   VECTOR(3072) DEFAULT NULL COMMENT 'text-embedding-3-large 3072d (MariaDB VECTOR)',
   PRIMARY KEY (id),
   KEY idx_provision (provision_id),
   KEY idx_law (law_id),
