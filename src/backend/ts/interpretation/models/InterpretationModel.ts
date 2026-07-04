@@ -38,13 +38,19 @@ export class InterpretationModel {
 
     if (criteria.keyword) {
       const keywords = criteria.keyword.split(/\s+/).filter(k => k);
-      
-      if (criteria.field === "전체") {
-        const keywordConditions = keywords.map(() => 
+
+      // ⚠️ 보안: 컬럼 식별자는 파라미터라이즈(?)가 불가능하므로 반드시 화이트리스트로 고정한다.
+      // (예전엔 criteria.field 를 raw 로 SQL에 보간 → 미인증 SQL 인젝션. field 가 목록에 없으면
+      //  '전체'(모든 컬럼 OR 검색)로 안전하게 폴백.)
+      const SEARCH_FIELDS = ['제목', '질의요지', '회답', '이유'];
+      const searchAll = criteria.field === '전체' || !SEARCH_FIELDS.includes(criteria.field);
+
+      if (searchAll) {
+        const keywordConditions = keywords.map(() =>
           `(제목 LIKE ? OR 질의요지 LIKE ? OR 회답 LIKE ? OR 이유 LIKE ?)`
         );
         conditions.push(`(${keywordConditions.join(' AND ')})`);
-        
+
         keywords.forEach(keyword => {
           params.push(`%${keyword}%`);
           params.push(`%${keyword}%`);
@@ -52,9 +58,11 @@ export class InterpretationModel {
           params.push(`%${keyword}%`);
         });
       } else {
-        const keywordConditions = keywords.map(() => `${criteria.field} LIKE ?`);
+        // criteria.field 는 위 화이트리스트를 통과한 값만 도달 → 보간 안전.
+        const col = criteria.field;
+        const keywordConditions = keywords.map(() => `${col} LIKE ?`);
         conditions.push(`(${keywordConditions.join(' AND ')})`);
-        
+
         keywords.forEach(keyword => {
           params.push(`%${keyword}%`);
         });

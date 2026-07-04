@@ -52,9 +52,13 @@ export class AuthController {
     return ok ? code : null;
   };
 
-  /** 메일 미설정 + 비운영 환경에서만 응답에 코드 노출(dev 테스트용). 운영/메일설정 시 undefined. */
+  /**
+   * 메일 미설정 + "명시적 개발환경"에서만 응답에 코드 노출(dev 테스트용).
+   * ⚠️ 보안(fail-safe): NODE_ENV 가 미설정이면 노출하지 않는다(과거엔 !== 'production' 이라
+   *    NODE_ENV 미설정 시 인증코드가 응답으로 새어나갈 수 있었다).
+   */
   private devCodeOf(code: string): string | undefined {
-    return (!isMailConfigured() && process.env.NODE_ENV !== 'production') ? code : undefined;
+    return (!isMailConfigured() && process.env.NODE_ENV === 'development') ? code : undefined;
   }
 
   /**

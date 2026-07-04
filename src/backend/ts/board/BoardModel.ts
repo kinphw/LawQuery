@@ -27,11 +27,13 @@ export class BoardModel {
     this.db = DbContext.getInstance(process.env.AUTH_DB || 'ldb_auth');
   }
 
-  // 작성자 표시: 회원이면 이름>로그인ID, 비회원이면 입력한 이름(없으면 NULL → 프론트가 '비회원' 처리).
-  // 비회원 글은 member_id NULL → LEFT JOIN 미매칭 → m.* 가 NULL이라 guest_name으로 폴백.
-  // alias = board_post/board_comment 쪽 별칭(p 또는 c).
+  // 작성자 표시: 회원이면 이름(없으면 '회원'), 비회원이면 입력한 이름(없으면 NULL → 프론트가 '비회원').
+  // ⚠️ 보안/PII: login_id 는 이메일이므로 공개 게시판에 노출하면 안 된다(이전엔 display_name 없는
+  //    회원의 이메일이 공개로 새어나갔다). display_name 이 없으면 중립 라벨 '회원'으로 대체한다.
+  // alias = board_post/board_comment 쪽 별칭(p 또는 c). 비회원 글은 member_id NULL.
   private static author(alias: string): string {
-    return `COALESCE(NULLIF(m.display_name,''), m.login_id, NULLIF(${alias}.guest_name,''))`;
+    return `COALESCE(NULLIF(m.display_name,''), NULLIF(${alias}.guest_name,''), ` +
+           `CASE WHEN ${alias}.member_id IS NOT NULL THEN '회원' ELSE NULL END)`;
   }
 
   async listPosts(limit = 100): Promise<BoardPost[]> {

@@ -2,6 +2,12 @@ import { Router } from 'express';
 import { AuthController } from '../auth/controllers/AuthController';
 import { AdminController } from '../auth/controllers/AdminController';
 import { adminGuard, authGuard } from '../auth/middleware/authGuard';
+import { rateLimit } from '../auth/middleware/rateLimit';
+
+// 브루트포스/남용 방지 (IP당). 로그인은 상대적으로 여유, 가입/재전송은 빡빡하게.
+const loginLimiter = rateLimit({ windowMs: 10 * 60_000, max: 20, message: '로그인 시도가 너무 많습니다. 잠시 후 다시 시도해 주세요.' });
+const verifyLimiter = rateLimit({ windowMs: 10 * 60_000, max: 30, message: '인증 시도가 너무 많습니다. 잠시 후 다시 시도해 주세요.' });
+const signupLimiter = rateLimit({ windowMs: 60 * 60_000, max: 10, message: '요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.' });
 
 /**
  * 인증 라우터. /api/auth/* 는 게이트 밖(누구나 접근),
@@ -20,11 +26,11 @@ export class AuthHandler {
   }
 
   private initializeRoutes(): void {
-    // 공개 (게이트 밖)
-    this.router.post('/auth/register', this.auth.register);
-    this.router.post('/auth/verify', this.auth.verify);   // 이메일 인증번호 확인 → 승인+자동로그인
-    this.router.post('/auth/resend', this.auth.resend);   // 인증번호 재전송(쿨다운)
-    this.router.post('/auth/login', this.auth.login);
+    // 공개 (게이트 밖) — 민감 엔드포인트엔 rate limit
+    this.router.post('/auth/register', signupLimiter, this.auth.register);
+    this.router.post('/auth/verify', verifyLimiter, this.auth.verify);   // 이메일 인증번호 확인 → 승인+자동로그인
+    this.router.post('/auth/resend', signupLimiter, this.auth.resend);   // 인증번호 재전송(쿨다운)
+    this.router.post('/auth/login', loginLimiter, this.auth.login);
     this.router.post('/auth/logout', this.auth.logout);
     this.router.get('/auth/me', this.auth.me);
     this.router.post('/auth/remember', this.auth.setRemember); // 로그인 유지 토글(장기/단기 쿠키)

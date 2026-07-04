@@ -32,8 +32,16 @@ class DbContext {
         });
     }
 
+    // 캐시된 인스턴스(=커넥션 풀) 수 상한. 실제 사용 DB는 십수 개 수준이라 넉넉하다.
+    // ⚠️ DoS 방어: 검증되지 않은 입력으로 DB명이 만들어질 경우(과거 law 파라미터) 유니크 값마다
+    //   풀이 무한 생성되는 것을 막는 최종 방어선. 상한 초과 시 새 풀 생성을 거부한다.
+    private static readonly MAX_INSTANCES = 128;
+
     public static getInstance(dbName: string): DbContext {
         if (!this.instances[dbName]) {
+            if (Object.keys(this.instances).length >= DbContext.MAX_INSTANCES) {
+                throw new Error(`DbContext 인스턴스 상한(${DbContext.MAX_INSTANCES}) 초과: ${dbName}`);
+            }
             this.instances[dbName] = new DbContext(dbName);
         }
         return this.instances[dbName];
