@@ -217,9 +217,16 @@ export class ForeignView {
     return `${pen}<span class="fm-art-title">${title}</span>`;
   }
 
-  /** 목차 HTML(관리자 제목 수정 후 목차만 가볍게 갱신용 공개 래퍼 — article 수만큼이라 저렴). */
-  buildTocHtml(provisions: ForeignProvision[]): string {
-    return this.buildToc(provisions);
+  /**
+   * 관리자 제목 수정 후, 그 조의 목차 칩(<a>) 하나만 제자리 교체용 { selector, html }.
+   * 옛 코드는 제목 저장 시마다 목차 전체(편/장 헤더 + 모든 조 칩)를 outerHTML 로 재생성했는데,
+   * 대형 법령(예: eu_crr 741조)에선 매 저장마다 무거운 재파싱·리플로우였다 → 바뀐 칩 하나만 갱신한다.
+   */
+  tocChip(seg: ForeignProvision): { selector: string; html: string } {
+    return {
+      selector: `a.fm-toc-item[href="#${this.articleId(seg.article_no)}"]`,
+      html: this.tocItem(seg),
+    };
   }
 
   /** 조문 목차(편/장 그룹 + 조 칩, article 단위). 칩 클릭 시 article 헤더로 스크롤. */
@@ -232,22 +239,27 @@ export class ForeignView {
         lastPart = seg.part_no;
         body += `<div class="fm-toc-part">${this.esc(this.cut(seg.part_no, 70))}</div>`;
       }
-      const isAnnex = /^ANNEX/i.test(seg.article_no);
-      const label = isAnnex ? this.esc(seg.article_no) : `제${this.esc(seg.article_no)}조`;
-      const ko = (seg.heading_ko || '').trim();
-      const en = (seg.heading || '').trim();
-      let h = '';
-      if (!isAnnex && (ko || en)) {
-        const koPart = ko ? this.esc(this.cut(ko, 20)) : '';
-        const enPart = en ? `<span class="fm-toc-en">${this.esc(this.cut(en, 26))}</span>` : '';
-        h = ` <span class="fm-toc-h">${[koPart, enPart].filter(Boolean).join(' ')}</span>`;
-      }
-      const full = isAnnex
-        ? (seg.heading || seg.article_no)
-        : `제${seg.article_no}조 ${[ko, en].filter(Boolean).join(' / ')}`.trim();
-      body += `<a class="fm-toc-item" href="#${this.articleId(seg.article_no)}" title="${this.esc(full)}">${label}${h}</a>`;
+      body += this.tocItem(seg);
     }
     return `<div class="fm-toc"><div class="fm-toc-title"><i class="fas fa-list-ul"></i> 조문 목차 · 바로가기</div><div class="fm-toc-body">${body}</div></div>`;
+  }
+
+  /** 목차 칩(조 <a>) 하나의 HTML. buildToc(전체)와 tocChip(단일 갱신)이 공용. */
+  private tocItem(seg: ForeignProvision): string {
+    const isAnnex = /^ANNEX/i.test(seg.article_no);
+    const label = isAnnex ? this.esc(seg.article_no) : `제${this.esc(seg.article_no)}조`;
+    const ko = (seg.heading_ko || '').trim();
+    const en = (seg.heading || '').trim();
+    let h = '';
+    if (!isAnnex && (ko || en)) {
+      const koPart = ko ? this.esc(this.cut(ko, 20)) : '';
+      const enPart = en ? `<span class="fm-toc-en">${this.esc(this.cut(en, 26))}</span>` : '';
+      h = ` <span class="fm-toc-h">${[koPart, enPart].filter(Boolean).join(' ')}</span>`;
+    }
+    const full = isAnnex
+      ? (seg.heading || seg.article_no)
+      : `제${seg.article_no}조 ${[ko, en].filter(Boolean).join(' / ')}`.trim();
+    return `<a class="fm-toc-item" href="#${this.articleId(seg.article_no)}" title="${this.esc(full)}">${label}${h}</a>`;
   }
 
   private cut(s: string, n: number): string {

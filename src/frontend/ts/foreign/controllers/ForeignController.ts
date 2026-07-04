@@ -282,8 +282,10 @@ export class ForeignController {
         prov.heading_ko = eff.heading_ko ? String(eff.heading_ko) : null;
         prov.heading = eff.heading ? String(eff.heading) : null;
         td.innerHTML = this.view.headInner(prov, this.canEdit);
-        const toc = document.querySelector('.fm-toc'); // 목차(조 칩)도 갱신 — article 수만큼이라 가볍다.
-        if (toc) toc.outerHTML = this.view.buildTocHtml(this.provisions);
+        // 목차: 바뀐 조 칩 하나만 제자리 교체(옛 코드는 매 저장마다 목차 전체를 재생성 → 대형 법령서 렉).
+        const { selector, html } = this.view.tocChip(prov);
+        const chip = document.querySelector('.fm-toc ' + selector);
+        if (chip) chip.outerHTML = html;
         return true;
       },
     });
