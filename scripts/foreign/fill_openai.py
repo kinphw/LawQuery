@@ -33,6 +33,8 @@ def _post(messages, model, response_format=None):
 def translate_one(text, lang, model):
     """긴 seg 개별 — 6000자 초과 시 문단 청크."""
     sysp = (f"Translate the following {lang} statutory/legal text into Korean (한국어). "
+            "Preserve the exact line breaks and the leading indentation of every line "
+            "(the nesting hierarchy is encoded by newlines + 2-space-per-level indent — keep it identical). "
             "Preserve numbering/markers and any markdown tables. Output only the Korean translation.")
     if len(text) <= 6000:
         return _post([{"role": "system", "content": sysp}, {"role": "user", "content": text}], model).strip()
@@ -51,7 +53,9 @@ def translate_one(text, lang, model):
 def translate_batch(items, lang, model):
     """짧은 seg 묶음 [(id, text)] → {id: ko}."""
     sysp = (f"You are a legal translator. Translate each {lang} segment into Korean (한국어). "
-            "Preserve markers ((a),(1),1.) and markdown tables. Return JSON ONLY: "
+            "Preserve the exact line breaks (\\n) and leading indentation of each segment — the nesting "
+            "hierarchy is encoded by newlines + 2-space-per-level indent, so keep it byte-for-byte in the "
+            "Korean output. Preserve markers ((a),(1),1.) and markdown tables. Return JSON ONLY: "
             '{"items":[{"i":<i>,"ko":"<번역>"}]}')
     user = json.dumps([{"i": i, "t": t} for i, t in items], ensure_ascii=False)
     out = _post([{"role": "system", "content": sysp}, {"role": "user", "content": user}],
