@@ -310,7 +310,7 @@ export class ForeignView {
    * 본문 정리 — 개행·들여쓰기는 보존한다(.fm-flow 는 white-space:pre-wrap 로 렌더).
    * STN 적재 본문은 항목/중첩 구조를 개행 + 2칸/단계 들여쓰기로 표현하므로 그대로 살린다.
    * 하는 일은 (1) CRLF→LF, (2) 줄 내부 잡공백(2칸↑)·줄끝 공백만 제거(선두 들여쓰기는 유지),
-   * (3) 빈 줄 3개↑ → 1개로 축소, (4) 앞뒤 빈 줄 제거 뿐이다.
+   * (3) '마커만 있는 줄' 합치기(joinLoneMarkers), (4) 빈 줄 3개↑ → 1개, (5) 앞뒤 빈 줄 제거.
    * ※ 과거엔 '항목마커 앞을 뺀 모든 개행을 공백으로 합침'(PDF 하드랩 가정)이었으나,
    *   실제 데이터는 의도된 구조 개행이라 중첩 계층이 통째로 사라지는 버그였다.
    */
@@ -323,7 +323,36 @@ export class ForeignView {
         const body = ln.slice(indent.length).replace(/[ \t]{2,}/g, ' ').replace(/[ \t]+$/, '');
         return indent + body;
       });
-    return lines.join('\n').replace(/\n{3,}/g, '\n\n').replace(/^\n+|\n+$/g, '');
+    return this.joinLoneMarkers(lines).join('\n').replace(/\n{3,}/g, '\n\n').replace(/^\n+|\n+$/g, '');
+  }
+
+  /**
+   * '마커만 있는 줄'((A)·(iv)·(12) 등 괄호형)을 바로 다음 내용 줄과 합친다.
+   * 단 다음 줄도 '마커만 있는 줄'이면(상위 마커가 하위 마커를 품는 계층) 합치지 않고 유지한다.
+   * → us_bill 파서가 enum 을 항상 자기 줄로 직렬화해 "(A)\n  내용" 이 되던 걸 "(A) 내용" 으로
+   *   되돌려 가독성을 확보한다(원문·번역 공통·무손실, 재적재/재번역 없음). 마커 판정은 괄호를
+   *   강제해 "and"/"or" 같은 단어 오탐을 차단하고, 다음 줄이 "(A)항…" 처럼 마커로 시작하는
+   *   '내용'이면(전체가 마커만은 아니므로) 정상 합쳐진다.
+   */
+  private joinLoneMarkers(lines: string[]): string[] {
+    const MARK = /^\([A-Za-z0-9]{1,6}\)$/; // 줄 전체가 괄호형 마커
+    const out: string[] = [];
+    for (let i = 0; i < lines.length; i++) {
+      const cur = lines[i];
+      const body = cur.trim();
+      const nxt = lines[i + 1];
+      if (nxt != null && MARK.test(body)) {
+        const nxtBody = nxt.trim();
+        if (nxtBody && !MARK.test(nxtBody)) {
+          const indent = (cur.match(/^[ \t]*/) as RegExpMatchArray)[0];
+          out.push(indent + body + ' ' + nxtBody);
+          i++; // 다음 줄 소비
+          continue;
+        }
+      }
+      out.push(cur);
+    }
+    return out;
   }
 
   private esc(s: string): string {
