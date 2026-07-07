@@ -57,6 +57,7 @@ export interface ForeignProvision {
   heading: string | null;     // 조 제목 — 각 조 첫 seg에만
   heading_ko: string | null;  // 조 제목 한국어(목차용) — 첫 seg에만
   seg_kind: string;           // 'article'(첫 seg)/'paragraph'/'item'/'other'(표)
+  depth: number;              // 계층 깊이(0=섹션 … subsection/paragraph/subparagraph/clause) — 프론트 들여쓰기용
   text_original: string | null;
   text_ko: string | null;
 }
@@ -127,7 +128,7 @@ export class ForeignModel {
   /** seg 별 행(ordinal 순). article_no 그룹·seg 정렬은 프론트가 처리. */
   async getProvisions(code: string): Promise<ForeignProvision[]> {
     return this.fin().query<ForeignProvision>(
-      `SELECT p.id AS provision_id, p.part_no, p.article_no, p.para_no, p.heading, p.heading_ko, p.seg_kind,
+      `SELECT p.id AS provision_id, p.part_no, p.article_no, p.para_no, p.heading, p.heading_ko, p.seg_kind, p.depth,
               p.text_original, p.text_ko,
               ROW_NUMBER() OVER (PARTITION BY p.article_no ORDER BY p.ordinal) AS seg_index
          FROM law_provision p

@@ -94,16 +94,19 @@ export class ForeignView {
         lastPart = seg.part_no;
         html += `<tr class="fm-part"><td colspan="${cols}">${this.esc(seg.part_no)}</td></tr>`;
       }
-      const indent = seg.seg_kind === 'item' ? ' fm-indent' : '';
+      // 계층 들여쓰기 — 원자 seg 의 depth(1=subsection … 6=subclause)로 원문·번역 셀을 단계별 들여쓴다.
+      // (depth 1 을 기준 0 으로. 프론트가 '뭉치정보=depth'로 재조합해 트리 outline 처럼 보인다.)
+      const dep = Math.max(0, (seg.depth ?? 1) - 1);
+      const pad = dep ? ` style="padding-left:${(0.5 + dep * 1.1).toFixed(2)}rem"` : '';
       const key = `${seg.article_no}|${seg.seg_index}`;
       const memo = memos[key];
       // 즐겨찾기(회원별 개인 북마크) — 로그인 회원에게만 별·강조 노출(favorites는 회원만 로드).
       // 별 버튼은 원문셀(fm-en)에 둔다(모든 회원에게 있는 셀 — 메모칸은 운영자에게만 있으므로).
       const fav = canFavorite && favorites.has(key);
       const favBtn = canFavorite ? this.favBtn(seg, fav) : '';
-      html += `<tr class="fm-seg${indent}${fav ? ' fm-fav' : ''}" data-pid="${seg.provision_id}">
-        <td class="fm-en" data-field="text_original">${favBtn}${this.cellInner('text_original', seg, canEdit)}</td>
-        <td class="fm-ko-cell" data-field="text_ko">${this.cellInner('text_ko', seg, canEdit)}</td>
+      html += `<tr class="fm-seg${fav ? ' fm-fav' : ''}" data-pid="${seg.provision_id}">
+        <td class="fm-en" data-field="text_original"${pad}>${favBtn}${this.cellInner('text_original', seg, canEdit)}</td>
+        <td class="fm-ko-cell" data-field="text_ko"${pad}>${this.cellInner('text_ko', seg, canEdit)}</td>
         ${showMemo ? this.memoCell(meta.code, seg, memo, canEditMemo) : ''}
       </tr>`;
     }

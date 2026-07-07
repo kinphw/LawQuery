@@ -46,6 +46,7 @@ export interface ForeignProvision {
   heading: string | null;
   heading_ko: string | null;
   seg_kind: string;
+  depth: number;              // 계층 깊이 — 프론트 들여쓰기용
   text_original: string | null;
   text_ko: string | null;
 }
