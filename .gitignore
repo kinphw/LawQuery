@@ -20,6 +20,7 @@ file_structure.txt
 
 # 에디터 백업
 ~*
+*.bak
 
 # 시스템 파일
 .DS_Store
@@ -27,6 +28,10 @@ Thumbs.db
 
 # Node
 node_modules
+
+# Python
+__pycache__/
+*.pyc
 
 # 환경 설정
 .env

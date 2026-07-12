@@ -1,0 +1,29 @@
+[mcp_servers.mysql_j]
+command = "powershell.exe"
+args = ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "C:/projects/LawQuery/scripts/mcp/run-from-project-config.ps1", "mysql_j"]
+cwd = "C:/projects/LawQuery"
+startup_timeout_sec = 30
+
+[mcp_servers.mysql_y]
+command = "powershell.exe"
+args = ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "C:/projects/LawQuery/scripts/mcp/run-from-project-config.ps1", "mysql_y"]
+cwd = "C:/projects/LawQuery"
+startup_timeout_sec = 30
+
+[mcp_servers.mysql_i]
+command = "powershell.exe"
+args = ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "C:/projects/LawQuery/scripts/mcp/run-from-project-config.ps1", "mysql_i"]
+cwd = "C:/projects/LawQuery"
+startup_timeout_sec = 30
+
+[mcp_servers.mysql_s]
+command = "powershell.exe"
+args = ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "C:/projects/LawQuery/scripts/mcp/run-from-project-config.ps1", "mysql_s"]
+cwd = "C:/projects/LawQuery"
+startup_timeout_sec = 30
+
+[mcp_servers.law]
+command = "powershell.exe"
+args = ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "C:/projects/LawQuery/scripts/mcp/run-from-project-config.ps1", "law"]
+cwd = "C:/projects/LawQuery"
+startup_timeout_sec = 30
