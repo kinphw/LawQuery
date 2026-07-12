@@ -9,6 +9,7 @@ import { ForeignHandler } from './handlers/ForeignHandler';
 import { FavoriteHandler } from './handlers/FavoriteHandler';
 import { AuthHandler } from './handlers/AuthHandler';
 import { BoardHandler } from './handlers/BoardHandler';
+import { PsdTransitionHandler } from './handlers/PsdTransitionHandler';
 
 const app = express();
 const PORT = 4000;
@@ -55,6 +56,7 @@ app.use('/api', authHandler.router);
 app.use('/api/law', lawHandler.router);
 app.use('/api/interpretation', interpretationHandler.router);
 app.use('/api/foreign', new ForeignHandler().router); // 해외법령(원문·번역 2단 + 개인 메모)
+app.use('/api/foreign-transition', new PsdTransitionHandler().router); // PSD2/EMD2 → PSD3/PSR 이행분석(PRO)
 app.use('/api/favorite', new FavoriteHandler().router); // 즐겨찾기(회원별 북마크, 해외·국내 공용)
 app.use('/api/board', new BoardHandler().router); // 게시판(내부에서 authGuard 적용)
 

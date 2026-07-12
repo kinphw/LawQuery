@@ -68,6 +68,8 @@ def main():
     ap.add_argument("--code", required=True)
     ap.add_argument("--model", default="gpt-4o-mini")
     ap.add_argument("--limit", type=int, default=0)
+    ap.add_argument("--article", default="", help="특정 article_no 그룹만 번역(예: 'PRE:2011-31725'). "
+                                                  "'PRE:%%' 처럼 LIKE 패턴도 가능(예: 서문 전체 = --article 'PRE:%%')")
     args = ap.parse_args()
     pw = os.environ.get("FINDB_ROOT_PW")
     if not KEY or not pw:
@@ -83,11 +85,13 @@ def main():
         if not law:
             print(f"{code}: 없음"); continue
         lang = LANG.get("JA" if law["jurisdiction"] == "jp" else "EN")
+        art_sql = " AND article_no LIKE %s" if "%" in args.article else (" AND article_no=%s" if args.article else "")
+        art_params = (args.article,) if args.article else ()
         cur.execute(
             """SELECT id, text_original FROM law_provision
                 WHERE law_id=%s AND text_original IS NOT NULL AND text_original<>''
-                  AND (text_ko IS NULL OR text_ko='')
-                ORDER BY ordinal""", (law["id"],))
+                  AND (text_ko IS NULL OR text_ko='')""" + art_sql +
+            " ORDER BY ordinal", (law["id"], *art_params))
         rows = cur.fetchall()
         if args.limit:
             rows = rows[:args.limit]

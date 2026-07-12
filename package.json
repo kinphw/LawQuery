@@ -18,11 +18,14 @@
   "scripts": {
     "build": "webpack --config webpack.config.js",
     "watch": "webpack --watch --config webpack.config.js",
-    "typecheck:watch": "tsc --noEmit --watch --watchFile dynamicprioritypolling",
+    "typecheck:watch": "tsc --noEmit --watch",
+    "predev": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/kill-stale.ps1",
     "dev": "webpack serve --config webpack.config.js",
-    "dev:backend": "ts-node-dev --respawn --transpile-only --poll src/backend/ts/index.ts",
-    "scss:watch": "sass --watch --poll assets/scss/style.scss:assets/css/style.css",
+    "dev:backend": "ts-node-dev --respawn --transpile-only src/backend/ts/index.ts",
+    "scss:watch": "sass --watch assets/scss/style.scss:assets/css/style.css",
+    "predev:full": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/kill-stale.ps1",
     "dev:full": "concurrently \"npm run dev\" \"npm run dev:backend\" \"npm run typecheck:watch\" \"npm run scss:watch\"",
+    "predev:fast": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/kill-stale.ps1",
     "dev:fast": "concurrently \"npm:watch\" \"npm run dev:backend\" \"npm run scss:watch\""
   },
   "dependencies": {

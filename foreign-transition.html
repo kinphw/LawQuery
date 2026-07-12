@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#172033">
+  <title>PSD 이행분석 - LawQuery</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="assets/icons/icon-192.png">
+  <link rel="stylesheet" href="assets/vendor/bootstrap.min.css">
+  <link rel="stylesheet" href="assets/vendor/fontawesome/css/fontawesome.min.css">
+  <link rel="stylesheet" href="assets/vendor/fontawesome/css/all.min.css">
+  <link rel="stylesheet" href="assets/css/style.css">
+  <link rel="stylesheet" href="assets/css/foreign-transition.css">
+  <script src="auth-gate.js"></script>
+</head>
+<body>
+  <div id="header"></div>
+  <div id="transitionApp" class="pta-app">
+    <div class="pta-loading"><div class="spinner-border spinner-border-sm" role="status"></div> 이행분석 준비 중…</div>
+  </div>
+
+  <script src="assets/vendor/bootstrap.bundle.min.js"></script>
+  <script src="dist/foreign-transition.bundle.js" type="module"></script>
+
+  <div class="modal fade" id="ptaAssessmentModal" tabindex="-1" aria-labelledby="ptaAssessmentTitle" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="ptaAssessmentTitle">조문 분석 검수</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="닫기"></button>
+        </div>
+        <div class="modal-body">
+          <div class="alert alert-light border small">
+            구조적 대응은 공식 Annex III에서 가져옵니다. 아래에서는 내용변경 판단과 설명만 검수합니다.
+          </div>
+          <label class="form-label fw-semibold" for="ptaAssessmentType">내용변경 유형</label>
+          <select class="form-select mb-3" id="ptaAssessmentType">
+            <option value="maintained">유지</option>
+            <option value="clarified">명확화</option>
+            <option value="strengthened">강화</option>
+            <option value="relaxed">완화</option>
+            <option value="material_change">실질변경</option>
+            <option value="pending">내용 검토중</option>
+          </select>
+          <label class="form-label fw-semibold" for="ptaAssessmentSummary">조문별 핵심 요약</label>
+          <textarea class="form-control mb-3" id="ptaAssessmentSummary" rows="4" maxlength="4000"></textarea>
+          <label class="form-label fw-semibold" for="ptaAssessmentDetail">상세 근거·주의사항</label>
+          <textarea class="form-control" id="ptaAssessmentDetail" rows="8" maxlength="20000"></textarea>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">취소</button>
+          <button type="button" class="btn btn-dark" id="ptaAssessmentSave">검수 완료로 저장</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="commonModal" tabindex="-1" aria-labelledby="commonModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg"><div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title" id="commonModalLabel">알림</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="닫기"></button></div>
+      <div class="modal-body"></div>
+    </div></div>
+  </div>
+</body>
+</html>

@@ -22,6 +22,8 @@ export class ForeignHandler {
     // ── 무료(본문 미끼) ──
     this.router.get('/list', optionalAuth, this.c.getList);
     this.router.get('/provisions', optionalAuth, this.c.getProvisions);
+    this.router.get('/links', optionalAuth, this.c.getLinks); // 일본법 하위규정 연계(자동 추출)
+    this.router.get('/linktable', optionalAuth, this.c.getLinkTable); // 일본 결제법 계열 3단 연계표
 
     // ── 메모(운영자 큐레이션): 열람=공개, 작성·삭제=운영자 ──
     this.router.get('/memo', optionalAuth, this.c.getMemos);
@@ -31,5 +33,7 @@ export class ForeignHandler {
 
     // ── 관리자 본문 교정(오버레이) — 원본 보존, 이관에 안 지워짐 ──
     this.router.put('/admin/override', adminGuard, this.c.saveOverride);
+    // 재적재/이관 후 교정·메모를 현재 베이스에 재정착 + 고아 리포트(선택적 하우스키핑)
+    this.router.post('/admin/reanchor', adminGuard, this.c.reanchor);
   }
 }
