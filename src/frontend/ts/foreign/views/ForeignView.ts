@@ -1,4 +1,4 @@
-import { ForeignLawMeta, ForeignProvision } from '../models/ForeignFetchModel';
+import { ForeignLawMeta, ForeignProvision, ForeignLinkMap, ForeignLinkRef } from '../models/ForeignFetchModel';
 
 /**
  * 해외법령 뷰 (seg-level) — 1 row = 1 seg.
@@ -25,7 +25,7 @@ export class ForeignView {
     return 'fa-' + String(articleNo).replace(/[^a-zA-Z0-9]/g, '_');
   }
 
-  renderTable(meta: ForeignLawMeta, provisions: ForeignProvision[], memos: Record<string, string>, canEditMemo: boolean, canEdit = false, favorites: Set<string> = new Set(), canFavorite = false): string {
+  renderTable(meta: ForeignLawMeta, provisions: ForeignProvision[], memos: Record<string, string>, canEditMemo: boolean, canEdit = false, favorites: Set<string> = new Set(), canFavorite = false, links: ForeignLinkMap = {}): string {
     const trans = this.transLabel(meta.translation_source);
     const status = this.statusLabel(meta.status);
     // 메모(운영자 큐레이션) 칸은 운영자이거나 표시할 메모가 있을 때만 노출 → 빈 칸 낭비 방지.
@@ -51,6 +51,7 @@ export class ForeignView {
         ${trans ? `<span class="badge bg-light text-dark border">${trans}</span>` : ''}
       </div>
       ${meta.official_citation ? `<div class="small text-secondary mt-1">인용양식: ${this.esc(meta.official_citation)}</div>` : ''}
+      ${this.familyButton(meta.code)}
     </div>`;
     html += introHtml;
 
@@ -87,8 +88,10 @@ export class ForeignView {
           lastPart = seg.part_no;
           html += `<tr class="fm-part"><td colspan="${cols}">${this.esc(seg.part_no)}</td></tr>`;
         }
-        const isAnnex = /^ANNEX/i.test(seg.article_no);
-        html += `<tr class="fm-art-head${isAnnex ? ' fm-annex' : ''}" id="${this.articleId(seg.article_no)}" data-pid="${seg.provision_id}"><td colspan="${cols}">${this.headInner(seg, canEdit)}</td></tr>`;
+        const headCls = /^ANNEX/i.test(seg.article_no) ? ' fm-annex'
+          : /^RECITAL/i.test(seg.article_no) ? ' fm-recital'
+          : /^PRE:/i.test(seg.article_no) ? ' fm-preamble' : '';
+        html += `<tr class="fm-art-head${headCls}" id="${this.articleId(seg.article_no)}" data-pid="${seg.provision_id}"><td colspan="${cols}">${this.headInner(seg, canEdit)}${this.linkBar(seg.article_no, links)}</td></tr>`;
       } else if (seg.part_no && seg.part_no !== lastPart) {
         // (드묾) 조 중간에서 편/장이 바뀌는 경우 — 현재 그룹 안에 편/장 행을 넣는다.
         lastPart = seg.part_no;
@@ -173,13 +176,66 @@ export class ForeignView {
     const pen = canEdit
       ? `<button type="button" class="fm-admin-edit fm-edit-cell" title="${field === 'text_ko' ? '번역' : '원문'} 수정"><i class="fas fa-pen"></i></button>`
       : '';
+    const badge = canEdit ? this.reviewBadge(prov, field) : '';
+    const edited = canEdit && prov.overridden?.includes(field) ? this.editedTag('fm-revert-cell') : '';
+    // 서문/recital(seg_kind='preamble')은 원본이 '1 recital = 1 통짜 문단'(관보 원문에 문장 사이 개행
+    // 없음)이라 셀이 매우 길다 → 표시할 때만 문장 단위로 줄바꿈(원본 데이터·복사·편집은 불변).
+    const asBody = (t: string | null): string =>
+      prov.seg_kind === 'preamble' ? this.splitToSentences(t || '') : (t || '');
     if (field === 'text_original') {
-      return `${copy}${pen}<div class="fm-en-body">${this.renderRich(prov.text_original || '')}</div>`;
+      return `${copy}${pen}${badge}${edited}<div class="fm-en-body">${this.renderRich(asBody(prov.text_original))}</div>`;
     }
     const ko = prov.text_ko
-      ? `<div class="fm-ko">${this.renderRich(prov.text_ko)}</div>`
+      ? `<div class="fm-ko">${this.renderRich(asBody(prov.text_ko))}</div>`
       : `<div class="fm-ko fm-empty">— 번역 준비중 —</div>`;
-    return `${copy}${pen}${ko}`;
+    return `${copy}${pen}${badge}${edited}${ko}`;
+  }
+
+  /**
+   * 서문/recital 표시용 문장 분리 — 문장 경계에만 개행 삽입(원본 문자열 미변경, 렌더 전용).
+   * 복사/편집은 컨트롤러의 pidMap 원본값을 쓰므로 영향 없음. 오분리 방지: 영어는 이니셜(한 글자
+   * 대문자) 뒤 마침표 제외, 한국어는 '…다.'/'…요.' 등 종결형만. 이미 개행이 있으면 그대로 존중.
+   */
+  private splitToSentences(s: string): string {
+    return String(s ?? '')
+      // 영어: 소문자/숫자/닫는괄호·따옴표 뒤 종결부호 + 공백 + 대문자/여는괄호(이니셜 'E.' 등 오분리 방지).
+      // (lookbehind 미사용 — 구형 Safari 호환)
+      .replace(/([a-z0-9)\]”"’])([.?!])\s+(?=[A-Z(“"‘])/g, '$1$2\n')
+      .replace(/([다요죠음함][.?!])\s+(?=\S)/g, '$1\n') // 한국어 종결형
+      .replace(/\n{2,}/g, '\n');
+  }
+
+  /**
+   * '수정됨' 태그 + X(원본 복귀) 버튼 — 관리자가 교정본이 원본을 가리고 있음을 상시 확인·취소.
+   *   상류(fin_law_db)가 이 셀에서 바뀌어도 교정이 덮어 표시되므로, 이 태그로 '수정됨'을 항상 보여주고
+   *   X 로 즉시 원본 복귀(교정 삭제)한다. hover 없이도 보이게 인라인 표시(발견성). scss 의존 없음.
+   *   revertCls = 되돌리기 위임 클래스('fm-revert-cell' | 'fm-revert-head').
+   */
+  private editedTag(revertCls: string): string {
+    // 다른 버튼(copy/pen/fav)과 동일하게 float:right → 본문을 밀지 않고 우측에 뜬다(상시 표시).
+    return `<span class="fm-edited" title="관리자 교정본이 원본 위에 표시 중입니다. ✕를 누르면 원본으로 되돌립니다."`
+      + ` style="float:right;margin:0 0 .25rem .4rem;display:inline-flex;align-items:center;gap:.1rem;padding:0 .05rem 0 .4rem;font-size:.68rem;line-height:1.5;color:#3730a3;background:#eef2ff;border:1px solid #c7d2fe;border-radius:.35rem;white-space:nowrap;">`
+      + `수정됨<button type="button" class="${revertCls}" title="이 교정 취소(원본으로 되돌림)"`
+      + ` style="border:0;background:transparent;color:#4338ca;cursor:pointer;font-size:.8rem;line-height:1;padding:.05rem .25rem;">✕</button></span>`;
+  }
+
+  /**
+   * 관리자 전용 '교정 재확인' 뱃지 — 재적재로 원문이 바뀌어 교정이 억제(stale)됐거나, 지문 없는
+   * 구버전(legacy) 교정임을 알린다. 억제된 교정은 공개에 노출되지 않고(오염 방지) 관리자만 이 뱃지를 본다.
+   * (scss 의존 없이 인라인 스타일 — 관리자 화면 한정 보조 표시라 가볍게 유지)
+   */
+  private reviewBadge(prov: ForeignProvision, field: string): string {
+    const r = prov.review?.find(x => x.field === field);
+    if (!r) return '';
+    const stale = r.kind === 'stale';
+    const label = stale ? '⚠ 교정 재확인' : '⚠ 미검증 교정';
+    const tip = stale
+      ? `원문이 바뀌어 이 교정이 자동 적용되지 않았습니다. 현재 원문을 확인하고 다시 저장하세요.${r.prev ? '\n\n[이전 교정값]\n' + r.prev : ''}`
+      : '지문 없는 구버전 교정입니다(재적재 시 위치가 어긋날 수 있음). 확인 후 다시 저장하면 지문이 채워집니다.';
+    const col = stale ? '#b91c1c' : '#b45309';
+    const bg = stale ? '#fef2f2' : '#fffbeb';
+    const bd = stale ? '#fecaca' : '#fde68a';
+    return `<span class="fm-review" title="${this.esc(tip)}" style="float:right;margin:0 0 .25rem .4rem;padding:0 .35rem;font-size:.68rem;line-height:1.5;color:${col};background:${bg};border:1px solid ${bd};border-radius:.35rem;white-space:nowrap;cursor:help;">${label}</span>`;
   }
 
   /**
@@ -207,9 +263,16 @@ export class ForeignView {
   /** 조 헤더 셀 내부(수정버튼 + 제목). 제목 수정 종료/저장 후 복원에도 재사용. */
   headInner(prov: ForeignProvision, canEdit: boolean): string {
     const isAnnex = /^ANNEX/i.test(prov.article_no);
+    const isRecital = /^RECITAL/i.test(prov.article_no);
+    const isPreamble = /^PRE:/i.test(prov.article_no);
     const koTitle = (prov.heading_ko || '').trim();
     const enTitle = (prov.heading || '').trim();
-    const title = isAnnex
+    const title = isRecital
+      ? '전문 <span class="fm-toc-en">Recitals · 제·개정 이유</span>'
+      : isPreamble
+      ? `<span class="fm-preamble-tag">📋 제·개정 이유</span> ${this.esc(enTitle || prov.article_no)}`
+        + (koTitle ? ` <span class="fm-toc-en">${this.esc(koTitle)}</span>` : '')
+      : isAnnex
       ? this.esc(enTitle || prov.article_no)
       : `제${this.esc(prov.article_no)}조` +
         (koTitle ? ` ${this.esc(koTitle)}` : '') +
@@ -217,7 +280,59 @@ export class ForeignView {
     const pen = canEdit
       ? `<button type="button" class="fm-admin-edit fm-edit-head" title="제목 수정"><i class="fas fa-pen"></i></button>`
       : '';
-    return `${pen}<span class="fm-art-title">${title}</span>`;
+    const badge = canEdit ? this.reviewBadge(prov, 'heading_ko') + this.reviewBadge(prov, 'heading') : '';
+    const headEdited = canEdit && (prov.overridden?.includes('heading') || prov.overridden?.includes('heading_ko'));
+    const edited = headEdited ? this.editedTag('fm-revert-head') : '';
+    return `${pen}<span class="fm-art-title">${title}</span>${badge}${edited}`;
+  }
+
+  /** 일본 결제법 계열 법이면 '3단 연계표 보기' 버튼(부령 트랙 결정). 아니면 빈 문자열. */
+  private familyButton(code: string): string {
+    const fam = code === 'jp_funds_transfer_co' ? 'jp_funds'
+      : (['jp_psa', 'jp_psa_enf', 'jp_epi_co'].includes(code) ? 'jp_epi' : null);
+    if (!fam) return '';
+    return `<div class="mt-2"><a class="btn btn-sm btn-primary flt-open-btn" href="foreign.html?link=${fam}">`
+      + `<i class="fas fa-diagram-project"></i> 계열 3단 연계표 보기 (법·시행령·부령)</a></div>`;
+  }
+
+  // ── 일본법 하위규정 연계 칩(자동 추출) ────────────────────────────────────────
+  /**
+   * 조 헤더에 붙는 연계 바 — 인용(이 조 → 상대 조) / 피인용(상대 조 → 이 조).
+   * 칩 클릭 = 상대 법령 조로 이동(cross-law, 항상 다른 code). 연계 없으면 빈 문자열.
+   * 국내 5단 연계표의 해외(일본) 대응물이나, 본문 인용을 자동 추출한 best-effort 라 '자동추출' 표기.
+   */
+  private linkBar(articleNo: string, links: ForeignLinkMap): string {
+    const l = links[articleNo];
+    if (!l || (!l.refs.length && !l.citedBy.length)) return '';
+    const CAP = 14; // 조당 방향별 칩 상한(초과분은 '외 N건')
+    const chip = (r: ForeignLinkRef, dir: 'out' | 'in'): string => {
+      const deleg = r.kind === 'delegates';
+      const artLabel = `제${r.article}조` + (dir === 'out' && r.para ? ` ${r.para}항` : '');
+      const kindNote = deleg ? (dir === 'in' ? ' — 이 조를 시행하는 위임규정' : ' — 위임 근거') : '';
+      const title = `${r.title_ko} 제${r.article}조${r.para ? ` ${r.para}항` : ''}${kindNote}`;
+      return `<a class="fm-link-chip${deleg ? ' fm-link-deleg' : ''}" `
+        + `href="foreign.html?code=${encodeURIComponent(r.code)}#${this.articleId(r.article)}" `
+        + `data-code="${this.esc(r.code)}" data-anchor="${this.articleId(r.article)}" title="${this.esc(title)}">`
+        + `<span class="fm-link-nm">${this.esc(this.shortLawName(r))}</span> ${this.esc(artLabel)}</a>`;
+    };
+    const group = (arr: ForeignLinkRef[], dir: 'out' | 'in', label: string, icon: string): string => {
+      if (!arr.length) return '';
+      const shown = arr.slice(0, CAP).map(r => chip(r, dir)).join('');
+      const more = arr.length > CAP ? `<span class="fm-link-more">외 ${arr.length - CAP}건</span>` : '';
+      return `<div class="fm-links-row"><span class="fm-links-lb"><i class="fas ${icon}"></i> ${label}</span>${shown}${more}</div>`;
+    };
+    return `<div class="fm-links">
+      <div class="fm-links-head"><i class="fas fa-diagram-project"></i> 하위규정 연계`
+      + ` <span class="fm-links-auto" title="본문의 조문 인용을 자동 추출한 연계입니다(참고용 — 큐레이션 아님)">자동추출</span></div>`
+      + group(l.refs, 'out', '인용', 'fa-arrow-up-right-from-square')
+      + group(l.citedBy, 'in', '피인용', 'fa-arrow-turn-down')
+      + `</div>`;
+  }
+
+  /** 칩용 짧은 법령명 — 약칭 우선, 길면 절단(전체는 title 툴팁). */
+  private shortLawName(r: ForeignLinkRef): string {
+    const n = (r.abbrev || r.title_ko || r.code).replace(/^일본\s*/, '');
+    return n.length > 13 ? n.slice(0, 12) + '…' : n;
   }
 
   /**
@@ -250,16 +365,25 @@ export class ForeignView {
   /** 목차 칩(조 <a>) 하나의 HTML. buildToc(전체)와 tocChip(단일 갱신)이 공용. */
   private tocItem(seg: ForeignProvision): string {
     const isAnnex = /^ANNEX/i.test(seg.article_no);
-    const label = isAnnex ? this.esc(seg.article_no) : `제${this.esc(seg.article_no)}조`;
+    const isRecital = /^RECITAL/i.test(seg.article_no);
+    const isPreamble = /^PRE:/i.test(seg.article_no);
+    const label = isRecital ? '전문'
+      : isPreamble ? this.esc(this.cut((seg.heading || '').split(' · ')[0] || '제·개정이유', 16))
+      : isAnnex ? this.esc(seg.article_no)
+      : `제${this.esc(seg.article_no)}조`;
     const ko = (seg.heading_ko || '').trim();
     const en = (seg.heading || '').trim();
     let h = '';
-    if (!isAnnex && (ko || en)) {
+    if (!isAnnex && !isRecital && !isPreamble && (ko || en)) {
       const koPart = ko ? this.esc(this.cut(ko, 20)) : '';
       const enPart = en ? `<span class="fm-toc-en">${this.esc(this.cut(en, 26))}</span>` : '';
       h = ` <span class="fm-toc-h">${[koPart, enPart].filter(Boolean).join(' ')}</span>`;
     }
-    const full = isAnnex
+    const full = isRecital
+      ? '전문 (Recitals) · 제·개정 이유'
+      : isPreamble
+      ? (seg.heading || seg.article_no)
+      : isAnnex
       ? (seg.heading || seg.article_no)
       : `제${seg.article_no}조 ${[ko, en].filter(Boolean).join(' / ')}`.trim();
     return `<a class="fm-toc-item" href="#${this.articleId(seg.article_no)}" title="${this.esc(full)}">${label}${h}</a>`;

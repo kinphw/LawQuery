@@ -1,5 +1,6 @@
-import { ForeignFetchModel, ForeignLawListItem, ForeignProvision, ForeignLawMeta } from '../models/ForeignFetchModel';
+import { ForeignFetchModel, ForeignLawListItem, ForeignProvision, ForeignLawMeta, ForeignLinkMap, LinkTableData } from '../models/ForeignFetchModel';
 import { ForeignView } from '../views/ForeignView';
+import { ForeignLinkTableView, LinkTableMode } from '../views/ForeignLinkTableView';
 import { ForeignOverviewView } from '../views/ForeignOverviewView';
 import { ForeignScrollAnchor } from '../util/ForeignScrollAnchor';
 import { Header } from '../../common/components/Header';
@@ -17,6 +18,7 @@ const JURIS_LABEL: Record<string, string> = {
 export class ForeignController {
   private model = new ForeignFetchModel();
   private view = new ForeignView();
+  private linkTableView = new ForeignLinkTableView();
   private overview = new ForeignOverviewView();
   private header = new Header();
   private toast = new ToastManager();
@@ -26,6 +28,11 @@ export class ForeignController {
   private canFavorite = false; // 로그인+승인 회원이면 즐겨찾기(개인 북마크) 가능
   private memos: Record<string, string> = {}; // "<article_no>|<seg_index>" → memo (전역 운영자 큐레이션)
   private favorites = new Set<string>(); // "<article_no>|<seg_index>" (회원별 즐겨찾기 — 로그인 회원만 로드·노출)
+  private links: ForeignLinkMap = {}; // "<article_no>" → { refs, citedBy } (일본법 하위규정 연계, 자동 추출)
+  private linkData: LinkTableData | null = null; // 현재 3단 연계표 데이터(모드 전환 시 재사용)
+  private linkMode: LinkTableMode = 'ko';        // 연계표 표시언어(국문 기본)
+  private linkFamily = 'jp_epi';                 // 현재 부령 트랙
+  private linkRel: 'deleg' | 'all' = 'deleg';    // 연계 종류(위임만 기본 / 전체참조)
 
   // 관리자 본문 교정(오버레이, 환경 무관) 상태
   private canEdit = false;                         // 백엔드 editable(관리자 여부)
@@ -60,12 +67,18 @@ export class ForeignController {
     this.bindFavoriteDelegation();
     this.bindAdminEditDelegation();
     this.bindCopyDelegation();
+    this.bindLinkTableDelegation();
 
-    // ?code 가 있으면 그 법 본문(드릴다운), 없으면 국가별 소개 카탈로그(랜딩).
+    // ?link=<family> = 3단 연계표 / ?code = 단일 법 본문 / 둘 다 없으면 카탈로그(랜딩).
+    // #fa-<article> 해시(연계 칩 딥링크)가 있으면 로드 후 그 조로 스크롤.
     const params = new URLSearchParams(location.search);
+    const link = params.get('link');
     const code = params.get('code');
-    if (code && this.laws.some(l => l.code === code)) {
-      await this.loadLaw(code);
+    const anchor = location.hash ? location.hash.replace(/^#/, '') : '';
+    if (link) {
+      await this.loadLinkTable(link);
+    } else if (code && this.laws.some(l => l.code === code)) {
+      await this.loadLaw(code, anchor);
     } else {
       this.renderOverview();
     }
@@ -79,6 +92,47 @@ export class ForeignController {
     const results = document.getElementById('results')!;
     results.innerHTML = this.overview.render(this.laws);
     if (location.search) history.replaceState(null, '', location.pathname);
+  }
+
+  /** 3단 연계표 로드. family=부령 트랙, rel=위임만/전체참조. 트랙·연계 토글이 여기로 재진입(재요청). */
+  private async loadLinkTable(family: string, rel: 'deleg' | 'all' = this.linkRel): Promise<void> {
+    this.currentCode = '';
+    this.linkFamily = family;
+    this.linkRel = rel;
+    const results = document.getElementById('results')!;
+    results.innerHTML = '<div class="container py-5 text-center text-muted">연계표 불러오는 중…</div>';
+    const box = document.getElementById('currentForeignBox');
+    if (box) box.textContent = '3단 연계표';
+    const data = await this.model.getLinkTable(family, rel);
+    if (!data) {
+      results.innerHTML = '<div class="container"><div class="alert alert-warning">연계표를 불러오지 못했습니다.</div></div>';
+      return;
+    }
+    this.linkData = data;
+    this.renderLinkTable();
+    history.replaceState(null, '', `?link=${encodeURIComponent(family)}`);
+    window.scrollTo(0, 0);
+  }
+
+  /** 현재 캐시된 연계표 데이터를 현재 표시모드로 렌더(부령 트랙 재요청 없이 모드만 전환 시 재사용). */
+  private renderLinkTable(): void {
+    if (!this.linkData) return;
+    const results = document.getElementById('results')!;
+    results.innerHTML = this.linkTableView.render(this.linkData, this.linkMode);
+  }
+
+  /** 연계표 상단 토글 — 부령 트랙(.flt-tab, 재요청) / 연계 종류(.flt-rel, 재요청) / 표시언어(.flt-mode, 재렌더). */
+  private bindLinkTableDelegation(): void {
+    const results = document.getElementById('results')!;
+    results.addEventListener('click', (e) => {
+      const el = e.target as HTMLElement;
+      const tab = el.closest('.flt-tab') as HTMLElement | null;
+      if (tab && !tab.classList.contains('active')) { if (tab.dataset.family) this.loadLinkTable(tab.dataset.family, this.linkRel); return; }
+      const rel = el.closest('.flt-rel') as HTMLElement | null;
+      if (rel && !rel.classList.contains('active')) { this.loadLinkTable(this.linkFamily, (rel.dataset.rel as 'deleg' | 'all') || 'deleg'); return; }
+      const mode = el.closest('.flt-mode') as HTMLElement | null;
+      if (mode && !mode.classList.contains('active')) { this.linkMode = (mode.dataset.mode as LinkTableMode) || 'ko'; this.renderLinkTable(); return; }
+    });
   }
 
   private async resolveMe(): Promise<any> {
@@ -116,7 +170,7 @@ export class ForeignController {
     if (box && cur) box.textContent = cur.abbrev || cur.title_ko;
   }
 
-  private async loadLaw(code: string): Promise<void> {
+  private async loadLaw(code: string, anchor = ''): Promise<void> {
     this.currentCode = code;
     const results = document.getElementById('results')!;
     results.innerHTML = '<div class="container py-5 text-center text-muted">불러오는 중…</div>';
@@ -134,20 +188,37 @@ export class ForeignController {
     this.memos = await this.model.getMemos(code); // 전역 운영자 메모 — 전체 공개 열람
     // 즐겨찾기(회원별 개인 북마크) — 로그인 회원만 로드(비로그인은 서버가 차단 → 빈 Set).
     this.favorites = this.canFavorite ? await this.model.getFavorites(code) : new Set();
+    // 일본법 하위규정 연계(자동 추출) — 무료 공개. 비 일본법·연계없음이면 빈 맵.
+    this.links = await this.model.getLinks(code);
     this.renderLaw();
-    history.replaceState(null, '', `?code=${code}`);
+    // 연계 칩 딥링크(#fa-…)면 URL에 해시 보존(공유·복원용), 아니면 기존대로 code만.
+    history.replaceState(null, '', `?code=${code}${anchor ? '#' + anchor : ''}`);
     this.updateLabel();
 
     // 조 단위 위치 저장·복원 — 모바일 탭 폐기→리로드 복귀 시 위치가 바뀌던 버그의 해법.
     // (entry에서 scrollRestoration='manual'로 브라우저 픽셀 복원을 껐고, 여기서 앵커로 복원)
-    new ForeignScrollAnchor(code).start();
+    // 명시 앵커(연계 칩 이동)가 있으면 복원 대신 그 조로 이동 — cross-law 딥링크 우선.
+    if (anchor) this.scrollToAnchor(anchor);
+    else new ForeignScrollAnchor(code).start();
+  }
+
+  /**
+   * 연계 칩 딥링크로 온 조(#fa-…)로 스크롤. 윈도잉(content-visibility) 표는 점프 후
+   * 주변 조가 실측 높이로 갱신되며 목표가 밀리므로 몇 차례 재정렬로 수렴(ScrollAnchor.restore 와 동일 전략).
+   */
+  private scrollToAnchor(anchor: string): void {
+    const jump = () => document.getElementById(anchor)?.scrollIntoView(); // scroll-margin-top 적용
+    jump();
+    requestAnimationFrame(() => { jump(); requestAnimationFrame(jump); });
+    window.setTimeout(jump, 250);
+    window.setTimeout(jump, 800);
   }
 
   /** 현재 법령 표를 처음 그린다(법령 로드 시 1회). 인라인 수정은 셀 단위로만 갱신(여기 안 거침). */
   private renderLaw(): void {
     if (!this.meta) return;
     const results = document.getElementById('results')!;
-    results.innerHTML = this.view.renderTable(this.meta, this.provisions, this.memos, this.canEditMemo, this.canEdit, this.favorites, this.canFavorite);
+    results.innerHTML = this.view.renderTable(this.meta, this.provisions, this.memos, this.canEditMemo, this.canEdit, this.favorites, this.canFavorite, this.links);
   }
 
   // ── 메모 편집 (이벤트 위임) — 운영자만. 일반 사용자에겐 읽기 전용. ───────────────
@@ -226,7 +297,13 @@ export class ForeignController {
   private bindAdminEditDelegation(): void {
     const results = document.getElementById('results')!;
     results.addEventListener('click', (e) => {
-      const btn = (e.target as HTMLElement).closest('.fm-admin-edit') as HTMLElement | null;
+      const target = e.target as HTMLElement;
+      // X(원본 복귀) 먼저 — 교정 취소. 셀/조제목 각각.
+      const revCell = target.closest('.fm-revert-cell') as HTMLElement | null;
+      if (revCell) { e.preventDefault(); this.revertCell(revCell.closest('td') as HTMLElement); return; }
+      const revHead = target.closest('.fm-revert-head') as HTMLElement | null;
+      if (revHead) { e.preventDefault(); this.revertHead(revHead.closest('tr') as HTMLElement); return; }
+      const btn = target.closest('.fm-admin-edit') as HTMLElement | null;
       if (!btn) return;
       e.preventDefault();
       if (btn.classList.contains('fm-edit-head')) {
@@ -235,6 +312,43 @@ export class ForeignController {
         this.openCellEditor(btn.closest('td') as HTMLElement);
       }
     });
+  }
+
+  /** 셀 교정 취소(원본 복귀) — 빈 값 저장 = override 삭제. 상류 원본이 다시 드러난다. */
+  private async revertCell(td: HTMLElement | null): Promise<void> {
+    if (!td) return;
+    const field = td.dataset.field as 'text_original' | 'text_ko';
+    if (field !== 'text_original' && field !== 'text_ko') return;
+    const prov = this.pidMap.get(Number((td.closest('tr') as HTMLElement)?.dataset.pid || 0));
+    if (!prov) return;
+    if (!window.confirm('이 교정을 취소하고 원본으로 되돌릴까요?')) return;
+    const eff = await this.model.saveOverride(this.currentCode, prov.article_no, prov.seg_index, { [field]: '' });
+    if (!eff) { this.toast.showToast('되돌리기에 실패했습니다'); return; }
+    prov[field] = eff[field] ? String(eff[field]) : null; // 복귀된 원본값
+    if (prov.overridden) prov.overridden = prov.overridden.filter(f => f !== field);
+    if (prov.review) prov.review = prov.review.filter(r => r.field !== field);
+    td.innerHTML = this.view.cellInner(field, prov, this.canEdit);
+    this.toast.showToast('원본으로 되돌렸습니다');
+  }
+
+  /** 조 제목 교정 취소(heading·heading_ko 모두 원본 복귀). */
+  private async revertHead(row: HTMLElement | null): Promise<void> {
+    const td = row?.querySelector('td') as HTMLElement | null;
+    if (!td) return;
+    const prov = this.pidMap.get(Number(row!.dataset.pid || 0));
+    if (!prov) return;
+    if (!window.confirm('이 조 제목 교정을 취소하고 원본으로 되돌릴까요?')) return;
+    const eff = await this.model.saveOverride(this.currentCode, prov.article_no, prov.seg_index, { heading: '', heading_ko: '' });
+    if (!eff) { this.toast.showToast('되돌리기에 실패했습니다'); return; }
+    prov.heading = eff.heading ? String(eff.heading) : null;
+    prov.heading_ko = eff.heading_ko ? String(eff.heading_ko) : null;
+    if (prov.overridden) prov.overridden = prov.overridden.filter(f => f !== 'heading' && f !== 'heading_ko');
+    if (prov.review) prov.review = prov.review.filter(r => r.field !== 'heading' && r.field !== 'heading_ko');
+    td.innerHTML = this.view.headInner(prov, this.canEdit);
+    const { selector, html } = this.view.tocChip(prov);
+    const chip = document.querySelector('.fm-toc ' + selector);
+    if (chip) chip.outerHTML = html;
+    this.toast.showToast('원본으로 되돌렸습니다');
   }
 
   /** 원문(text_original) 또는 번역(text_ko) 셀을 모달로 편집. 저장 시 그 셀만 갱신. */
@@ -257,6 +371,11 @@ export class ForeignController {
         const eff = await this.model.saveOverride(this.currentCode, prov.article_no, prov.seg_index, { [field]: v[field] });
         if (!eff) return false;
         prov[field] = eff[field] ? String(eff[field]) : null; // 실효값(교정값 또는 복귀된 원본)
+        // 재저장 = 현재 원문 지문으로 다시 앵커됨 → '재확인/미검증' 뱃지 해제.
+        if (prov.review) prov.review = prov.review.filter(r => r.field !== field);
+        // '수정됨' 태그 갱신: 값이 있으면 override(표시 on), 비웠으면 원본 복귀(off).
+        prov.overridden = (prov.overridden || []).filter(f => f !== field);
+        if ((v[field] ?? '').trim() !== '') prov.overridden.push(field);
         td.innerHTML = this.view.cellInner(field, prov, this.canEdit);
         return true;
       },
@@ -281,6 +400,12 @@ export class ForeignController {
         if (!eff) return false;
         prov.heading_ko = eff.heading_ko ? String(eff.heading_ko) : null;
         prov.heading = eff.heading ? String(eff.heading) : null;
+        if (prov.review) prov.review = prov.review.filter(r => r.field !== 'heading_ko' && r.field !== 'heading');
+        // '수정됨' 태그 갱신(heading·heading_ko 각각).
+        for (const f of ['heading', 'heading_ko'] as const) {
+          prov.overridden = (prov.overridden || []).filter(x => x !== f);
+          if ((v[f] ?? '').trim() !== '') prov.overridden.push(f);
+        }
         td.innerHTML = this.view.headInner(prov, this.canEdit);
         // 목차: 바뀐 조 칩 하나만 제자리 교체(옛 코드는 매 저장마다 목차 전체를 재생성 → 대형 법령서 렉).
         const { selector, html } = this.view.tocChip(prov);

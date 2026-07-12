@@ -34,22 +34,90 @@ export class ForeignController {
         return;
       }
       const provisions = await this.model.getProvisions(code);
-      // 교정 오버레이를 베이스 위에 덮어 표시(원본은 fin_law_db 그대로).
+      // 관리자면 교정 가능(환경 무관 — 교정은 오버레이라 이관에 안 지워짐).
+      const isAdmin = req.member?.role === 'admin';
+      // 교정 오버레이를 '원문 지문'으로 검증하며 베이스 위에 덮는다(원본은 fin_law_db 그대로).
+      //   재적재로 seg_index 가 밀렸어도 지문이 일치하는 seg 를 찾아 자가 치유하고,
+      //   원문 자체가 분리/변경돼 못 찾으면 적용하지 않는다(조용한 오염 차단) — 관리자에겐 재확인 뱃지.
       const overrides = await this.model.getOverrides(code);
       if (Object.keys(overrides).length) {
-        for (const p of provisions) {
-          for (const f of ForeignModel.EDITABLE_FIELDS) {
-            const v = overrides[`${p.article_no}|${p.seg_index}|${f}`];
-            if (v !== undefined) (p as any)[f] = v;
+        // 지문 인덱스는 오버레이가 있는 조로 한정(대형 법령서 전체 seg 해시 회피).
+        const arts = new Set(Object.keys(overrides).map(k => k.slice(0, k.indexOf('|'))));
+        const idx = ForeignModel.buildAnchorIndex(provisions.filter(p => arts.has(p.article_no)));
+        const byKey = new Map<string, typeof provisions[number]>();
+        for (const p of provisions) byKey.set(`${p.article_no}|${p.seg_index}`, p);
+        const editableFields = ForeignModel.EDITABLE_FIELDS as readonly string[];
+        for (const key of Object.keys(overrides)) {
+          const sep1 = key.indexOf('|'), sep2 = key.indexOf('|', sep1 + 1);
+          const art = key.slice(0, sep1);
+          const storedIdx = Number(key.slice(sep1 + 1, sep2));
+          const field = key.slice(sep2 + 1);
+          if (!editableFields.includes(field)) continue;
+          const cell = overrides[key];
+          const targetIdx = ForeignModel.resolveAnchor(art, storedIdx, cell.anchor_hash, idx);
+          if (targetIdx == null) {
+            // 억제(원문 드리프트). 관리자에겐 원래 위치에 '재확인' 뱃지 + 이전 교정값.
+            if (isAdmin) {
+              const p = byKey.get(`${art}|${storedIdx}`);
+              if (p) (p.review ||= []).push({ field, kind: 'stale', prev: cell.value });
+            }
+            continue;
           }
+          const p = byKey.get(`${art}|${targetIdx}`);
+          if (!p) continue;
+          (p as any)[field] = cell.value;
+          // '수정됨' 표시 + X 되돌리기 대상(상류 변경을 가림). legacy(지문없음)도 '수정됨'으로 충분히
+          // 드러나므로 별도 '미검증' 뱃지는 달지 않는다(대량 구행 이중뱃지 노이즈 방지).
+          if (isAdmin) (p.overridden ||= []).push(field);
         }
       }
-      // 관리자면 교정 가능(환경 무관 — 교정은 오버레이라 이관에 안 지워짐).
-      const editable = req.member?.role === 'admin';
-      res.status(200).json({ success: true, data: { meta, provisions, editable } });
+      res.status(200).json({ success: true, data: { meta, provisions, editable: isAdmin } });
     } catch (e) {
       console.error('[foreign] getProvisions', e);
       res.status(500).json({ success: false, error: '해외법령 조회 실패' });
+    }
+  };
+
+  /**
+   * 일본법 하위규정 연계(자동 추출). code 의 각 조별 { refs(인용), citedBy(피인용) }.
+   * 무료 공개(optionalAuth). 비 일본법·연계없음이면 빈 맵.
+   */
+  getLinks = async (req: Request, res: Response): Promise<void> => {
+    const code = String(req.query.code || '').trim();
+    if (!code) {
+      res.status(400).json({ success: false, error: 'code 파라미터가 필요합니다.' });
+      return;
+    }
+    try {
+      const data = await this.model.getLinks(code);
+      res.status(200).json({ success: true, data });
+    } catch (e) {
+      console.error('[foreign] getLinks', e);
+      res.status(500).json({ success: false, error: '연계 조회 실패' });
+    }
+  };
+
+  /**
+   * 일본 결제법 계열 3단 연계표(법→시행령→부령[트랙]). family=jp_epi|jp_funds.
+   * 무료 공개(optionalAuth). 미지원 family면 404.
+   */
+  getLinkTable = async (req: Request, res: Response): Promise<void> => {
+    const family = String(req.query.family || '').trim();
+    const rel = req.query.rel === 'all' ? 'all' : 'deleg';
+    if (!family) {
+      res.status(400).json({ success: false, error: 'family 파라미터가 필요합니다.' });
+      return;
+    }
+    try {
+      const data = await this.model.getLinkTable(family, rel);
+      if (!data) {
+        res.status(404).json({ success: false, error: '지원하지 않는 계열입니다.' });
+        return;
+      }
+      res.status(200).json({ success: true, data });
+    } catch (e) {
+      console.error('[foreign] getLinkTable', e);
+      res.status(500).json({ success: false, error: '연계표 조회 실패' });
     }
   };
 
@@ -77,6 +145,8 @@ export class ForeignController {
       return;
     }
     try {
+      // 편집 시점 그 seg 의 현재 base 원문 지문을 함께 저장 → 이후 재적재 드리프트 감지·자가치유.
+      const anchorHash = await this.model.getBaseAnchor(code, articleNo, segIndex);
       const effective: Record<string, string | null> = {};
       for (const f of fields) {
         const raw = (req.body as any)[f];
@@ -85,7 +155,7 @@ export class ForeignController {
           await this.model.deleteOverride(code, articleNo, segIndex, f); // 원본 복귀
           effective[f] = await this.model.getBaseField(code, articleNo, segIndex, f);
         } else {
-          await this.model.upsertOverride(code, articleNo, segIndex, f, val);
+          await this.model.upsertOverride(code, articleNo, segIndex, f, val, anchorHash);
           effective[f] = val;
         }
       }
@@ -105,11 +175,48 @@ export class ForeignController {
       return;
     }
     try {
-      const map = await this.model.getMemos(code);
-      res.status(200).json({ success: true, data: map }); // { "<article_no>|<seg_index>": memo }
+      // 교정과 동일하게 지문으로 검증·자가치유 후, 살아남은 메모만 실효 위치 키로 평탄화.
+      //   프론트 계약은 { "<article_no>|<seg_index>": memo } 유지(원문 드리프트로 억제된 메모는 제외).
+      const raw = await this.model.getMemos(code);
+      const map: Record<string, string> = {};
+      if (Object.keys(raw).length) {
+        const arts = new Set(Object.keys(raw).map(k => k.slice(0, k.indexOf('|'))));
+        const idx = ForeignModel.buildAnchorIndex((await this.model.getBaseSegRows(code)).filter(r => arts.has(r.article_no)));
+        for (const key of Object.keys(raw)) {
+          const sep = key.indexOf('|');
+          const art = key.slice(0, sep);
+          const storedIdx = Number(key.slice(sep + 1));
+          const cell = raw[key];
+          const targetIdx = ForeignModel.resolveAnchor(art, storedIdx, cell.anchor_hash, idx);
+          if (targetIdx == null) continue; // 억제(원문 드리프트)
+          if (cell.anchor_hash == null && !idx.hashAt.has(`${art}|${storedIdx}`)) continue; // 레거시인데 위치 사라짐
+          map[`${art}|${targetIdx}`] = cell.memo;
+        }
+      }
+      res.status(200).json({ success: true, data: map });
     } catch (e) {
       console.error('[foreign] getMemos', e);
       res.status(500).json({ success: false, error: '메모 조회 실패' });
+    }
+  };
+
+  /**
+   * 재적재 후 교정·메모를 현재 베이스에 재정착(seg_index 갱신) + 고아 리포트. 운영자 전용(adminGuard).
+   * 조회는 이미 지문으로 자가치유되므로 필수는 아니나, 이관/재적재 뒤 '교정이 다 살아남았는지'
+   * 확인·정리하는 용도. body: { code }.
+   */
+  reanchor = async (req: Request, res: Response): Promise<void> => {
+    const code = String(req.body?.code || req.body?.law_code || '').trim();
+    if (!code) {
+      res.status(400).json({ success: false, error: 'code 파라미터가 필요합니다.' });
+      return;
+    }
+    try {
+      const report = await this.model.reanchor(code);
+      res.status(200).json({ success: true, data: report });
+    } catch (e) {
+      console.error('[foreign] reanchor', e);
+      res.status(500).json({ success: false, error: '재정착 실패' });
     }
   };
 
@@ -129,7 +236,8 @@ export class ForeignController {
         res.status(200).json({ success: true, deleted: true });
         return;
       }
-      await this.model.upsertMemo(lawCode, articleNo, segIndex, memo);
+      const anchorHash = await this.model.getBaseAnchor(lawCode, articleNo, segIndex);
+      await this.model.upsertMemo(lawCode, articleNo, segIndex, memo, anchorHash);
       res.status(200).json({ success: true });
     } catch (e) {
       console.error('[foreign] putMemo', e);

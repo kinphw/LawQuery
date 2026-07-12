@@ -49,6 +49,43 @@ export interface ForeignProvision {
   depth: number;              // 계층 깊이 — 프론트 들여쓰기용
   text_original: string | null;
   text_ko: string | null;
+  // 관리자 전용 — 교정 오버레이 앵커 검증 결과(재적재 드리프트). stale=억제됨(재확인) / legacy=미검증 구버전.
+  review?: Array<{ field: string; kind: 'stale' | 'legacy'; prev?: string }>;
+  // 관리자 전용 — 현재 적용 중인 교정 필드 목록('수정됨' 표시 + X 되돌리기 노출용).
+  overridden?: string[];
+}
+
+/** 일본법 하위규정 연계 — 상대 조문 1건(칩 표시용). */
+export interface ForeignLinkRef {
+  code: string;
+  title_ko: string;
+  abbrev: string | null;
+  article: string;
+  para: string | null;
+  kind: string; // 'delegates' | 'reference'
+}
+export interface ForeignArticleLinks {
+  refs: ForeignLinkRef[];    // 이 조가 인용
+  citedBy: ForeignLinkRef[]; // 이 조를 인용/시행
+}
+export type ForeignLinkMap = Record<string, ForeignArticleLinks>;
+
+// 3단 연계표(법→시행령→부령)
+export interface LinkTableSeg { para: string | null; kind: string; original: string; ko: string; }
+export interface LinkTableArticle {
+  article: string;
+  heading: string | null;
+  heading_ko: string | null;
+  segs: LinkTableSeg[];
+}
+export interface LinkTableBand { law: string; enf: string[]; sub: string[]; lawParas: string[]; }
+export interface LinkTableTier { code: string; title: string; }
+export interface LinkTableData {
+  family: string;
+  rel: 'deleg' | 'all';
+  tiers: { law: LinkTableTier; enf: LinkTableTier; sub: LinkTableTier };
+  content: Record<string, Record<string, LinkTableArticle>>;
+  bands: LinkTableBand[];
 }
 
 export class ForeignFetchModel {
@@ -60,6 +97,20 @@ export class ForeignFetchModel {
 
   async getProvisions(code: string): Promise<{ meta: ForeignLawMeta; provisions: ForeignProvision[]; editable?: boolean } | null> {
     const r = await fetch(`/api/foreign/provisions?code=${encodeURIComponent(code)}`, { credentials: 'include' });
+    const j = await r.json().catch(() => null);
+    return j && j.success ? j.data : null;
+  }
+
+  /** 일본법 하위규정 연계 맵 { "<article_no>": { refs, citedBy } }. 없으면 {}. */
+  async getLinks(code: string): Promise<ForeignLinkMap> {
+    const r = await fetch(`/api/foreign/links?code=${encodeURIComponent(code)}`, { credentials: 'include' });
+    const j = await r.json().catch(() => null);
+    return j && j.success ? j.data : {};
+  }
+
+  /** 일본 결제법 계열 3단 연계표(family=jp_epi|jp_funds, rel=deleg 위임만/all 전체참조). 실패 시 null. */
+  async getLinkTable(family: string, rel: 'deleg' | 'all' = 'deleg'): Promise<LinkTableData | null> {
+    const r = await fetch(`/api/foreign/linktable?family=${encodeURIComponent(family)}&rel=${rel}`, { credentials: 'include' });
     const j = await r.json().catch(() => null);
     return j && j.success ? j.data : null;
   }

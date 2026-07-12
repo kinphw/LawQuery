@@ -57,6 +57,12 @@
     /* seg-level: article 그룹 헤더 행 + seg 행 들여쓰기 */
     .fm-art-head td { background: #eef2f7; font-weight: 700; color: #0d6efd; font-size: 1.02rem; }
     .fm-art-head.fm-annex td { color: #6f42c1; }
+    /* 전문(前文·Recitals) = 제·개정 이유. 배경 자료임을 청록 강조 + 좌측 바로 구분 */
+    .fm-art-head.fm-recital td { color: #0a7d6b; background: #eaf6f3; border-left: 3px solid #0a7d6b; }
+    /* 미국 CFR 제·개정 이유(Federal Register 서문) = 결론도출근거. 앰버 강조 */
+    .fm-art-head.fm-preamble td { color: #92400e; background: #fef6e7; border-left: 3px solid #d97706; }
+    .fm-preamble-tag { display: inline-block; font-size: .78rem; font-weight: 700; color: #b45309;
+      background: #fde9c8; border-radius: .25rem; padding: 0 .4rem; margin-right: .35rem; }
     .fm-seg td { vertical-align: top; }
     .fm-seg.fm-indent td.fm-en, .fm-seg.fm-indent td:nth-child(2) { padding-left: 1.6rem; }
     .fm-part td { background: #e9ecef; font-weight: 700; font-size: .95rem; }
@@ -143,6 +149,67 @@
       padding-top: .5rem; border-top: 1px dashed #eef0f2; }
     .fx-card-go { font-size: .85rem; font-weight: 600; color: #0d6efd; }
     .fx-card:hover .fx-card-go { text-decoration: underline; }
+    /* ── 일본법 하위규정 연계(자동 추출) — 조 헤더 하단 칩 바 ── */
+    .fm-links { margin-top: .5rem; padding-top: .5rem; border-top: 1px dashed #cdd7e5;
+      font-weight: 400; color: #333; }
+    .fm-links-head { font-size: .74rem; font-weight: 600; color: #5b6b7f; margin-bottom: .3rem; }
+    .fm-links-head i { margin-right: .2rem; }
+    .fm-links-auto { font-size: .66rem; font-weight: 600; color: #8a6d00; background: #fff4d6;
+      border: 1px solid #f2e0a8; border-radius: 1rem; padding: .02rem .4rem; margin-left: .35rem;
+      vertical-align: middle; }
+    .fm-links-row { display: flex; flex-wrap: wrap; align-items: center; gap: .3rem; margin: .25rem 0; }
+    .fm-links-lb { font-size: .72rem; color: #6c757d; min-width: 3.6rem; }
+    .fm-links-lb i { margin-right: .15rem; font-size: .68rem; }
+    .fm-link-chip { display: inline-flex; align-items: baseline; gap: .25rem; font-size: .78rem;
+      line-height: 1.3; color: #0d6efd; background: #eef4ff; border: 1px solid #d6e4ff;
+      border-radius: 1rem; padding: .08rem .5rem; text-decoration: none; white-space: nowrap; }
+    .fm-link-chip:hover { background: #dbe8ff; border-color: #9ec2ff; text-decoration: none; }
+    .fm-link-chip .fm-link-nm { font-weight: 600; }
+    .fm-link-chip.fm-link-deleg { color: #9a6b00; background: #fff6e0; border-color: #f0dca6; }
+    .fm-link-chip.fm-link-deleg:hover { background: #ffefc7; border-color: #e6c86a; }
+    .fm-link-more { font-size: .72rem; color: #6c757d; }
+    @media (max-width: 768px) {
+      .fm-links-row { gap: .25rem; }
+      .fm-link-chip { font-size: .74rem; }
+    }
+    /* ── 3단 연계표(법→시행령→부령) ── */
+    .flt-wrap { padding: 0 .5rem; }
+    .flt-head h4 { color: #212529; }
+    .flt-open-btn { text-decoration: none; }
+    .flt-toolbar { display: flex; align-items: center; gap: 1.4rem; margin: .6rem 0 .8rem; flex-wrap: wrap; }
+    .flt-tabs { display: flex; align-items: center; gap: .4rem; flex-wrap: wrap; }
+    .flt-tabs-lb { font-size: .8rem; color: #6c757d; font-weight: 600; }
+    .flt-tab, .flt-mode, .flt-rel { font-size: .82rem; padding: .2rem .7rem; border: 1px solid #ced4da; background: #fff;
+      border-radius: 1rem; cursor: pointer; color: #495057; }
+    .flt-tab:hover, .flt-mode:hover, .flt-rel:hover { border-color: #495057; color: #212529; }
+    .flt-tab.active, .flt-mode.active, .flt-rel.active { background: #343a40; border-color: #343a40; color: #fff; font-weight: 600; }
+    .flt-table-wrap { max-height: calc(100vh - 160px); overflow: auto; border: 1px solid #dee2e6; border-radius: .4rem; }
+    .flt-table { table-layout: fixed; width: 100%; min-width: 1100px; margin: 0; font-size: .82rem; }
+    .flt-table thead th { position: sticky; top: 0; z-index: 2; text-align: center; padding: .35rem .4rem; }
+    /* 모노톤: 다크 단색 헤더. 단(tier) 구분은 색이 아니라 좌측 경계선 + 가운데단 옅은 음영으로. */
+    .flt-thead-tier th { font-size: .86rem; font-weight: 700; color: #fff; background: #212529; }
+    .flt-thead-tier .flt-h-enf, .flt-thead-tier .flt-h-sub { border-left: 2px solid #6c757d; }
+    .flt-thead-lang th { top: 30px; background: #f1f3f5; font-size: .72rem; font-weight: 600; color: #495057; }
+    .flt-band { content-visibility: auto; contain-intrinsic-size: auto 320px; }
+    .flt-table td { vertical-align: top; padding: .3rem .45rem; border-color: #e3e6ea; }
+    .flt-table td.flt-law { background: #fff; }
+    .flt-table td.flt-enf { background: #f4f5f7; }        /* 가운데단(시행령) 옅은 음영으로 그룹 구분 */
+    .flt-table td.flt-sub { background: #fff; }
+    .flt-table td.flt-blank { background: #fafbfc; }
+    .flt-artno { display: inline-block; font-weight: 700; font-size: .78rem; color: #343a40;
+      text-decoration: none; margin-bottom: .25rem; }
+    .flt-artno:hover { color: #0d6efd; text-decoration: underline; }
+    .flt-head { font-weight: 400; color: #6c757d; font-size: .74rem; }
+    /* 항(項) seg 를 블록으로 분리 — 셀 내부 스크롤 없음(국내 연계표처럼 페이지 스크롤). */
+    .flt-seg { white-space: pre-wrap; word-break: break-word; line-height: 1.5; padding: .12rem 0;
+      border-top: 1px dotted #eceff2; }
+    .flt-seg:first-of-type { border-top: 0; }
+    .flt-para { display: inline-block; min-width: 1.1em; margin-right: .25rem; font-weight: 700;
+      color: #b0b6bd; font-size: .72rem; }
+    /* 위임된 항 강조 — 유일한 기능색(옅은 앰버). 나머지는 모두 무채색. */
+    .flt-seg.flt-hl { background: #fbf4dd; border-radius: .2rem; box-shadow: inset 2px 0 0 #cbb46a; padding-left: .3rem; }
+    .flt-empty { color: #adb5bd; font-style: italic; }
+    @media (max-width: 768px) { .flt-table { font-size: .78rem; } }
   </style>
 </head>
 
