@@ -1,0 +1,245 @@
+import DbContext from '../../common/DbContext';
+import { ResultSetHeader } from 'mysql2/promise';
+
+const FIN_DB = 'fin_law_db';
+const AUTH_DB = process.env.AUTH_DB || 'ldb_auth';
+export const DEFAULT_TRANSITION_VERSION = 'eu_psd_commission_2023';
+export const PSD_LAW_CODES = ['eu_psd2', 'eu_emd2', 'eu_psd3', 'eu_psr'] as const;
+export type PsdLawCode = typeof PSD_LAW_CODES[number];
+
+export type StructuralType = 'one_to_one' | 'split' | 'merge' | 'many_to_many' | 'new' | 'deleted' | 'pending';
+export type ChangeType = 'maintained' | 'clarified' | 'strengthened' | 'relaxed' | 'material_change' | 'pending';
+export type ReviewStatus = 'automatic' | 'reviewed';
+
+export interface TransitionVersion {
+  code: string;
+  labelKo: string;
+  basisKo: string;
+  asOfDate: string;
+  lifecycle: string;
+  sourceUrls: string[];
+  noticeKo: string;
+}
+
+export interface TransitionCatalogLaw {
+  code: PsdLawCode;
+  abbrev: string;
+  titleKo: string;
+  status: string;
+  side: 'current' | 'future';
+  articleCount: number;
+  mappedCount: number;
+  newCount: number;
+  deletedCount: number;
+  pendingCount: number;
+  reviewedCount: number;
+}
+
+export interface TransitionAssessment {
+  structuralType: StructuralType;
+  changeType: ChangeType;
+  summaryKo: string;
+  detailKo: string;
+  similarityPct: number | null;
+  reviewStatus: ReviewStatus;
+}
+
+export interface TransitionCounterpart {
+  lawCode: PsdLawCode;
+  abbrev: string;
+  titleKo: string;
+  articleNo: string | null;
+  displayRef: string;
+}
+
+export interface TransitionRelation {
+  groupId: number;
+  groupKey: string;
+  relationShape: string;
+  evidenceStatus: 'both' | 'psd3_annex' | 'psr_annex' | 'conflict';
+  conflictNote: string | null;
+  sourceRowNo: number;
+  selfRefs: string[];
+  counterparts: TransitionCounterpart[];
+}
+
+export interface TransitionArticleAnalysis {
+  articleNo: string;
+  assessment: TransitionAssessment;
+  relations: TransitionRelation[];
+}
+
+function parseJsonArray(value: any): string[] {
+  if (Array.isArray(value)) return value.map(String);
+  try {
+    const parsed = JSON.parse(String(value || '[]'));
+    return Array.isArray(parsed) ? parsed.map(String) : [];
+  } catch { return []; }
+}
+
+export class PsdTransitionModel {
+  private fin(): DbContext { return DbContext.getInstance(FIN_DB); }
+  private auth(): DbContext { return DbContext.getInstance(AUTH_DB); }
+
+  async getVersion(code = DEFAULT_TRANSITION_VERSION): Promise<{ id: number; version: TransitionVersion } | null> {
+    const rows = await this.auth().query<any>(
+      `SELECT id, code, label_ko, basis_ko, DATE_FORMAT(as_of_date, '%Y-%m-%d') AS as_of_date,
+              lifecycle, source_urls, notice_ko
+         FROM foreign_transition_version
+        WHERE code=? AND publish_status='published' LIMIT 1`,
+      [code]
+    );
+    const r = rows[0];
+    if (!r) return null;
+    return {
+      id: Number(r.id),
+      version: {
+        code: r.code,
+        labelKo: r.label_ko,
+        basisKo: r.basis_ko,
+        asOfDate: r.as_of_date,
+        lifecycle: r.lifecycle,
+        sourceUrls: parseJsonArray(r.source_urls),
+        noticeKo: r.notice_ko,
+      },
+    };
+  }
+
+  async getCatalog(versionCode = DEFAULT_TRANSITION_VERSION): Promise<{ version: TransitionVersion; laws: TransitionCatalogLaw[]; conflictCount: number } | null> {
+    const found = await this.getVersion(versionCode);
+    if (!found) return null;
+    const rows = await this.fin().query<any>(
+      `SELECT l.code, l.abbrev, l.title_ko, l.status,
+              COUNT(a.id) AS article_count,
+              SUM(a.structural_type IN ('one_to_one','split','merge','many_to_many')) AS mapped_count,
+              SUM(a.structural_type='new') AS new_count,
+              SUM(a.structural_type='deleted') AS deleted_count,
+              SUM(a.structural_type='pending') AS pending_count,
+              SUM(a.review_status='reviewed') AS reviewed_count
+         FROM law l
+         LEFT JOIN ${AUTH_DB}.foreign_transition_assessment a
+           ON a.law_code=l.code AND a.version_id=?
+        WHERE l.code IN ('eu_psd2','eu_emd2','eu_psd3','eu_psr')
+        GROUP BY l.id
+        ORDER BY FIELD(l.code,'eu_psd2','eu_emd2','eu_psd3','eu_psr')`,
+      [found.id]
+    );
+    const conflictRows = await this.auth().query<any>(
+      `SELECT COUNT(*) AS cnt FROM foreign_transition_group
+        WHERE version_id=? AND evidence_status='conflict'`, [found.id]
+    );
+    return {
+      version: found.version,
+      conflictCount: Number(conflictRows[0]?.cnt || 0),
+      laws: rows.map((r: any) => ({
+        code: r.code as PsdLawCode,
+        abbrev: r.abbrev,
+        titleKo: r.title_ko,
+        status: r.status,
+        side: (r.code === 'eu_psd2' || r.code === 'eu_emd2') ? 'current' : 'future',
+        articleCount: Number(r.article_count || 0),
+        mappedCount: Number(r.mapped_count || 0),
+        newCount: Number(r.new_count || 0),
+        deletedCount: Number(r.deleted_count || 0),
+        pendingCount: Number(r.pending_count || 0),
+        reviewedCount: Number(r.reviewed_count || 0),
+      })),
+    };
+  }
+
+  async getAnalysis(code: PsdLawCode, versionCode = DEFAULT_TRANSITION_VERSION): Promise<{ version: TransitionVersion; articles: TransitionArticleAnalysis[] } | null> {
+    const found = await this.getVersion(versionCode);
+    if (!found) return null;
+    const assessments = await this.auth().query<any>(
+      `SELECT article_no, structural_type, change_type, summary_ko, detail_ko,
+              similarity_pct, review_status
+         FROM foreign_transition_assessment
+        WHERE version_id=? AND law_code=?
+        ORDER BY CAST(article_no AS UNSIGNED), article_no`,
+      [found.id, code]
+    );
+    const relationRows = await this.auth().query<any>(
+      `SELECT g.id AS group_id, g.group_key, g.relation_shape, g.evidence_status,
+              g.conflict_note, g.source_row_no,
+              self.article_no AS self_article, self.display_ref AS self_ref,
+              other.law_code AS other_code, other.article_no AS other_article,
+              other.display_ref AS other_ref,
+              l.abbrev AS other_abbrev, l.title_ko AS other_title
+         FROM foreign_transition_member self
+         JOIN foreign_transition_group g ON g.id=self.group_id AND g.version_id=?
+         LEFT JOIN foreign_transition_member other
+           ON other.group_id=g.id AND other.side<>self.side
+         LEFT JOIN ${FIN_DB}.law l ON l.code=other.law_code
+        WHERE self.law_code=? AND self.article_no IS NOT NULL
+        ORDER BY CAST(self.article_no AS UNSIGNED), self.article_no,
+                 g.source_row_no, other.member_order, other.id`,
+      [found.id, code]
+    );
+
+    const relationMap = new Map<string, Map<number, TransitionRelation>>();
+    for (const r of relationRows) {
+      let byGroup = relationMap.get(r.self_article);
+      if (!byGroup) relationMap.set(r.self_article, byGroup = new Map());
+      let relation = byGroup.get(Number(r.group_id));
+      if (!relation) {
+        relation = {
+          groupId: Number(r.group_id), groupKey: r.group_key, relationShape: r.relation_shape,
+          evidenceStatus: r.evidence_status, conflictNote: r.conflict_note,
+          sourceRowNo: Number(r.source_row_no), selfRefs: [], counterparts: [],
+        };
+        byGroup.set(relation.groupId, relation);
+      }
+      if (r.self_ref && !relation.selfRefs.includes(r.self_ref)) relation.selfRefs.push(r.self_ref);
+      if (r.other_code) {
+        const key = `${r.other_code}|${r.other_article || ''}|${r.other_ref}`;
+        if (!relation.counterparts.some(x => `${x.lawCode}|${x.articleNo || ''}|${x.displayRef}` === key)) {
+          relation.counterparts.push({
+            lawCode: r.other_code, abbrev: r.other_abbrev || r.other_code,
+            titleKo: r.other_title || r.other_code, articleNo: r.other_article,
+            displayRef: r.other_ref,
+          });
+        }
+      }
+    }
+
+    const articles: TransitionArticleAnalysis[] = assessments.map((a: any) => ({
+      articleNo: a.article_no,
+      assessment: {
+        structuralType: a.structural_type,
+        changeType: a.change_type,
+        summaryKo: a.summary_ko || '',
+        detailKo: a.detail_ko || '',
+        similarityPct: a.similarity_pct == null ? null : Number(a.similarity_pct),
+        reviewStatus: a.review_status,
+      },
+      relations: [...(relationMap.get(a.article_no)?.values() || [])],
+    }));
+    return { version: found.version, articles };
+  }
+
+  async updateAssessment(
+    code: PsdLawCode,
+    articleNo: string,
+    changeType: ChangeType,
+    summaryKo: string,
+    detailKo: string,
+    reviewerId: number,
+    versionCode = DEFAULT_TRANSITION_VERSION,
+  ): Promise<boolean> {
+    const found = await this.getVersion(versionCode);
+    if (!found) return false;
+    const connection = await this.auth().getConnection();
+    try {
+      const [result] = await connection.execute<ResultSetHeader>(
+        `UPDATE foreign_transition_assessment
+            SET change_type=?, summary_ko=?, detail_ko=?, review_status='reviewed',
+                reviewed_by=?, reviewed_at=NOW()
+          WHERE version_id=? AND law_code=? AND article_no=?`,
+        [changeType, summaryKo, detailKo || null, reviewerId, found.id, code, articleNo]
+      );
+      return result.affectedRows > 0;
+    } finally {
+      connection.release();
+    }
+  }
+}

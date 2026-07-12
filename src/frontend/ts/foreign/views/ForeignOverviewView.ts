@@ -40,7 +40,17 @@ export class ForeignOverviewView {
       <div class="text-center mb-4">
         <h4 class="mb-1">해외 결제·전자금융·가상자산 법령</h4>
         <p class="text-muted small mb-0">국가별로 어떤 법이 무슨 역할을 하는지 한눈에. 카드를 누르면 원문·한글 번역 본문으로 이동합니다.</p>
-      </div>`;
+      </div>
+      <a href="foreign-transition.html" class="d-flex align-items-center justify-content-between gap-3 p-3 mb-4 border rounded-3 bg-dark text-white text-decoration-none shadow-sm">
+        <div class="d-flex align-items-center gap-3">
+          <span class="d-inline-flex align-items-center justify-content-center rounded-circle bg-white text-dark flex-shrink-0" style="width:2.6rem;height:2.6rem">
+            <i class="fas fa-code-branch"></i>
+          </span>
+          <div><div class="fw-bold">PSD 이행분석</div>
+            <div class="small text-white-50">PSD2·EMD2 → PSD3·PSR 조문별 공식 상관표와 변경 분석</div></div>
+        </div>
+        <span class="small fw-semibold text-nowrap">분석 보기 <i class="fas fa-arrow-right ms-1"></i></span>
+      </a>`;
 
     for (const j of JURIS_ORDER) {
       const arr = groups[j];

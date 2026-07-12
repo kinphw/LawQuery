@@ -5,7 +5,8 @@ module.exports = {
   entry: {
     law: './src/frontend/ts/entry/law.ts',
     interpretation: './src/frontend/ts/entry/interpretation.ts',
-    foreign: './src/frontend/ts/entry/foreign.ts'
+    foreign: './src/frontend/ts/entry/foreign.ts',
+    'foreign-transition': './src/frontend/ts/entry/foreignTransition.ts'
   },
   output: {
     filename: '[name].bundle.js', // dist/law.bundle.js 등으로 저장
@@ -30,10 +31,9 @@ module.exports = {
     ]
   },
   devtool: 'eval-source-map',
-  // 폴링 감시 — Windows에서 외부 프로세스(에이전트/스크립트)의 파일수정은 native fs.watch가
-  // 놓치는 경우가 있어 폴링으로 강제 감지(webpack serve/watch 공통 적용).
+  // 네이티브 파일 감시(OS fs 이벤트) 사용 — 인위적 폴링(poll)은 넣지 않는다.
+  // 폴링은 idle 상태에서도 CPU를 상시 점유하므로 제거하고, webpack이 의도한 native watch를 그대로 사용.
   watchOptions: {
-    poll: 1000,
     ignored: /node_modules/
   },
   // devServer: {
