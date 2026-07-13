@@ -83,28 +83,9 @@
     padding: 0.35rem !important;
   }
 
-  // ── 첫 열(법) 고정(sticky) ──
-  // 횡스크롤로 시행령·감독규정·세칙을 훑어도 기준이 되는 "법" 조문은
-  // 항상 왼쪽에 남아 비교 맥락을 잃지 않게 한다. (NN/g 권장 패턴)
-  .law-table td.law-title {
-    position: sticky;
-    left: 0;
-    z-index: 2;
-    background: #fff;                 // 스크롤되는 다른 셀이 비치지 않게 불투명 배경
-    box-shadow: 2px 0 4px rgba(0, 0, 0, 0.08);   // 고정열 경계 음영
-  }
-
-  // 제목행(title-row)의 첫 셀은 해당 행 배경색과 맞춤
-  .law-table tr.title-row td.law-title {
-    background: #e9ecef;
-  }
-
-  // 헤더의 첫 칸은 세로(thead sticky-top) + 가로 동시 고정 → 더 높은 z-index
-  .law-table thead.sticky-top th:first-child {
-    position: sticky;
-    left: 0;
-    z-index: 1000;
-  }
+  // ── 첫 열 고정 안 함 ──
+  // 좁은 화면에서 첫 열(법)을 sticky로 고정하면 가용 가로폭이 크게 줄어들어
+  // 오히려 나머지 단을 읽기 어렵다. 모든 열을 자유롭게 횡스크롤로 이동한다.
 }
 
 // ── 모바일 가로(landscape): 4~5단을 한눈에 비교하는 표 유지 ──
