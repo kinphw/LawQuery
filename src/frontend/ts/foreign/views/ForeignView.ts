@@ -1,5 +1,24 @@
 import { ForeignLawMeta, ForeignProvision, ForeignLinkMap, ForeignLinkRef } from '../models/ForeignFetchModel';
 
+/** 조 본문(seg) 행 렌더에 필요한 컨텍스트 — 지연 mount 시 컨트롤러가 renderArticleRows 로 재사용. */
+export interface SegRenderCtx {
+  code: string;
+  memos: Record<string, string>;
+  showMemo: boolean;
+  cols: number;
+  canEdit: boolean;
+  canEditMemo: boolean;
+  canFavorite: boolean;
+  favorites: Set<string>;
+}
+
+/**
+ * 이 seg 수를 넘는 대형 법령은 조 본문을 '지연 mount'(뷰포트 근처 조만 실제 행 생성)한다.
+ * 초기엔 조 헤더 + 추정높이 placeholder 만 그려 8~14MB DOM 을 한 번에 파싱하던 렉을 없앤다.
+ * (Reg E 9,481 / Reg Z 10,940 조항 등. 소형 법령은 종전대로 전부 즉시 렌더.)
+ */
+export const FOREIGN_LAZY_THRESHOLD = 1500;
+
 /**
  * 해외법령 뷰 (seg-level) — 1 row = 1 seg.
  * part(편/장) 그룹 → article 그룹 헤더(첫 seg heading, 목차 앵커) → seg 별 [원문|번역|메모] 행.
@@ -73,48 +92,78 @@ export class ForeignView {
     // ⇒ 8천 행짜리 대형 법령에서도 셀 편집(메모·본문) 시 표 전체가 아니라 '보이는 조'만 재배치 → 렉 제거.
     // contain-intrinsic-size 는 조별 실제 콘텐츠 길이로 미리 계산해 넣는다(고정 200px이면 화면 밖
     // 조들의 높이를 심하게 과소평가해 목차 바로가기가 실제 위치보다 한참 못 미친 곳으로 스크롤된다).
+    //
+    // 대형 법령(FOREIGN_LAZY_THRESHOLD 초과)은 여기서 조 본문(seg 행)을 아예 안 그리고, 조 헤더 +
+    // 추정높이 placeholder 만 그린다(data-lazy). 컨트롤러가 IntersectionObserver 로 뷰포트 근처
+    // 조만 renderArticleRows 로 실제 mount → 초기 innerHTML 파싱을 수백 행으로 줄여 렉을 없앤다.
+    // (조 헤더 id 는 항상 존재 → 목차·딥링크 앵커·스크롤 복원은 그대로 동작.)
+    const lazy = provisions.length > FOREIGN_LAZY_THRESHOLD;
+    const ctx: SegRenderCtx = { code: meta.code, memos, showMemo, cols, canEdit, canEditMemo, canFavorite, favorites };
     const groupHeights = this.computeGroupHeights(provisions);
-    let lastPart: string | null = null;
-    let lastArticle: string | null = null;
-    let openGroup = false;
+
+    // 문서 순서를 지키며 조 단위로 묶는다.
+    const order: string[] = [];
+    const byArticle = new Map<string, ForeignProvision[]>();
     for (const seg of provisions) {
-      if (seg.article_no !== lastArticle) {
-        if (openGroup) html += `</tbody>`;
-        const h = groupHeights.get(seg.article_no) || 200;
-        html += `<tbody class="fm-art-group" style="contain-intrinsic-size: auto ${h}px;">`;
-        openGroup = true;
-        lastArticle = seg.article_no;
-        if (seg.part_no && seg.part_no !== lastPart) {
-          lastPart = seg.part_no;
-          html += `<tr class="fm-part"><td colspan="${cols}">${this.esc(seg.part_no)}</td></tr>`;
-        }
-        const headCls = /^ANNEX/i.test(seg.article_no) ? ' fm-annex'
-          : /^RECITAL/i.test(seg.article_no) ? ' fm-recital'
-          : /^PRE:/i.test(seg.article_no) ? ' fm-preamble' : '';
-        html += `<tr class="fm-art-head${headCls}" id="${this.articleId(seg.article_no)}" data-pid="${seg.provision_id}"><td colspan="${cols}">${this.headInner(seg, canEdit)}${this.linkBar(seg.article_no, links)}</td></tr>`;
-      } else if (seg.part_no && seg.part_no !== lastPart) {
-        // (드묾) 조 중간에서 편/장이 바뀌는 경우 — 현재 그룹 안에 편/장 행을 넣는다.
-        lastPart = seg.part_no;
-        html += `<tr class="fm-part"><td colspan="${cols}">${this.esc(seg.part_no)}</td></tr>`;
+      let arr = byArticle.get(seg.article_no);
+      if (!arr) { byArticle.set(seg.article_no, arr = []); order.push(seg.article_no); }
+      arr.push(seg);
+    }
+
+    let lastPart: string | null = null;
+    for (const articleNo of order) {
+      const segs = byArticle.get(articleNo)!;
+      const head = segs[0];
+      // 추정 높이는 큰 조(예: 6,719 seg 짜리 Supplement)에서 수백만 px 로 폭증해 스크롤바가
+      // 사실상 사라지므로 상한을 둔다. mount 후엔 content-visibility(auto)가 실측 높이를 기억한다.
+      const h = Math.min(groupHeights.get(articleNo) || 200, 3000);
+      const lazyAttr = lazy ? ` data-lazy="1" data-article="${this.esc(articleNo)}"` : '';
+      html += `<tbody class="fm-art-group"${lazyAttr} style="contain-intrinsic-size: auto ${h}px;">`;
+      if (head.part_no && head.part_no !== lastPart) {
+        lastPart = head.part_no;
+        html += `<tr class="fm-part"><td colspan="${cols}">${this.esc(head.part_no)}</td></tr>`;
       }
+      const headCls = /^ANNEX/i.test(articleNo) ? ' fm-annex'
+        : /^RECITAL/i.test(articleNo) ? ' fm-recital'
+        : /^PRE:/i.test(articleNo) ? ' fm-preamble' : '';
+      html += `<tr class="fm-art-head${headCls}" id="${this.articleId(articleNo)}" data-pid="${head.provision_id}"><td colspan="${cols}">${this.headInner(head, canEdit)}${this.linkBar(articleNo, links)}</td></tr>`;
+      if (lazy) {
+        // 본문 자리를 예약하는 placeholder(추정 본문 높이). content-visibility 가 화면 밖에선
+        // contain-intrinsic-size 로, 화면 안에선 이 높이로 자리를 지켜 mount 전에도 스크롤 좌표가 안정.
+        const bodyH = Math.max(30, h - 64);
+        html += `<tr class="fm-lazy-ph" aria-hidden="true"><td colspan="${cols}" style="height:${bodyH}px;border:0"></td></tr>`;
+      } else {
+        html += this.renderArticleRows(segs, ctx);
+      }
+      html += `</tbody>`;
+    }
+    html += `</table></div>`;
+    return html;
+  }
+
+  /**
+   * 한 조(article)의 seg 본문 행(<tr class="fm-seg">)들을 렌더. 즉시 렌더(renderTable)와
+   * 지연 mount(컨트롤러의 IntersectionObserver)가 공용 → seg 행 생성 로직의 단일 출처.
+   */
+  renderArticleRows(segs: ForeignProvision[], ctx: SegRenderCtx): string {
+    let html = '';
+    for (const seg of segs) {
       // 계층 들여쓰기 — 원자 seg 의 depth(1=subsection … 6=subclause)로 원문·번역 셀을 단계별 들여쓴다.
       // (depth 1 을 기준 0 으로. 프론트가 '뭉치정보=depth'로 재조합해 트리 outline 처럼 보인다.)
       const dep = Math.max(0, (seg.depth ?? 1) - 1);
       const pad = dep ? ` style="padding-left:${(0.5 + dep * 1.1).toFixed(2)}rem"` : '';
       const key = `${seg.article_no}|${seg.seg_index}`;
-      const memo = memos[key];
+      const memo = ctx.memos[key];
       // 즐겨찾기(회원별 개인 북마크) — 로그인 회원에게만 별·강조 노출(favorites는 회원만 로드).
       // 별 버튼은 원문셀(fm-en)에 둔다(모든 회원에게 있는 셀 — 메모칸은 운영자에게만 있으므로).
-      const fav = canFavorite && favorites.has(key);
-      const favBtn = canFavorite ? this.favBtn(seg, fav) : '';
+      const fav = ctx.canFavorite && ctx.favorites.has(key);
+      const favBtn = ctx.canFavorite ? this.favBtn(seg, fav) : '';
       html += `<tr class="fm-seg${fav ? ' fm-fav' : ''}" data-pid="${seg.provision_id}">
-        <td class="fm-en" data-field="text_original"${pad}>${favBtn}${this.cellInner('text_original', seg, canEdit)}</td>
-        <td class="fm-ko-cell" data-field="text_ko"${pad}>${this.cellInner('text_ko', seg, canEdit)}</td>
-        ${showMemo ? this.memoCell(meta.code, seg, memo, canEditMemo) : ''}
+        <td class="fm-en" data-field="text_original"${pad}>${favBtn}${this.cellInner('text_original', seg, ctx.canEdit)}</td>
+        <td class="fm-ko-cell" data-field="text_ko"${pad}>${this.cellInner('text_ko', seg, ctx.canEdit)}</td>
+        ${ctx.showMemo ? this.memoCell(ctx.code, seg, memo, ctx.canEditMemo) : ''}
       </tr>`;
     }
-    if (openGroup) html += `</tbody>`;
-    html += `</table></div>`;
     return html;
   }
 

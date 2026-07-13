@@ -1,5 +1,5 @@
 import { ForeignFetchModel, ForeignLawListItem, ForeignProvision, ForeignLawMeta, ForeignLinkMap, LinkTableData } from '../models/ForeignFetchModel';
-import { ForeignView } from '../views/ForeignView';
+import { ForeignView, FOREIGN_LAZY_THRESHOLD } from '../views/ForeignView';
 import { ForeignLinkTableView, LinkTableMode } from '../views/ForeignLinkTableView';
 import { ForeignOverviewView } from '../views/ForeignOverviewView';
 import { ForeignScrollAnchor } from '../util/ForeignScrollAnchor';
@@ -41,6 +41,12 @@ export class ForeignController {
   private pidMap = new Map<number, ForeignProvision>(); // provision_id → seg
   private modalEl: HTMLElement | null = null;      // 열린 편집 팝오버(표 바깥 오버레이)
   private popCleanup: (() => void) | null = null;  // 팝오버 바깥클릭 리스너 해제
+
+  // 대형 법령 조 본문 지연 mount(뷰포트 근처 조만 실제 행 생성) — 초기 렌더 렉 해소.
+  // IntersectionObserver 대신 스크롤 기반(모든 환경에서 확실히 발화). 대형 조는 배치로 채운다.
+  private segsByArticle = new Map<string, ForeignProvision[]>(); // article_no → seg[](지연 mount 원본)
+  private lazyScrollHandler: (() => void) | null = null; // 스크롤 리스너(교체·해제용)
+  private lazyThrottle = false; // 스크롤 mount 쓰로틀
 
   async initialize(): Promise<void> {
     const headerEl = document.getElementById('header');
@@ -207,6 +213,9 @@ export class ForeignController {
    * 주변 조가 실측 높이로 갱신되며 목표가 밀리므로 몇 차례 재정렬로 수렴(ScrollAnchor.restore 와 동일 전략).
    */
   private scrollToAnchor(anchor: string): void {
+    // 지연 mount 표: 목표 조가 아직 placeholder면 먼저 실제 행을 채워야 점프 위치가 정확하다.
+    const tb = document.getElementById(anchor)?.closest('tbody[data-lazy]') as HTMLElement | null;
+    if (tb) this.mountArticle(tb);
     const jump = () => document.getElementById(anchor)?.scrollIntoView(); // scroll-margin-top 적용
     jump();
     requestAnimationFrame(() => { jump(); requestAnimationFrame(jump); });
@@ -219,6 +228,80 @@ export class ForeignController {
     if (!this.meta) return;
     const results = document.getElementById('results')!;
     results.innerHTML = this.view.renderTable(this.meta, this.provisions, this.memos, this.canEditMemo, this.canEdit, this.favorites, this.canFavorite, this.links);
+    this.setupLazyMount();
+  }
+
+  /**
+   * 대형 법령: 조 본문이 placeholder(data-lazy)로만 그려져 있으면, 스크롤에 따라 뷰포트 근처 조를
+   * 실제 seg 행으로 mount. 이벤트는 전부 #results 위임이라 늦게 붙은 행도 편집·메모·즐겨찾기·복사가
+   * 그대로 작동한다. IntersectionObserver 대신 스크롤 이벤트(모든 환경에서 확실히 발화)를 쓴다.
+   * 소형 법령(임계 이하)은 지연 없이 종료.
+   */
+  private setupLazyMount(): void {
+    if (this.lazyScrollHandler) { window.removeEventListener('scroll', this.lazyScrollHandler); this.lazyScrollHandler = null; }
+    if (this.provisions.length <= FOREIGN_LAZY_THRESHOLD) return;
+
+    this.segsByArticle.clear();
+    for (const p of this.provisions) {
+      let arr = this.segsByArticle.get(p.article_no);
+      if (!arr) this.segsByArticle.set(p.article_no, arr = []);
+      arr.push(p);
+    }
+
+    // 스크롤 쓰로틀 — 스크롤 중 과호출 방지(setTimeout: 모든 환경에서 확실히 발화). 초기 1회도 실행.
+    this.lazyScrollHandler = () => {
+      if (this.lazyThrottle) return;
+      this.lazyThrottle = true;
+      window.setTimeout(() => { this.lazyThrottle = false; this.mountNear(); }, 80);
+    };
+    window.addEventListener('scroll', this.lazyScrollHandler, { passive: true });
+    this.mountNear();
+  }
+
+  /** 뷰포트 위아래 여유(rootMargin 상당) 안에 든 placeholder 조를 mount. */
+  private mountNear(): void {
+    const results = document.getElementById('results');
+    if (!results) return;
+    const vh = window.innerHeight;
+    const MARGIN = 1200; // 보이기 전에 미리 채워 placeholder 노출 최소화
+    results.querySelectorAll<HTMLElement>('tbody[data-lazy]').forEach((tb) => {
+      if (tb.dataset.mounting) return;
+      const r = tb.getBoundingClientRect();
+      if (r.bottom > -MARGIN && r.top < vh + MARGIN) this.mountArticle(tb);
+    });
+  }
+
+  /**
+   * placeholder 조 tbody 하나에 실제 seg 행을 채운다. 큰 조(예: Supplement I 6,719 seg)는
+   * 한 번에 넣으면 프리즈하므로 배치(BATCH)로 나눠 rAF 로 이어 채운다. 이미 mount 됐으면 무시.
+   */
+  private mountArticle(tbody: HTMLElement, start = 0): void {
+    if (start === 0 && !tbody.dataset.lazy) return; // 이미 mount됨
+    const articleNo = tbody.dataset.article || '';
+    const segs = this.segsByArticle.get(articleNo);
+    if (!segs) return;
+    const BATCH = 300;
+    const showMemo = this.canEditMemo || Object.keys(this.memos).length > 0;
+    const cols = showMemo ? 3 : 2;
+    const slice = segs.slice(start, start + BATCH);
+    const rows = this.view.renderArticleRows(slice, {
+      code: this.currentCode, memos: this.memos, showMemo, cols,
+      canEdit: this.canEdit, canEditMemo: this.canEditMemo,
+      canFavorite: this.canFavorite, favorites: this.favorites,
+    });
+    const ph = tbody.querySelector('tr.fm-lazy-ph');
+    if (ph) ph.insertAdjacentHTML('beforebegin', rows);
+    else tbody.insertAdjacentHTML('beforeend', rows);
+
+    const next = start + BATCH;
+    if (next < segs.length) {
+      tbody.dataset.mounting = '1'; // 배치 진행 중 — mountNear 재진입 차단
+      window.setTimeout(() => this.mountArticle(tbody, next), 0);
+    } else {
+      if (ph) ph.remove();
+      delete tbody.dataset.lazy;
+      delete tbody.dataset.mounting;
+    }
   }
 
   // ── 메모 편집 (이벤트 위임) — 운영자만. 일반 사용자에겐 읽기 전용. ───────────────
