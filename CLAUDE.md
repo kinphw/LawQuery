@@ -26,6 +26,34 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 URL 파라미터 `law`의 값: `j` = 전자금융거래법(ldb_j DB), `y` = 여신전문금융업법(ldb_y DB)
 
+## ★ 형제 프로젝트 (c:\projects\LawQuery*) — 한 가족, 저장소는 분리
+
+이 웹앱은 **5개 프로젝트 가족의 서비스 계층**이다. 각각 **별도 git 저장소**이고 배포 수명주기가
+달라 모노레포로 합치지 않는다(웹앱=서버배포 / law·sqlhandler=로컬 도구 / twa=안드로이드 빌드).
+**필요하면 이 세션에서 형제 디렉토리를 직접 읽고·고치고·커밋해도 된다**(경로만 절대경로로).
+`LawQuery.code-workspace` 는 이 묶음의 VS Code 정의.
+
+| 경로 | 역할 | 저장소 | 비고 |
+|---|---|---|---|
+| `LawQuery` | **웹앱**(이 저장소) — Express(4000)+webpack, 운영배포 | `kinphw/LawQuery` | dev→main→`deploy.sh` |
+| `LawQuery-law` | **법령 적재** 파이프라인 + GUI 편집기 + 허브(`Dashboard.pyw`) | `kinphw/LawQuery-law` | 자체 CLAUDE.md 있음(필독). 해외법령 ETL(`foreign/etl`)·dev→prod 복제(`common/replicate*.py`) 소유 |
+| `LawQuery-frc` | **FRCrawler** — 금융법령해석·민원 웹크롤러 | `kinphw/FRCrawler` | 유닛: `late`(최근해석)·`past`(과거해석)·`integ`(금융민원). **MySQL 직접 적재 안 함 → Excel/Pickle 산출** |
+| `LawQuery-sqlhandler` | **MySQL Data Handler** — MySQL ↔ Excel/Pickle import/export GUI | `kinphw/sqlHandler` | frc 산출물을 DB로 넣는 손. 자연키(예: `구분+제목+회신일자`) 기적재 검증 |
+| `LawQuery-twa` | **안드로이드 TWA 앱**(웹앱 래퍼) | (git 아님) | bubblewrap 빌드·keystore — 메모리 `twa-play` 참조 |
+
+### 데이터 흐름 (누가 뭘 채우나)
+```
+LawQuery-law  ──(파이프라인 --apply)──→  ldb_j·ldb_y·ldb_g…(국내법령) + fin_law_db(해외법령)
+LawQuery-frc  ──(크롤)──→ Excel/Pickle ──(LawQuery-sqlhandler 로 import)──→ ldb_i(유권해석)
+                                                    ↓
+                                   LawQuery 웹앱(이 저장소)이 조회·서비스
+                                                    ↓
+                                          LawQuery-twa(안드로이드 래퍼)
+```
+- **국내법령·해외법령 데이터를 고칠 일 = `LawQuery-law`** (여기서 고치지 말 것). 운영 이관도 그쪽 `replicate*`.
+- **유권해석 데이터가 이상하다 = frc(크롤 단계) 또는 sqlhandler(적재 단계)** 를 봐야 한다. 웹앱은 읽기만.
+- `ldb_auth` (회원·게이팅·메모·교정·즐겨찾기·해외 카탈로그)만 **웹앱이 직접 쓴다**.
+
 ## 개발 명령어
 
 ```bash
