@@ -4,7 +4,7 @@
 # - Only targets THIS project's dev processes, identified by command-line pattern.
 # - Only kills processes older than the grace period (default 20s), so freshly
 #   started sibling watchers in the current run are never killed (removes duplicates only).
-# Invoked from npm predev / predev:full / predev:fast hooks.
+# Invoked from npm predev / predev:full hooks.
 
 $graceSeconds = 20
 $cutoff  = (Get-Date).AddSeconds(-$graceSeconds)
