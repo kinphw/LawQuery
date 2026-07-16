@@ -83,7 +83,9 @@
       </div>
       <div id="lawSearchContent" class="collapse">
         <div class="card-body p-0">
-          <div id="lawCheckboxes" class="d-flex flex-wrap">
+          <!-- ⚠️ flex-wrap 금지: #lawCheckboxes 는 flex-direction:column + max-height(내부 세로스크롤)라
+               wrap 이 붙으면 항목이 높이를 채운 뒤 '오른쪽 새 열'로 감겨 횡스크롤이 생긴다. -->
+          <div id="lawCheckboxes" class="d-flex">
             <!-- 체크박스들이 여기에 동적으로 삽입됨 -->
           </div>
         </div>
