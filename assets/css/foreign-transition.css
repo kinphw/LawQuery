@@ -179,10 +179,27 @@ body { background: #f7f8fa; color: var(--pta-ink); }
    각 칩의 숫자는 '현재 법 전체' 기준 건수. 0건이면 비활성 → "PSD2엔 신설이 없다"가
    눌러보기 전에 보인다(예전 단일 셀렉트는 0건 조합을 골라도 이유를 알 수 없었다). */
 .pta-filters {
-  display: flex; flex-wrap: wrap; gap: .5rem 1.5rem;
   padding: .75rem 0 0; margin-bottom: 1rem;
   border-top: 1px dashed var(--pta-line);
 }
+/* 앞줄 = 자주 쓰는 것만. 분류가 잘아 전부 펼치면 가짓수에 압도되므로 나머지는 '상세'로 접는다. */
+.pta-quick { display: flex; flex-wrap: wrap; align-items: center; gap: .35rem; }
+.pta-advanced { margin-left: auto; }
+.pta-advanced > summary {
+  list-style: none; cursor: pointer; font-size: .78rem; color: var(--pta-muted);
+  padding: .2rem .5rem; border-radius: 1rem; user-select: none;
+}
+.pta-advanced > summary::-webkit-details-marker { display: none; }
+.pta-advanced > summary::after { content: ' be'; }
+.pta-advanced[open] > summary::after { content: ' b4'; }
+.pta-advanced > summary:hover { color: var(--pta-accent); background: var(--pta-soft); }
+.pta-advanced-body {
+  position: absolute; z-index: 20; right: 0; margin-top: .4rem; padding: .7rem .85rem;
+  display: flex; flex-direction: column; gap: .5rem;
+  background: #fff; border: 1px solid var(--pta-line); border-radius: .5rem;
+  box-shadow: 0 8px 24px rgba(23,32,51,.12);
+}
+.pta-advanced { position: relative; }
 .pta-fgroup { display: flex; align-items: center; flex-wrap: wrap; gap: .3rem; }
 .pta-fgroup-label {
   font-size: .72rem; font-weight: 700; color: var(--pta-muted);

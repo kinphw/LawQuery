@@ -179,6 +179,19 @@ export class PsdTransitionView {
       `<div class="pta-fgroup"><span class="pta-fgroup-label">${label}</span>${opts.map(([v, l]) =>
         chip(dim, v, l, cur === v, v === 'all' ? null : (bag ? (bag[v] || 0) : null))).join('')}</div>`;
 
+    // 자주 쓰는 것만 앞줄에. 넷이 서로 다른 차원이라 여러 개를 눌러도 자연히 AND 조합이 된다
+    // (신설·이행없음=구조 → 서로 배타 / 실질변경=변경유형 / 불일치=상태).
+    // 나머지 14개는 '상세'로 접는다 — 분류가 잘아서 전부 펼치면 가짓수에 압도된다.
+    const quick: Array<[string, string, string]> = [
+      ['structural', 'new', STRUCTURAL_LABELS.new],
+      ['structural', 'deleted', STRUCTURAL_LABELS.deleted],
+      ['change', 'material_change', CHANGE_LABELS.material_change],
+      ['status', 'conflict', '상관표 불일치'],
+    ];
+    const bagOf = (dim: string) => dim === 'structural' ? counts?.structural : dim === 'change' ? counts?.change : counts?.status;
+    const noFilter = state.structural === 'all' && state.change === 'all' && state.status === 'all';
+    const advancedOpen = !noFilter && !quick.some(([d, v]) => (state as any)[d] === v);
+
     return `<div class="pta-toolbar">
       <label class="pta-search"><i class="fas fa-search"></i><input id="ptaSearch" type="search"
         value="${this.esc(state.search)}" placeholder="조문 제목·본문·분석 검색" aria-label="이행분석 검색"></label>
@@ -188,9 +201,19 @@ export class PsdTransitionView {
       <span class="pta-total">전체 ${total}개 조문</span>
     </div>
     <div class="pta-filters" aria-label="이행분석 필터">
-      ${group('structural', '구조', structural, state.structural, counts?.structural)}
-      ${group('change', '변경유형', change, state.change, counts?.change)}
-      ${group('status', '상태', status, state.status, counts?.status)}
+      <div class="pta-quick">
+        <button type="button" class="pta-chip${noFilter ? ' active' : ''}" data-reset="1" aria-pressed="${noFilter}">전체</button>
+        ${quick.map(([dim, value, label]) =>
+          chip(dim, value, label, (state as any)[dim] === value, bagOf(dim)?.[value] ?? 0)).join('')}
+        <details class="pta-advanced"${advancedOpen ? ' open' : ''}>
+          <summary>상세</summary>
+          <div class="pta-advanced-body">
+            ${group('structural', '구조', structural, state.structural, counts?.structural)}
+            ${group('change', '변경유형', change, state.change, counts?.change)}
+            ${group('status', '상태', status, state.status, counts?.status)}
+          </div>
+        </details>
+      </div>
     </div>`;
   }
 

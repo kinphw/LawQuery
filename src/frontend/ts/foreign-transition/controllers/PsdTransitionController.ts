@@ -78,14 +78,16 @@ export class PsdTransitionController {
         return;
       }
       const chip = target.closest<HTMLElement>('.pta-chip');
-      if (chip?.dataset.dim && !(chip as HTMLButtonElement).disabled) {
-        const dim = chip.dataset.dim as 'structural' | 'change' | 'status';
-        (this.state as any)[dim] = chip.dataset.value;
-        app.querySelectorAll(`.pta-chip[data-dim="${dim}"]`).forEach(el => {
-          const on = el === chip;
-          el.classList.toggle('active', on);
-          el.setAttribute('aria-pressed', String(on));
-        });
+      if (chip && !(chip as HTMLButtonElement).disabled) {
+        if (chip.dataset.reset) {                       // '전체' = 3차원 모두 해제
+          this.state.structural = 'all'; this.state.change = 'all'; this.state.status = 'all';
+        } else if (chip.dataset.dim) {
+          const dim = chip.dataset.dim as 'structural' | 'change' | 'status';
+          // 같은 칩을 다시 누르면 해제(토글) — 단축칩으로 켜고 끄기가 자연스럽다.
+          const next = chip.dataset.value!;
+          (this.state as any)[dim] = (this.state as any)[dim] === next && next !== 'all' ? 'all' : next;
+        } else return;
+        this.syncChips(app);
         this.renderArticles();
         return;
       }
@@ -203,6 +205,25 @@ export class PsdTransitionController {
     if (!this.meta || !this.transition) return;
     const body = document.getElementById('ptaBody');
     if (body) body.innerHTML = this.view.renderArticles(this.meta, this.provisions, this.transition, this.state);
+  }
+
+  /**
+   * 칩 활성표시 동기화. 같은 값의 칩이 단축줄과 '상세'에 모두 있으므로 클릭한 요소가 아니라
+   * 상태값 기준으로 맞춰야 짝이 어긋나지 않는다(툴바를 통째로 다시 그리면 '상세' 펼침이 닫힌다).
+   */
+  private syncChips(app: HTMLElement): void {
+    const s = this.state as any;
+    app.querySelectorAll<HTMLElement>('.pta-chip[data-dim]').forEach(el => {
+      const on = s[el.dataset.dim!] === el.dataset.value;
+      el.classList.toggle('active', on);
+      el.setAttribute('aria-pressed', String(on));
+    });
+    const reset = app.querySelector<HTMLElement>('.pta-chip[data-reset]');
+    if (reset) {
+      const none = this.state.structural === 'all' && this.state.change === 'all' && this.state.status === 'all';
+      reset.classList.toggle('active', none);
+      reset.setAttribute('aria-pressed', String(none));
+    }
   }
 
   private scrollTo(anchor: string): void {
