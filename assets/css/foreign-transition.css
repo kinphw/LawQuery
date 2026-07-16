@@ -174,3 +174,71 @@ body { background: #f7f8fa; color: var(--pta-ink); }
   .pta-bilingual .pta-text-col:first-child { padding-top: 0; border-top: 0; }
   .pta-review { margin-left: 0; }
 }
+
+/* ── 필터: 구조·변경유형·상태 3차원을 칩으로 분리해 AND 조합 ────────────────
+   각 칩의 숫자는 '현재 법 전체' 기준 건수. 0건이면 비활성 → "PSD2엔 신설이 없다"가
+   눌러보기 전에 보인다(예전 단일 셀렉트는 0건 조합을 골라도 이유를 알 수 없었다). */
+.pta-filters {
+  display: flex; flex-wrap: wrap; gap: .5rem 1.5rem;
+  padding: .75rem 0 0; margin-bottom: 1rem;
+  border-top: 1px dashed var(--pta-line);
+}
+.pta-fgroup { display: flex; align-items: center; flex-wrap: wrap; gap: .3rem; }
+.pta-fgroup-label {
+  font-size: .72rem; font-weight: 700; color: var(--pta-muted);
+  letter-spacing: .02em; margin-right: .15rem;
+}
+.pta-chip {
+  display: inline-flex; align-items: center; gap: .3rem;
+  font-size: .8rem; line-height: 1.4; padding: .2rem .6rem;
+  border: 1px solid var(--pta-line); border-radius: 1rem;
+  background: #fff; color: var(--pta-ink); cursor: pointer;
+  transition: background .12s, border-color .12s, color .12s;
+}
+.pta-chip:hover:not(:disabled) { border-color: var(--pta-accent); color: var(--pta-accent); }
+.pta-chip.active { background: var(--pta-ink); border-color: var(--pta-ink); color: #fff; font-weight: 600; }
+.pta-chip.active b { background: rgba(255,255,255,.22); color: #fff; }
+.pta-chip b {
+  font-size: .7rem; font-weight: 700; padding: 0 .3rem; border-radius: .6rem;
+  background: var(--pta-soft); color: var(--pta-muted);
+}
+.pta-chip:disabled, .pta-chip.zero { opacity: .38; cursor: not-allowed; }
+
+/* 대응 N개를 한 팝업에서 비교 */
+.pta-compare-all {
+  margin-top: .4rem; font-size: .76rem; padding: .18rem .55rem;
+  border: 1px dashed var(--pta-line); border-radius: 1rem;
+  background: #fff; color: var(--pta-muted); cursor: pointer;
+}
+.pta-compare-all:hover { border-color: var(--pta-accent); color: var(--pta-accent); }
+
+/* ── 전후 조문 비교 팝업 ───────────────────────────────────────────────── */
+.ptc-summary { margin: .5rem 0 1rem; font-size: .9rem; color: var(--pta-ink); }
+.ptc-sim { font-size: .72rem; color: var(--pta-muted); align-self: center; }
+.ptc-grid {
+  display: grid; grid-template-columns: 1fr auto 1fr; gap: .75rem; align-items: start;
+}
+.ptc-side { min-width: 0; display: flex; flex-direction: column; gap: .6rem; }
+.ptc-side-label {
+  font-size: .72rem; font-weight: 700; color: var(--pta-muted); letter-spacing: .02em;
+}
+.ptc-side-label b { color: var(--pta-accent); }
+.ptc-arrow { align-self: center; color: var(--pta-muted); padding-top: 1.5rem; }
+.ptc-panel { border: 1px solid var(--pta-line); border-radius: .5rem; background: #fff; overflow: hidden; }
+.ptc-panel-head {
+  display: flex; align-items: center; justify-content: space-between; gap: .5rem;
+  padding: .45rem .6rem; background: var(--pta-soft); border-bottom: 1px solid var(--pta-line);
+  font-size: .82rem;
+}
+.ptc-panel-head span { display: block; font-size: .74rem; color: var(--pta-muted); font-weight: 400; }
+.ptc-panel-head a { color: var(--pta-muted); }
+.ptc-panel-head a:hover { color: var(--pta-accent); }
+.ptc-panel-body { padding: .6rem; max-height: 46vh; overflow-y: auto; font-size: .84rem; }
+.ptc-missing { color: var(--pta-muted); font-style: italic; font-size: .82rem; padding: .5rem; }
+
+/* 좁은 화면: 좌우 대조 → 세로 적층(화살표는 아래를 가리키게) */
+@media (max-width: 991.98px) {
+  .ptc-grid { grid-template-columns: 1fr; }
+  .ptc-arrow { padding: 0; transform: rotate(90deg); justify-self: center; }
+  .ptc-panel-body { max-height: none; }
+}

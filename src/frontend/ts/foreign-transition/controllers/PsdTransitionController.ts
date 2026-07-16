@@ -22,10 +22,13 @@ export class PsdTransitionController {
   private meta: ForeignLawMeta | null = null;
   private provisions: ForeignProvision[] = [];
   private transition: TransitionViewData | null = null;
-  private state: TransitionRenderState = { filter: 'all', search: '', language: 'ko' };
+  private state: TransitionRenderState = { structural: 'all', change: 'all', status: 'all', search: '', language: 'ko' };
   private searchTimer: number | null = null;
   private editingArticle = '';
   private modal: any = null;
+  private compareModal: any = null;
+  /** 비교 팝업이 상대 법 본문을 가져오므로 법별 조문 캐시(법 4개뿐이라 메모리 무해). */
+  private provisionCache = new Map<PsdLawCode, ForeignProvision[]>();
 
   async initialize(): Promise<void> {
     const header = document.getElementById('header');
@@ -59,10 +62,31 @@ export class PsdTransitionController {
         this.loadLaw(tab.dataset.code as PsdLawCode, '', true);
         return;
       }
+      // 대응조문 칩 = 비교 팝업(이동 아님). Ctrl/Cmd·가운데클릭은 새 탭 이동을 그대로 허용.
       const counterpart = target.closest<HTMLElement>('.pta-counterpart');
       if (counterpart?.dataset.code) {
+        const e = event as MouseEvent;
+        if (e.metaKey || e.ctrlKey || e.shiftKey || e.button === 1) return;
         event.preventDefault();
-        this.loadLaw(counterpart.dataset.code as PsdLawCode, counterpart.dataset.anchor || '', true);
+        this.openCompare(counterpart.dataset.compareSelf || '', [counterpart.dataset.code as PsdLawCode]);
+        return;
+      }
+      const compareAll = target.closest<HTMLElement>('.pta-compare-all');
+      if (compareAll?.dataset.compareSelf) {
+        event.preventDefault();
+        this.openCompare(compareAll.dataset.compareSelf, null);
+        return;
+      }
+      const chip = target.closest<HTMLElement>('.pta-chip');
+      if (chip?.dataset.dim && !(chip as HTMLButtonElement).disabled) {
+        const dim = chip.dataset.dim as 'structural' | 'change' | 'status';
+        (this.state as any)[dim] = chip.dataset.value;
+        app.querySelectorAll(`.pta-chip[data-dim="${dim}"]`).forEach(el => {
+          const on = el === chip;
+          el.classList.toggle('active', on);
+          el.setAttribute('aria-pressed', String(on));
+        });
+        this.renderArticles();
         return;
       }
       const language = target.closest<HTMLElement>('[data-language]');
@@ -74,13 +98,6 @@ export class PsdTransitionController {
       }
       const edit = target.closest<HTMLElement>('[data-edit-article]');
       if (edit?.dataset.editArticle) this.openEditor(edit.dataset.editArticle);
-    });
-    app.addEventListener('change', event => {
-      const target = event.target as HTMLInputElement | HTMLSelectElement;
-      if (target.id === 'ptaFilter') {
-        this.state.filter = target.value;
-        this.renderArticles();
-      }
     });
     app.addEventListener('input', event => {
       const target = event.target as HTMLInputElement;
@@ -113,6 +130,7 @@ export class PsdTransitionController {
     }
     this.meta = foreign.meta;
     this.provisions = foreign.provisions;
+    this.provisionCache.set(code, foreign.provisions); // 비교 팝업이 재요청하지 않도록 공유
     this.transition = transition;
     this.renderFrame(this.view.renderArticles(this.meta, this.provisions, this.transition, this.state));
 
@@ -124,7 +142,61 @@ export class PsdTransitionController {
 
   private renderFrame(body: string): void {
     if (!this.catalog) return;
-    document.getElementById('transitionApp')!.innerHTML = this.view.renderFrame(this.catalog, this.code, this.state, body);
+    // 필터 칩 건수는 '현재 법 전체' 기준 → 법이 바뀔 때만 재계산(필터 변경 시엔 본문만 다시 그림).
+    const counts = this.provisions.length && this.transition
+      ? this.view.computeCounts(this.provisions, this.transition) : null;
+    document.getElementById('transitionApp')!.innerHTML =
+      this.view.renderFrame(this.catalog, this.code, this.state, body, counts);
+  }
+
+  /** 법별 조문 캐시 — 비교 팝업이 상대 법 본문을 필요로 한다. */
+  private async provisionsOf(code: PsdLawCode): Promise<ForeignProvision[]> {
+    const hit = this.provisionCache.get(code);
+    if (hit) return hit;
+    const data = await this.foreignModel.getProvisions(code);
+    const list = data?.provisions || [];
+    if (list.length) this.provisionCache.set(code, list);
+    return list;
+  }
+
+  private segsOf(list: ForeignProvision[], articleNo: string | null): ForeignProvision[] {
+    if (!articleNo) return [];
+    return list.filter(p => p.article_no === articleNo);
+  }
+
+  /**
+   * 전후 조문 비교 팝업. onlyCodes 가 있으면 그 법의 대응만(칩 1개 클릭),
+   * null 이면 이 조의 모든 대응(‘한번에 비교’). 상대 법 본문은 캐시 fetch.
+   */
+  private async openCompare(selfArticleNo: string, onlyCodes: PsdLawCode[] | null): Promise<void> {
+    if (!selfArticleNo || !this.meta) return;
+    const analysis = this.findAnalysis(selfArticleNo);
+    const element = document.getElementById('ptaCompareModal');
+    const body = document.getElementById('ptaCompareBody');
+    const title = document.getElementById('ptaCompareTitle');
+    const BootstrapModal = (window as any).bootstrap?.Modal;
+    if (!element || !body || !BootstrapModal) return;
+
+    if (title) title.textContent = `${this.meta.abbrev || this.code} 제${selfArticleNo}조 — 전후 조문 비교`;
+    body.innerHTML = this.view.renderLoading();
+    this.compareModal ||= BootstrapModal.getOrCreateInstance(element);
+    this.compareModal.show();
+
+    let targets = analysis
+      ? [...new Map(analysis.relations.flatMap(r => r.counterparts)
+          .map(c => [`${c.lawCode}|${c.articleNo || ''}`, c])).values()]
+      : [];
+    if (onlyCodes) targets = targets.filter(c => onlyCodes.includes(c.lawCode));
+
+    const others = await Promise.all(targets.map(async c => ({
+      code: c.lawCode, abbrev: c.abbrev, articleNo: c.articleNo, displayRef: c.displayRef,
+      segs: this.segsOf(await this.provisionsOf(c.lawCode), c.articleNo),
+    })));
+
+    body.innerHTML = this.view.renderCompare({
+      selfCode: this.code, selfAbbrev: this.meta.abbrev || this.code, selfArticleNo,
+      selfSegs: this.segsOf(this.provisions, selfArticleNo), analysis, others, language: this.state.language,
+    });
   }
 
   private renderArticles(): void {
