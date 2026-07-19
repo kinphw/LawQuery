@@ -356,7 +356,7 @@ async function main(): Promise<void> {
     );
     const versionId = Number(versionRows[0].id);
 
-    // 공식 구조관계만 재생성한다. 전문가 검토가 끝난 assessment는 아래 UPSERT에서 보존한다.
+    // 공식 구조관계만 재생성한다. 정밀 대사(analyzed)·전문가 검수(reviewed) assessment는 아래 UPSERT에서 보존한다.
     await connection.execute('DELETE FROM foreign_transition_group WHERE version_id=?', [versionId]);
     for (const group of groups) {
       const [inserted] = await connection.execute<ResultSetHeader>(
@@ -404,9 +404,9 @@ async function main(): Promise<void> {
          ON DUPLICATE KEY UPDATE
            structural_type=VALUES(structural_type),
            similarity_pct=VALUES(similarity_pct),
-           change_type=IF(review_status='reviewed', change_type, VALUES(change_type)),
-           summary_ko=IF(review_status='reviewed', summary_ko, VALUES(summary_ko)),
-           detail_ko=IF(review_status='reviewed', detail_ko, VALUES(detail_ko))`,
+           change_type=IF(review_status IN ('analyzed','reviewed'), change_type, VALUES(change_type)),
+           summary_ko=IF(review_status IN ('analyzed','reviewed'), summary_ko, VALUES(summary_ko)),
+           detail_ko=IF(review_status IN ('analyzed','reviewed'), detail_ko, VALUES(detail_ko))`,
         [
           versionId, article.code, article.article_no, a.structural, a.change,
           a.summary, a.detail, a.similarity == null ? null : (a.similarity * 100).toFixed(2),

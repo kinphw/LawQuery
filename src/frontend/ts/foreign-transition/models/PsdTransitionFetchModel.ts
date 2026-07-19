@@ -1,7 +1,8 @@
 export type PsdLawCode = 'eu_psd2' | 'eu_emd2' | 'eu_psd3' | 'eu_psr';
 export type StructuralType = 'one_to_one' | 'split' | 'merge' | 'many_to_many' | 'new' | 'deleted' | 'pending';
 export type ChangeType = 'maintained' | 'clarified' | 'strengthened' | 'relaxed' | 'material_change' | 'pending';
-export type ReviewStatus = 'automatic' | 'reviewed';
+export type ReviewStatus = 'automatic' | 'analyzed' | 'reviewed';
+export type ThemeImpact = 'new' | 'strengthened' | 'relaxed' | 'clarified' | 'restructured' | 'maintained';
 
 export interface TransitionVersion {
   code: string;
@@ -31,7 +32,31 @@ export interface TransitionCatalog {
   version: TransitionVersion;
   laws: TransitionCatalogLaw[];
   conflictCount: number;
+  themeCount: number;
   unlocked: boolean;
+}
+
+export interface TransitionThemeLink {
+  lawCode: PsdLawCode;
+  articleNo: string;
+}
+
+export interface TransitionTheme {
+  themeKey: string;
+  sortOrder: number;
+  categoryKo: string;
+  titleKo: string;
+  impact: ThemeImpact;
+  currentRefKo: string;
+  futureRefKo: string;
+  summaryKo: string;
+  detailKo: string;
+  articleLinks: TransitionThemeLink[];
+}
+
+export interface TransitionThemesData {
+  version: TransitionVersion;
+  themes: TransitionTheme[];
 }
 
 export interface TransitionAssessment {
@@ -77,6 +102,16 @@ export interface TransitionViewData {
 export class PsdTransitionFetchModel {
   async getCatalog(): Promise<TransitionCatalog | null> {
     const response = await fetch('/api/foreign-transition/catalog', { credentials: 'include' });
+    if (!response.ok) return null;
+    const json = await response.json();
+    return json.success ? json.data : null;
+  }
+
+  async getThemes(version: string): Promise<TransitionThemesData | null> {
+    const response = await fetch(
+      `/api/foreign-transition/themes?version=${encodeURIComponent(version)}`,
+      { credentials: 'include' },
+    );
     if (!response.ok) return null;
     const json = await response.json();
     return json.success ? json.data : null;

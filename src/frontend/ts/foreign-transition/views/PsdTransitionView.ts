@@ -4,10 +4,12 @@ import {
   PsdLawCode,
   ReviewStatus,
   StructuralType,
+  ThemeImpact,
   TransitionArticleAnalysis,
   TransitionCatalog,
   TransitionCounterpart,
   TransitionRelation,
+  TransitionTheme,
   TransitionViewData,
 } from '../models/PsdTransitionFetchModel';
 
@@ -15,35 +17,49 @@ export type TransitionLanguageMode = 'ko' | 'original' | 'both';
 export type StatusFilter = 'all' | 'conflict' | 'reviewed' | 'automatic';
 
 /**
- * 필터는 서로 독립된 3차원(구조·변경유형·상태)을 AND 로 조합한다.
- * 예전엔 셀렉트 하나에 세 차원이 뒤섞여 "신설 ∩ 실질변경" 같은 조합이 불가능했고,
- * 화면이 법 하나만 보여주는 탓에 "PSD2 + 신설"처럼 애초에 0건인 조합을 골라도
- * 이유를 알 수 없었다(신설은 예정규정에만, 이행없음은 현행규정에만 존재).
- * → 차원을 분리하고 각 옵션에 건수를 붙여 0건이면 비활성으로 보여준다.
+ * 조문 하나의 '결과'를 단일 축으로 본다: 신설 / 이행(동일이행·강화·완화·실질변경) / 이행 없음.
+ * 예전엔 구조(1:1·분할·통합)와 변경유형(유지·강화…)을 별개 차원으로 나눠 필터가 두 줄이라 복잡했고
+ * 배타적 조합이 0건이 되기 쉬웠다. 구조 세부(분할·통합)는 대응조문 칩이 이미 보여주므로,
+ * 축을 하나로 합쳐 필터·배지를 단순화한다. 명확화는 '동일이행'에 흡수한다.
  */
+export type Outcome = 'new' | 'maintained' | 'strengthened' | 'relaxed' | 'material' | 'deleted' | 'pending';
+
+const OUTCOME_LABELS: Record<Outcome, string> = {
+  new: '신설', maintained: '동일이행', strengthened: '강화', relaxed: '완화',
+  material: '실질변경', deleted: '이행 없음', pending: '검토중',
+};
+
+/** 구조·변경유형(DB 2컬럼)을 화면용 단일 결과 축으로 접는다. */
+export function outcomeOf(a: { structuralType: StructuralType; changeType: ChangeType }): Outcome {
+  if (a.structuralType === 'new') return 'new';
+  if (a.structuralType === 'deleted') return 'deleted';
+  if (a.structuralType === 'pending') return 'pending';
+  if (a.changeType === 'strengthened') return 'strengthened';
+  if (a.changeType === 'relaxed') return 'relaxed';
+  if (a.changeType === 'material_change') return 'material';
+  return 'maintained'; // maintained·clarified·(내용 검토중)
+}
+
 export interface TransitionRenderState {
-  structural: StructuralType | 'all';
-  change: ChangeType | 'all';
+  outcome: Outcome | 'all';
   status: StatusFilter;
   search: string;
   language: TransitionLanguageMode;
 }
 
-/** 툴바 칩에 표시할 차원별 건수(현재 법 전체 기준 — 다른 차원 선택과 무관). */
+/** 툴바 칩에 표시할 결과별 건수(현재 법 전체 기준). status 는 예외신호(불일치·검수)용. */
 export interface FilterCounts {
-  structural: Record<string, number>;
-  change: Record<string, number>;
+  outcome: Record<string, number>;
   status: Record<string, number>;
   total: number;
 }
 
-const STRUCTURAL_LABELS: Record<StructuralType, string> = {
-  one_to_one: '1:1 이행', split: '분할 이행', merge: '통합 이행', many_to_many: '다대다 이행',
-  new: '신설', deleted: '이행 없음', pending: '대응 검토중',
+const REVIEW_LABELS: Record<ReviewStatus, string> = {
+  automatic: '자동초안', analyzed: '정밀 분석', reviewed: '검수완료',
 };
-const CHANGE_LABELS: Record<ChangeType, string> = {
-  maintained: '유지', clarified: '명확화', strengthened: '강화', relaxed: '완화',
-  material_change: '실질변경', pending: '내용 검토중',
+const IMPACT_LABELS: Record<ThemeImpact, string> = {
+  new: '신설', strengthened: '강화', relaxed: '완화', clarified: '명확화',
+  restructured: '재편', maintained: '유지',
 };
 
 export class PsdTransitionView {
@@ -51,7 +67,7 @@ export class PsdTransitionView {
   computeCounts(provisions: ForeignProvision[], transition: TransitionViewData): FilterCounts {
     const analysisMap = new Map(transition.articles.map(a => [a.articleNo, a]));
     const seen = new Set<string>();
-    const counts: FilterCounts = { structural: {}, change: {}, status: {}, total: 0 };
+    const counts: FilterCounts = { outcome: {}, status: {}, total: 0 };
     for (const p of provisions) {
       if (!/^\d+$/.test(p.article_no) || seen.has(p.article_no)) continue;
       seen.add(p.article_no);
@@ -59,15 +75,14 @@ export class PsdTransitionView {
       const a = analysisMap.get(p.article_no);
       if (!a) continue;
       const bump = (dim: Record<string, number>, key: string) => { dim[key] = (dim[key] || 0) + 1; };
-      bump(counts.structural, a.assessment.structuralType);
-      bump(counts.change, a.assessment.changeType);
+      bump(counts.outcome, outcomeOf(a.assessment));
       bump(counts.status, a.assessment.reviewStatus);
       if (a.relations.some(r => r.evidenceStatus === 'conflict')) bump(counts.status, 'conflict');
     }
     return counts;
   }
 
-  renderFrame(catalog: TransitionCatalog, current: PsdLawCode, state: TransitionRenderState, body: string, counts: FilterCounts | null = null): string {
+  renderFrame(catalog: TransitionCatalog, current: PsdLawCode, state: TransitionRenderState, body: string, counts: FilterCounts | null = null, summaryActive = false): string {
     const selected = catalog.laws.find(l => l.code === current) || catalog.laws[0];
     const sources = catalog.version.sourceUrls.map((url, i) =>
       `<a href="${this.esc(url)}" target="_blank" rel="noopener">${i === 0 ? 'PSD3' : 'PSR'} 원문 <i class="fas fa-arrow-up-right-from-square"></i></a>`
@@ -90,8 +105,8 @@ export class PsdTransitionView {
       <div class="pta-notice"><i class="fas fa-circle-info"></i> ${this.esc(catalog.version.noticeKo)}
         ${catalog.conflictCount ? `<span class="pta-conflict-count">상관표 불일치 ${catalog.conflictCount}건</span>` : ''}
       </div>
-      ${this.tabs(catalog, current)}
-      ${catalog.unlocked ? this.toolbar(state, selected?.articleCount || 0, counts) : ''}
+      ${this.tabs(catalog, current, summaryActive)}
+      ${catalog.unlocked && !summaryActive ? this.toolbar(state, selected?.articleCount || 0, counts) : ''}
       <main id="ptaBody">${body}</main>
     </div>`;
   }
@@ -144,11 +159,11 @@ export class PsdTransitionView {
     return html;
   }
 
-  private tabs(catalog: TransitionCatalog, current: PsdLawCode): string {
+  private tabs(catalog: TransitionCatalog, current: PsdLawCode, summaryActive: boolean): string {
     const renderGroup = (side: 'current' | 'future', label: string) => {
       const laws = catalog.laws.filter(l => l.side === side);
-      return `<div class="pta-tab-group"><span class="pta-tab-label">${label}</span>${laws.map(l => {
-        const active = l.code === current ? ' active' : '';
+      return `<div class="pta-tab-group pta-tab-${side}"><span class="pta-tab-label">${label}</span>${laws.map(l => {
+        const active = !summaryActive && l.code === current ? ' active' : '';
         const secondary = side === 'current'
           ? `${l.mappedCount} 이행 · ${l.deletedCount} 이행없음`
           : `${l.mappedCount} 이행 · ${l.newCount} 신설`;
@@ -156,41 +171,96 @@ export class PsdTransitionView {
           <strong>${this.esc(l.abbrev)}</strong><small>${secondary}</small></button>`;
       }).join('')}</div>`;
     };
-    return `<nav class="pta-tabs" aria-label="PSD 법령 선택">${renderGroup('current', '현행 규정')}${renderGroup('future', '예정 규정')}</nav>`;
+    // 요약 탭 — 조문별 정밀 대사를 주제로 종합한 '무엇이 바뀌었나'. 테마가 있을 때만 노출.
+    const summaryTab = catalog.themeCount > 0
+      ? `<div class="pta-tab-group pta-tab-summary"><span class="pta-tab-label">한눈에</span>
+          <button type="button" class="pta-law-tab pta-summary-tab${summaryActive ? ' active' : ''}" data-summary="1">
+            <strong>요약</strong><small>무엇이 바뀌었나 · ${catalog.themeCount}</small></button></div>`
+      : '';
+    return `<nav class="pta-tabs" aria-label="PSD 법령 선택">${summaryTab}${renderGroup('current', '현행 규정')}${renderGroup('future', '예정 규정')}</nav>`;
   }
 
+  /** 정밀 요약표 — 주제별 '무엇이 바뀌었나'. 대분류로 묶고 각 카드에 근거 조문 딥링크. */
+  renderThemes(themes: TransitionTheme[]): string {
+    if (!themes.length) return '<div class="pta-empty">요약 데이터가 아직 없습니다.</div>';
+    const byCategory = new Map<string, TransitionTheme[]>();
+    for (const t of themes) (byCategory.get(t.categoryKo) || byCategory.set(t.categoryKo, []).get(t.categoryKo)!).push(t);
+
+    const counts = themes.reduce<Record<string, number>>((acc, t) => { acc[t.impact] = (acc[t.impact] || 0) + 1; return acc; }, {});
+    const legend = (['new', 'strengthened', 'clarified', 'relaxed', 'restructured', 'maintained'] as ThemeImpact[])
+      .filter(k => counts[k]).map(k => `<span class="pta-theme-impact ${k}">${IMPACT_LABELS[k]} ${counts[k]}</span>`).join('');
+
+    let html = `<section class="pta-themes">
+      <div class="pta-themes-head">
+        <h2>PSD3·PSR 이행 요약 — 무엇이 바뀌었나</h2>
+        <p>조문별 정밀 대사를 주제로 종합했습니다. 각 항목의 <b>근거 조문</b>을 누르면 해당 조문 정밀 분석으로 이동합니다.</p>
+        <div class="pta-theme-legend">${legend}</div>
+      </div>`;
+    for (const [category, list] of byCategory) {
+      html += `<div class="pta-theme-cat"><h3>${this.esc(category)}</h3><div class="pta-theme-grid">`;
+      for (const t of list) html += this.themeCard(t);
+      html += '</div></div>';
+    }
+    return html + '</section>';
+  }
+
+  private themeCard(t: TransitionTheme): string {
+    const links = t.articleLinks.map(l => {
+      const abbrev = { eu_psd2: 'PSD2', eu_emd2: 'EMD2', eu_psd3: 'PSD3', eu_psr: 'PSR' }[l.lawCode] || l.lawCode;
+      return `<a class="pta-theme-link" data-code="${l.lawCode}" data-article="${this.esc(l.articleNo)}"
+        href="foreign-transition.html?code=${l.lawCode}#pta-${this.anchor(l.articleNo)}">${abbrev} 제${this.esc(l.articleNo)}조</a>`;
+    }).join('');
+    const refs = (t.currentRefKo || t.futureRefKo)
+      ? `<div class="pta-theme-refs">
+          <span class="cur">${this.esc(t.currentRefKo || '—')}</span>
+          <i class="fas fa-arrow-right"></i>
+          <span class="fut">${this.esc(t.futureRefKo || '—')}</span></div>`
+      : '';
+    // 밴드 레이아웃: 왼쪽=주제·근거(스캔용), 오른쪽=설명(읽기용). 위→아래로 쭉 내려가며 읽힌다.
+    return `<article class="pta-theme-card impact-${t.impact}">
+      <div class="pta-theme-meta">
+        <div class="pta-theme-top">
+          <span class="pta-theme-impact ${t.impact}">${IMPACT_LABELS[t.impact]}</span>
+          <h4>${this.esc(t.titleKo)}</h4>
+        </div>
+        ${refs}
+        ${links ? `<div class="pta-theme-links"><span>근거 조문</span>${links}</div>` : ''}
+      </div>
+      <div class="pta-theme-body">
+        <p class="pta-theme-summary">${this.esc(t.summaryKo)}</p>
+        ${t.detailKo ? `<p class="pta-theme-detail">${this.esc(t.detailKo)}</p>` : ''}
+      </div>
+    </article>`;
+  }
+
+  /**
+   * 필터 = 단일 '결과' 축 한 줄(신설·동일이행·강화·완화·실질변경·이행 없음). 행 안에서는 단일 선택
+   * ('전체'로 해제), 이 법에 실재하는 값만 노출. 분할·통합 같은 구조 세부는 대응조문 칩이 보여준다.
+   * 상태는 이제 전부 '정밀 분석'이라 무의미 → 예외 신호(상관표 불일치·검수완료)만 별도로 남긴다.
+   */
   private toolbar(state: TransitionRenderState, total: number, counts: FilterCounts | null): string {
     const modes: Array<[TransitionLanguageMode, string]> = [['ko', '한국어'], ['original', '원문'], ['both', '한·영']];
-    const structural: Array<[string, string]> = [['all', '전체'],
-      ...(Object.keys(STRUCTURAL_LABELS) as StructuralType[]).map(k => [k, STRUCTURAL_LABELS[k]] as [string, string])];
-    const change: Array<[string, string]> = [['all', '전체'],
-      ...(Object.keys(CHANGE_LABELS) as ChangeType[]).map(k => [k, CHANGE_LABELS[k]] as [string, string])];
-    const status: Array<[string, string]> = [['all', '전체'], ['conflict', '상관표 불일치'],
-      ['reviewed', '검수완료'], ['automatic', '자동초안']];
 
-    /** 칩 하나. 건수 0이면 비활성(이 법엔 해당 조문이 아예 없다는 뜻을 즉시 보여줌). */
-    const chip = (dim: string, value: string, label: string, active: boolean, n: number | null) => {
-      const zero = n === 0;
-      return `<button type="button" class="pta-chip${active ? ' active' : ''}${zero ? ' zero' : ''}"
-        data-dim="${dim}" data-value="${value}"${zero ? ' disabled title="이 법에는 해당 조문이 없습니다"' : ''}
-        aria-pressed="${active}">${this.esc(label)}${n != null ? `<b>${n}</b>` : ''}</button>`;
-    };
-    const group = (dim: string, label: string, opts: Array<[string, string]>, cur: string, bag?: Record<string, number>) =>
-      `<div class="pta-fgroup"><span class="pta-fgroup-label">${label}</span>${opts.map(([v, l]) =>
-        chip(dim, v, l, cur === v, v === 'all' ? null : (bag ? (bag[v] || 0) : null))).join('')}</div>`;
+    const chip = (dim: string, value: string, label: string, active: boolean, n: number | null, cls = '') =>
+      `<button type="button" class="pta-chip${cls ? ' ' + cls : ''}${active ? ' active' : ''}"
+        data-dim="${dim}" data-value="${value}" aria-pressed="${active}">${this.esc(label)}${n != null ? `<b>${n}</b>` : ''}</button>`;
 
-    // 자주 쓰는 것만 앞줄에. 넷이 서로 다른 차원이라 여러 개를 눌러도 자연히 AND 조합이 된다
-    // (신설·이행없음=구조 → 서로 배타 / 실질변경=변경유형 / 불일치=상태).
-    // 나머지 14개는 '상세'로 접는다 — 분류가 잘아서 전부 펼치면 가짓수에 압도된다.
-    const quick: Array<[string, string, string]> = [
-      ['structural', 'new', STRUCTURAL_LABELS.new],
-      ['structural', 'deleted', STRUCTURAL_LABELS.deleted],
-      ['change', 'material_change', CHANGE_LABELS.material_change],
-      ['status', 'conflict', '상관표 불일치'],
-    ];
-    const bagOf = (dim: string) => dim === 'structural' ? counts?.structural : dim === 'change' ? counts?.change : counts?.status;
-    const noFilter = state.structural === 'all' && state.change === 'all' && state.status === 'all';
-    const advancedOpen = !noFilter && !quick.some(([d, v]) => (state as any)[d] === v);
+    // 결과 축: [전체] + (건수>0 인) 결과 칩. 순서는 신설→동일이행→강화→완화→실질변경→이행없음→검토중.
+    const order: Outcome[] = ['new', 'maintained', 'strengthened', 'relaxed', 'material', 'deleted', 'pending'];
+    const bag = counts?.outcome || {};
+    const outcomeChips = [chip('outcome', 'all', '전체', state.outcome === 'all', null),
+      ...order.filter(k => (bag[k] || 0) > 0).map(k => chip('outcome', k, OUTCOME_LABELS[k], state.outcome === k, bag[k], `o-${k}`))].join('');
+    const outcomeRow = `<div class="pta-frow"><span class="pta-frow-label">결과</span><div class="pta-frow-chips">${outcomeChips}</div></div>`;
+
+    const conflictN = counts?.status?.conflict || 0;
+    const reviewedN = counts?.status?.reviewed || 0;
+    const flags = [
+      conflictN ? chip('status', 'conflict', '상관표 불일치', state.status === 'conflict', conflictN) : '',
+      reviewedN ? chip('status', 'reviewed', '검수완료', state.status === 'reviewed', reviewedN) : '',
+    ].join('');
+    const flagsRow = flags
+      ? `<div class="pta-frow"><span class="pta-frow-label">그 밖에</span><div class="pta-frow-chips">${flags}</div></div>`
+      : '';
 
     return `<div class="pta-toolbar">
       <label class="pta-search"><i class="fas fa-search"></i><input id="ptaSearch" type="search"
@@ -201,29 +271,17 @@ export class PsdTransitionView {
       <span class="pta-total">전체 ${total}개 조문</span>
     </div>
     <div class="pta-filters" aria-label="이행분석 필터">
-      <div class="pta-quick">
-        <button type="button" class="pta-chip${noFilter ? ' active' : ''}" data-reset="1" aria-pressed="${noFilter}">전체</button>
-        ${quick.map(([dim, value, label]) =>
-          chip(dim, value, label, (state as any)[dim] === value, bagOf(dim)?.[value] ?? 0)).join('')}
-        <details class="pta-advanced"${advancedOpen ? ' open' : ''}>
-          <summary>상세</summary>
-          <div class="pta-advanced-body">
-            ${group('structural', '구조', structural, state.structural, counts?.structural)}
-            ${group('change', '변경유형', change, state.change, counts?.change)}
-            ${group('status', '상태', status, state.status, counts?.status)}
-          </div>
-        </details>
-      </div>
+      ${outcomeRow}
+      ${flagsRow}
     </div>`;
   }
 
-  /** 구조·변경유형·상태 3차원을 AND 로 겹쳐 거른 뒤 검색어를 적용. */
+  /** 결과 축 + 예외신호(불일치·검수)를 AND 로 거른 뒤 검색어를 적용. */
   private matches(segs: ForeignProvision[], analysis: TransitionArticleAnalysis | undefined, state: TransitionRenderState): boolean {
-    const anyFilter = state.structural !== 'all' || state.change !== 'all' || state.status !== 'all';
-    // 분석이 없는 조(준비중)는 차원 필터를 걸면 판정 불가 → 제외. 필터가 없으면 그대로 노출.
+    const anyFilter = state.outcome !== 'all' || state.status !== 'all';
+    // 분석이 없는 조(준비중)는 필터를 걸면 판정 불가 → 제외. 필터가 없으면 그대로 노출.
     if (!analysis) return !anyFilter && this.hitSearch(segs, undefined, state);
-    if (state.structural !== 'all' && analysis.assessment.structuralType !== state.structural) return false;
-    if (state.change !== 'all' && analysis.assessment.changeType !== state.change) return false;
+    if (state.outcome !== 'all' && outcomeOf(analysis.assessment) !== state.outcome) return false;
     if (state.status !== 'all') {
       if (state.status === 'conflict') {
         if (!analysis.relations.some(r => r.evidenceStatus === 'conflict')) return false;
@@ -280,8 +338,7 @@ export class PsdTransitionView {
   private analysis(articleNo: string, analysis: TransitionArticleAnalysis | undefined, editable: boolean, lawCode: PsdLawCode): string {
     if (!analysis) return '<div class="pta-pending">분석 데이터 준비중</div>';
     const a = analysis.assessment;
-    const auto = a.reviewStatus === 'automatic';
-    const changeLabel = auto && a.changeType !== 'pending' ? `${CHANGE_LABELS[a.changeType]} 가능성` : CHANGE_LABELS[a.changeType];
+    const outcome = outcomeOf(a);
     const counterparts = this.uniqueCounterparts(analysis.relations);
     const conflict = analysis.relations.some(r => r.evidenceStatus === 'conflict');
     const chips = counterparts.length
@@ -289,14 +346,13 @@ export class PsdTransitionView {
          ${counterparts.length > 1 ? `<button type="button" class="pta-compare-all" data-compare-self="${this.esc(articleNo)}" data-compare-self-code="${lawCode}"><i class="fas fa-code-compare"></i> 대응 ${counterparts.length}개 한번에 비교</button>` : ''}`
       : `<div class="pta-no-counterpart">${a.structuralType === 'new' ? '선행 조문 없음' : a.structuralType === 'deleted' ? '후속 조문 없음' : '대응 조문 확인중'}</div>`;
     return `<div class="pta-badges">
-        <span class="pta-badge structural ${a.structuralType}">${STRUCTURAL_LABELS[a.structuralType]}</span>
-        <span class="pta-badge change ${a.changeType}">${this.esc(changeLabel)}</span>
-        <span class="pta-review ${a.reviewStatus}">${a.reviewStatus === 'reviewed' ? '검수완료' : '자동초안'}</span>
+        <span class="pta-badge outcome ${outcome}">${OUTCOME_LABELS[outcome]}</span>
+        <span class="pta-review ${a.reviewStatus}">${REVIEW_LABELS[a.reviewStatus]}</span>
       </div>
       ${chips}
       <p class="pta-summary">${this.esc(a.summaryKo)}</p>
       ${a.detailKo ? `<p class="pta-detail">${this.esc(a.detailKo)}</p>` : ''}
-      ${a.similarityPct != null ? `<div class="pta-similarity"><span>영문 문언 유사도</span><strong>${Math.round(a.similarityPct)}%</strong><div><i style="width:${Math.max(2, Math.min(100, a.similarityPct))}%"></i></div></div>` : ''}
+      ${a.similarityPct != null && a.reviewStatus === 'automatic' ? `<div class="pta-similarity"><span>영문 문언 유사도(참고)</span><strong>${Math.round(a.similarityPct)}%</strong><div><i style="width:${Math.max(2, Math.min(100, a.similarityPct))}%"></i></div></div>` : ''}
       ${conflict ? '<div class="pta-conflict"><i class="fas fa-triangle-exclamation"></i> PSD3·PSR Annex III의 대응표가 서로 다릅니다.</div>' : ''}
       ${this.evidence(analysis.relations)}
       ${editable ? `<button type="button" class="pta-edit" data-edit-article="${this.esc(articleNo)}" data-law-code="${lawCode}"><i class="fas fa-pen"></i> 분석 검수</button>` : ''}`;
@@ -359,9 +415,8 @@ export class PsdTransitionView {
 
     const a = input.analysis?.assessment;
     const badges = a ? `<div class="pta-badges">
-        <span class="pta-badge structural ${a.structuralType}">${STRUCTURAL_LABELS[a.structuralType]}</span>
-        <span class="pta-badge change ${a.changeType}">${CHANGE_LABELS[a.changeType]}</span>
-        ${a.similarityPct != null ? `<span class="ptc-sim">문언 유사도 ${Math.round(a.similarityPct)}%</span>` : ''}
+        <span class="pta-badge outcome ${outcomeOf(a)}">${OUTCOME_LABELS[outcomeOf(a)]}</span>
+        <span class="pta-review ${a.reviewStatus}">${REVIEW_LABELS[a.reviewStatus]}</span>
       </div>` : '';
     const summary = a?.summaryKo ? `<p class="ptc-summary">${this.esc(a.summaryKo)}</p>` : '';
     const selfKo = input.selfSegs.find(s => s.heading_ko)?.heading_ko || '';

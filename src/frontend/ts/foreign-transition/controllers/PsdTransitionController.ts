@@ -6,6 +6,7 @@ import {
   PsdTransitionFetchModel,
   TransitionArticleAnalysis,
   TransitionCatalog,
+  TransitionTheme,
   TransitionViewData,
 } from '../models/PsdTransitionFetchModel';
 import { PsdTransitionView, TransitionLanguageMode, TransitionRenderState } from '../views/PsdTransitionView';
@@ -22,7 +23,9 @@ export class PsdTransitionController {
   private meta: ForeignLawMeta | null = null;
   private provisions: ForeignProvision[] = [];
   private transition: TransitionViewData | null = null;
-  private state: TransitionRenderState = { structural: 'all', change: 'all', status: 'all', search: '', language: 'ko' };
+  private state: TransitionRenderState = { outcome: 'all', status: 'all', search: '', language: 'ko' };
+  private mode: 'summary' | 'law' = 'law';
+  private themes: TransitionTheme[] | null = null;
   private searchTimer: number | null = null;
   private editingArticle = '';
   private modal: any = null;
@@ -36,7 +39,8 @@ export class PsdTransitionController {
       header.innerHTML = this.header.render('foreign');
       this.header.setInfoButtonHandler();
     }
-    const requested = new URLSearchParams(location.search).get('code') as PsdLawCode | null;
+    const params = new URLSearchParams(location.search);
+    const requested = params.get('code') as PsdLawCode | null;
     if (requested && CODES.includes(requested)) this.code = requested;
     this.bindEvents();
 
@@ -49,13 +53,32 @@ export class PsdTransitionController {
       this.renderFrame(this.view.renderLocked());
       return;
     }
-    await this.loadLaw(this.code, location.hash.replace(/^#/, ''), false);
+    // 요약(무엇이 바뀌었나)을 기본 진입으로 — 단, 특정 법(code)이나 view=law 를 명시하면 조문뷰.
+    const wantSummary = params.get('view') === 'summary'
+      || (!requested && params.get('view') !== 'law' && this.catalog.themeCount > 0);
+    if (wantSummary) await this.loadSummary(false);
+    else await this.loadLaw(this.code, location.hash.replace(/^#/, ''), false);
   }
 
   private bindEvents(): void {
     const app = document.getElementById('transitionApp')!;
     app.addEventListener('click', event => {
       const target = event.target as HTMLElement;
+      const summaryTab = target.closest<HTMLElement>('[data-summary]');
+      if (summaryTab) {
+        event.preventDefault();
+        if (this.mode !== 'summary') this.loadSummary(true);
+        return;
+      }
+      // 요약표의 근거 조문 링크 = 해당 법 조문뷰로 이동(스크롤). Ctrl/가운데클릭은 새 탭 허용.
+      const themeLink = target.closest<HTMLElement>('.pta-theme-link');
+      if (themeLink?.dataset.code) {
+        const e = event as MouseEvent;
+        if (e.metaKey || e.ctrlKey || e.shiftKey || e.button === 1) return;
+        event.preventDefault();
+        this.loadLaw(themeLink.dataset.code as PsdLawCode, `pta-${(themeLink.dataset.article || '').replace(/[^a-zA-Z0-9]/g, '_')}`, true);
+        return;
+      }
       const tab = target.closest<HTMLElement>('.pta-law-tab');
       if (tab?.dataset.code) {
         event.preventDefault();
@@ -78,15 +101,11 @@ export class PsdTransitionController {
         return;
       }
       const chip = target.closest<HTMLElement>('.pta-chip');
-      if (chip && !(chip as HTMLButtonElement).disabled) {
-        if (chip.dataset.reset) {                       // '전체' = 3차원 모두 해제
-          this.state.structural = 'all'; this.state.change = 'all'; this.state.status = 'all';
-        } else if (chip.dataset.dim) {
-          const dim = chip.dataset.dim as 'structural' | 'change' | 'status';
-          // 같은 칩을 다시 누르면 해제(토글) — 단축칩으로 켜고 끄기가 자연스럽다.
-          const next = chip.dataset.value!;
-          (this.state as any)[dim] = (this.state as any)[dim] === next && next !== 'all' ? 'all' : next;
-        } else return;
+      if (chip && !(chip as HTMLButtonElement).disabled && chip.dataset.dim) {
+        const dim = chip.dataset.dim as 'outcome' | 'status';
+        // 같은 칩을 다시 누르면 해제(토글). '전체'(value=all) 는 그 축을 초기화.
+        const next = chip.dataset.value!;
+        (this.state as any)[dim] = (this.state as any)[dim] === next && next !== 'all' ? 'all' : next;
         this.syncChips(app);
         this.renderArticles();
         return;
@@ -110,13 +129,36 @@ export class PsdTransitionController {
     });
     document.getElementById('ptaAssessmentSave')?.addEventListener('click', () => this.saveAssessment());
     window.addEventListener('popstate', () => {
-      const next = new URLSearchParams(location.search).get('code') as PsdLawCode | null;
-      if (next && CODES.includes(next) && next !== this.code) this.loadLaw(next, location.hash.replace(/^#/, ''), false);
+      const params = new URLSearchParams(location.search);
+      if (params.get('view') === 'summary') {
+        if (this.mode !== 'summary') this.loadSummary(false);
+        return;
+      }
+      const next = params.get('code') as PsdLawCode | null;
+      if (next && CODES.includes(next) && (next !== this.code || this.mode !== 'law')) {
+        this.loadLaw(next, location.hash.replace(/^#/, ''), false);
+      }
     });
+  }
+
+  /** 요약 탭 — 정밀 대사를 주제로 종합한 '무엇이 바뀌었나'. 조문뷰와 독립. */
+  private async loadSummary(pushHistory = true): Promise<void> {
+    if (!this.catalog) return;
+    this.mode = 'summary';
+    this.renderFrame(this.view.renderLoading());
+    if (!this.themes) {
+      const data = await this.transitionModel.getThemes(this.catalog.version.code);
+      this.themes = data?.themes || [];
+    }
+    this.renderFrame(this.view.renderThemes(this.themes));
+    const url = 'foreign-transition.html?view=summary';
+    if (pushHistory) history.pushState(null, '', url); else history.replaceState(null, '', url);
+    window.scrollTo({ top: 0 });
   }
 
   private async loadLaw(code: PsdLawCode, anchor = '', pushHistory = true): Promise<void> {
     if (!this.catalog) return;
+    this.mode = 'law';
     this.code = code;
     this.meta = null;
     this.provisions = [];
@@ -145,10 +187,10 @@ export class PsdTransitionController {
   private renderFrame(body: string): void {
     if (!this.catalog) return;
     // 필터 칩 건수는 '현재 법 전체' 기준 → 법이 바뀔 때만 재계산(필터 변경 시엔 본문만 다시 그림).
-    const counts = this.provisions.length && this.transition
+    const counts = this.mode === 'law' && this.provisions.length && this.transition
       ? this.view.computeCounts(this.provisions, this.transition) : null;
     document.getElementById('transitionApp')!.innerHTML =
-      this.view.renderFrame(this.catalog, this.code, this.state, body, counts);
+      this.view.renderFrame(this.catalog, this.code, this.state, body, counts, this.mode === 'summary');
   }
 
   /** 법별 조문 캐시 — 비교 팝업이 상대 법 본문을 필요로 한다. */
@@ -208,8 +250,8 @@ export class PsdTransitionController {
   }
 
   /**
-   * 칩 활성표시 동기화. 같은 값의 칩이 단축줄과 '상세'에 모두 있으므로 클릭한 요소가 아니라
-   * 상태값 기준으로 맞춰야 짝이 어긋나지 않는다(툴바를 통째로 다시 그리면 '상세' 펼침이 닫힌다).
+   * 칩 활성표시 동기화. 툴바 전체를 다시 그리지 않고(검색 포커스·스크롤 보존) 상태값 기준으로
+   * active 클래스만 맞춘다. '전체' 칩(value=all)도 data-dim 을 가지므로 같은 루프로 처리된다.
    */
   private syncChips(app: HTMLElement): void {
     const s = this.state as any;
@@ -218,12 +260,6 @@ export class PsdTransitionController {
       el.classList.toggle('active', on);
       el.setAttribute('aria-pressed', String(on));
     });
-    const reset = app.querySelector<HTMLElement>('.pta-chip[data-reset]');
-    if (reset) {
-      const none = this.state.structural === 'all' && this.state.change === 'all' && this.state.status === 'all';
-      reset.classList.toggle('active', none);
-      reset.setAttribute('aria-pressed', String(none));
-    }
   }
 
   private scrollTo(anchor: string): void {

@@ -9,7 +9,8 @@ export type PsdLawCode = typeof PSD_LAW_CODES[number];
 
 export type StructuralType = 'one_to_one' | 'split' | 'merge' | 'many_to_many' | 'new' | 'deleted' | 'pending';
 export type ChangeType = 'maintained' | 'clarified' | 'strengthened' | 'relaxed' | 'material_change' | 'pending';
-export type ReviewStatus = 'automatic' | 'reviewed';
+export type ReviewStatus = 'automatic' | 'analyzed' | 'reviewed';
+export type ThemeImpact = 'new' | 'strengthened' | 'relaxed' | 'clarified' | 'restructured' | 'maintained';
 
 export interface TransitionVersion {
   code: string;
@@ -69,6 +70,24 @@ export interface TransitionArticleAnalysis {
   relations: TransitionRelation[];
 }
 
+export interface TransitionThemeLink {
+  lawCode: string;
+  articleNo: string;
+}
+
+export interface TransitionTheme {
+  themeKey: string;
+  sortOrder: number;
+  categoryKo: string;
+  titleKo: string;
+  impact: ThemeImpact;
+  currentRefKo: string;
+  futureRefKo: string;
+  summaryKo: string;
+  detailKo: string;
+  articleLinks: TransitionThemeLink[];
+}
+
 function parseJsonArray(value: any): string[] {
   if (Array.isArray(value)) return value.map(String);
   try {
@@ -105,7 +124,7 @@ export class PsdTransitionModel {
     };
   }
 
-  async getCatalog(versionCode = DEFAULT_TRANSITION_VERSION): Promise<{ version: TransitionVersion; laws: TransitionCatalogLaw[]; conflictCount: number } | null> {
+  async getCatalog(versionCode = DEFAULT_TRANSITION_VERSION): Promise<{ version: TransitionVersion; laws: TransitionCatalogLaw[]; conflictCount: number; themeCount: number } | null> {
     const found = await this.getVersion(versionCode);
     if (!found) return null;
     const rows = await this.fin().query<any>(
@@ -128,9 +147,14 @@ export class PsdTransitionModel {
       `SELECT COUNT(*) AS cnt FROM foreign_transition_group
         WHERE version_id=? AND evidence_status='conflict'`, [found.id]
     );
+    const themeRows = await this.auth().query<any>(
+      `SELECT COUNT(*) AS cnt FROM foreign_transition_theme
+        WHERE version_id=? AND publish_status='published'`, [found.id]
+    );
     return {
       version: found.version,
       conflictCount: Number(conflictRows[0]?.cnt || 0),
+      themeCount: Number(themeRows[0]?.cnt || 0),
       laws: rows.map((r: any) => ({
         code: r.code as PsdLawCode,
         abbrev: r.abbrev,
@@ -145,6 +169,43 @@ export class PsdTransitionModel {
         reviewedCount: Number(r.reviewed_count || 0),
       })),
     };
+  }
+
+  /** 정밀 요약표('무엇이 바뀌었나') — 조문별 정밀 대사를 주제 단위로 종합한 큐레이션. 요약 탭용. */
+  async getThemes(versionCode = DEFAULT_TRANSITION_VERSION): Promise<{ version: TransitionVersion; themes: TransitionTheme[] } | null> {
+    const found = await this.getVersion(versionCode);
+    if (!found) return null;
+    const rows = await this.auth().query<any>(
+      `SELECT theme_key, sort_order, category_ko, title_ko, impact,
+              current_ref_ko, future_ref_ko, summary_ko, detail_ko, article_links
+         FROM foreign_transition_theme
+        WHERE version_id=? AND publish_status='published'
+        ORDER BY sort_order, id`,
+      [found.id]
+    );
+    return {
+      version: found.version,
+      themes: rows.map((r: any) => ({
+        themeKey: r.theme_key,
+        sortOrder: Number(r.sort_order || 0),
+        categoryKo: r.category_ko,
+        titleKo: r.title_ko,
+        impact: r.impact as ThemeImpact,
+        currentRefKo: r.current_ref_ko || '',
+        futureRefKo: r.future_ref_ko || '',
+        summaryKo: r.summary_ko || '',
+        detailKo: r.detail_ko || '',
+        articleLinks: this.parseLinks(r.article_links),
+      })),
+    };
+  }
+
+  private parseLinks(value: any): TransitionThemeLink[] {
+    const raw = Array.isArray(value) ? value : (() => { try { return JSON.parse(String(value || '[]')); } catch { return []; } })();
+    if (!Array.isArray(raw)) return [];
+    return raw
+      .map((x: any) => ({ lawCode: String(x?.law_code || x?.lawCode || ''), articleNo: String(x?.article_no || x?.articleNo || '') }))
+      .filter(x => PSD_LAW_CODES.includes(x.lawCode as PsdLawCode) && x.articleNo);
   }
 
   async getAnalysis(code: PsdLawCode, versionCode = DEFAULT_TRANSITION_VERSION): Promise<{ version: TransitionVersion; articles: TransitionArticleAnalysis[] } | null> {

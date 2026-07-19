@@ -27,6 +27,21 @@ export class PsdTransitionController {
     }
   };
 
+  themes = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const version = String(req.query.version || DEFAULT_TRANSITION_VERSION).trim();
+      const data = await this.model.getThemes(version);
+      if (!data) {
+        res.status(404).json({ success: false, error: '이행분석 버전을 찾을 수 없습니다.' });
+        return;
+      }
+      res.json({ success: true, data });
+    } catch (error) {
+      console.error('[foreign-transition] themes', error);
+      res.status(500).json({ success: false, error: '이행 요약표 조회 실패' });
+    }
+  };
+
   view = async (req: Request, res: Response): Promise<void> => {
     const code = String(req.query.code || '').trim() as PsdLawCode;
     if (!PSD_LAW_CODES.includes(code)) {
