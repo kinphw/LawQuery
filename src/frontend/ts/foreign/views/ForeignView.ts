@@ -230,7 +230,7 @@ export class ForeignView {
     // 서문/recital(seg_kind='preamble')은 원본이 '1 recital = 1 통짜 문단'(관보 원문에 문장 사이 개행
     // 없음)이라 셀이 매우 길다 → 표시할 때만 문장 단위로 줄바꿈(원본 데이터·복사·편집은 불변).
     const asBody = (t: string | null): string =>
-      prov.seg_kind === 'preamble' ? this.splitToSentences(t || '') : (t || '');
+      this.withMarker(prov.seg_kind === 'preamble' ? this.splitToSentences(t || '') : (t || ''), prov);
     if (field === 'text_original') {
       return `${copy}${pen}${badge}${edited}<div class="fm-en-body">${this.renderRich(asBody(prov.text_original))}</div>`;
     }
@@ -238,6 +238,22 @@ export class ForeignView {
       ? `<div class="fm-ko">${this.renderRich(asBody(prov.text_ko))}</div>`
       : `<div class="fm-ko fm-empty">— 번역 준비중 —</div>`;
     return `${copy}${pen}${badge}${edited}${ko}`;
+  }
+
+  /**
+   * 항 마커((1)·1·(a))를 표시용으로 되붙인다 — 데이터·복사·편집은 불변(렌더 전용).
+   *   파서에 따라 마커가 본문에 남기도 하고(OJ 원문: '1.   Payment…'), para_no 로만 분리되기도
+   *   한다(통합본 = 마커 span + 본문 div 가 별도 DOM / 전문 = 마커 셀 + 본문 셀 2열 레이아웃).
+   *   후자는 본문에 번호가 없어 화면에서 항 번호가 통째로 사라진다 → 여기서 되붙인다.
+   *   이미 마커로 시작하면 그대로 둔다(중복 방지) — 원문/번역 각각 판정한다(번역만 마커가 빠진 경우가 있다).
+   */
+  private withMarker(t: string, prov: ForeignProvision): string {
+    const mk = (prov.para_no || '').trim();
+    if (!mk || !t.trim()) return t;
+    if (/^\s*\|/.test(t.trimStart())) return t;            // markdown 표는 손대지 않음
+    if (t.trimStart().startsWith(mk)) return t;            // OJ 계열 — 본문에 이미 있음
+    const label = /^\d+[a-z]?$/i.test(mk) ? `${mk}.` : mk; // 숫자항은 관보 표기대로 '1.', 괄호형은 그대로
+    return `${label} ${t}`;
   }
 
   /**
