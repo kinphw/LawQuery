@@ -36,9 +36,10 @@ body { background: #f7f8fa; color: var(--pta-ink); }
 .pta-conflict-count { display: inline-block; margin-left: .55rem; padding: .02rem .42rem; background: #fff;
   border: 1px solid #ddb755; border-radius: 1rem; font-weight: 700; }
 
-.pta-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: #cfd5df;
+.pta-tabs { display: grid; grid-template-columns: auto 1fr 1fr; gap: 1px; background: #cfd5df;
   border: 1px solid #cfd5df; border-top: 0; }
 .pta-tab-group { display: grid; grid-template-columns: auto 1fr 1fr; align-items: stretch; background: #fff; }
+.pta-tab-summary { grid-template-columns: auto 1fr; }
 .pta-tab-label { display: flex; align-items: center; padding: 0 .85rem; font-size: .72rem; font-weight: 800;
   color: #6b7280; background: #eef1f5; writing-mode: horizontal-tb; }
 .pta-law-tab { border: 0; border-left: 1px solid #e4e7ec; background: #fff; padding: .7rem .8rem; color: #485366;
@@ -46,8 +47,10 @@ body { background: #f7f8fa; color: var(--pta-ink); }
 .pta-law-tab strong { display: block; font-size: .95rem; }
 .pta-law-tab small { display: block; margin-top: .1rem; color: #8b94a4; font-size: .68rem; }
 .pta-law-tab:hover { background: #f5f7fb; color: #111827; }
-.pta-tab-group:first-child .pta-law-tab.active { background: var(--pta-current); color: #fff; }
-.pta-tab-group:last-child .pta-law-tab.active { background: var(--pta-future); color: #fff; }
+.pta-tab-current .pta-law-tab.active { background: var(--pta-current); color: #fff; }
+.pta-tab-future .pta-law-tab.active { background: var(--pta-future); color: #fff; }
+.pta-summary-tab.active { background: var(--pta-accent); color: #fff; }
+.pta-summary-tab strong::before { content: "\f0ca"; font-family: "Font Awesome 6 Free"; font-weight: 900; margin-right: .35rem; font-size: .8rem; }
 .pta-law-tab.active small { color: #d9dfeb; }
 
 .pta-toolbar { position: sticky; top: var(--lq-userbar-h, 0px); z-index: 20; display: flex; gap: .6rem; align-items: center;
@@ -105,25 +108,25 @@ body { background: #f7f8fa; color: var(--pta-ink); }
 
 .pta-badges { display: flex; align-items: center; gap: .3rem; flex-wrap: wrap; margin-bottom: .5rem; }
 .pta-badge, .pta-review { display: inline-block; border-radius: 1rem; padding: .1rem .48rem; font-size: .66rem; font-weight: 800; }
-.pta-badge.structural { color: #334155; background: #e9edf4; border: 1px solid #d6dce6; }
-.pta-badge.structural.split, .pta-badge.structural.merge, .pta-badge.structural.many_to_many { color: #5b3f94; background: #f0eafa; border-color: #ded0f3; }
-.pta-badge.structural.new { color: #17633d; background: #e2f4e9; border-color: #bfe4cd; }
-.pta-badge.structural.deleted { color: #8b3940; background: #f8e9ea; border-color: #eccacc; }
-.pta-badge.change { color: #5b6472; background: #fff; border: 1px solid #cfd5df; }
-.pta-badge.change.maintained { color: #17633d; border-color: #8fc9a6; }
-.pta-badge.change.clarified { color: #2759a5; border-color: #a8c3e9; }
-.pta-badge.change.strengthened { color: #a44712; border-color: #e6b58f; background: #fff8f2; }
-.pta-badge.change.relaxed { color: #08756d; border-color: #91d2cc; }
-.pta-badge.change.material_change { color: #74429b; border-color: #cbb3dd; }
+/* 단일 결과 배지: 신설 / 동일이행 / 강화 / 완화 / 실질변경 / 이행 없음 / 검토중 */
+.pta-badge.outcome { border: 1px solid #cfd5df; background: #fff; color: #5b6472; }
+.pta-badge.outcome.new { color: #17633d; background: #e2f4e9; border-color: #bfe4cd; }
+.pta-badge.outcome.maintained { color: #46516a; background: #eef1f5; border-color: #d3d9e2; }
+.pta-badge.outcome.strengthened { color: #a44712; background: #fff5ec; border-color: #e6b58f; }
+.pta-badge.outcome.relaxed { color: #08756d; background: #e6f6f4; border-color: #91d2cc; }
+.pta-badge.outcome.material { color: #74429b; background: #f5eefb; border-color: #cbb3dd; }
+.pta-badge.outcome.deleted { color: #8b3940; background: #f8e9ea; border-color: #eccacc; }
+.pta-badge.outcome.pending { color: #6b7280; background: #f3f4f6; border-color: #d9dee6; }
 .pta-review { margin-left: auto; color: #7c8491; background: transparent; border: 1px dashed #b8bec8; }
+.pta-review.analyzed { color: #2450b0; background: #eef3fd; border-style: solid; border-color: #b6cbef; }
 .pta-review.reviewed { color: #18633f; background: #eff9f2; border-style: solid; border-color: #a9d6b9; }
 .pta-counterparts { display: flex; gap: .3rem; flex-wrap: wrap; margin-bottom: .55rem; }
 .pta-counterpart { display: inline-flex; align-items: center; gap: .28rem; padding: .18rem .5rem; color: #3156a8;
   background: #eef4ff; border: 1px solid #cfdef8; border-radius: .28rem; text-decoration: none; font-size: .72rem; font-weight: 700; }
 .pta-counterpart:hover { color: #173d8e; background: #e1ebff; }
 .pta-no-counterpart { margin-bottom: .55rem; color: #9199a6; font-size: .73rem; font-style: italic; }
-.pta-summary { margin: 0 0 .4rem; color: #293548; font-size: .83rem; font-weight: 600; line-height: 1.55; white-space: pre-wrap; }
-.pta-detail { margin: 0 0 .55rem; color: #6d7787; font-size: .72rem; line-height: 1.5; white-space: pre-wrap; }
+.pta-summary { margin: 0 0 .5rem; color: #1f2836; font-size: .92rem; font-weight: 600; line-height: 1.62; white-space: pre-wrap; }
+.pta-detail { margin: 0 0 .55rem; color: #444e5d; font-size: .855rem; line-height: 1.72; white-space: pre-wrap; }
 .pta-similarity { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: .2rem .5rem; margin: .5rem 0;
   color: #7d8796; font-size: .66rem; }
 .pta-similarity strong { color: #3e495b; }
@@ -173,4 +176,123 @@ body { background: #f7f8fa; color: var(--pta-ink); }
   .pta-bilingual .pta-text-col { padding: .65rem 0 0; border-left: 0; border-top: 1px solid #e5e8ed; }
   .pta-bilingual .pta-text-col:first-child { padding-top: 0; border-top: 0; }
   .pta-review { margin-left: 0; }
+}
+
+/* ── 필터: 구조·변경유형·상태 3차원을 칩으로 분리해 AND 조합 ────────────────
+   각 칩의 숫자는 '현재 법 전체' 기준 건수. 0건이면 비활성 → "PSD2엔 신설이 없다"가
+   눌러보기 전에 보인다(예전 단일 셀렉트는 0건 조합을 골라도 이유를 알 수 없었다). */
+/* 두 차원(변경유형·구조)을 전체폭 칩 행으로 항상 노출. 우측 좁은 '상세' 드롭다운·퀵칩 중복 제거. */
+.pta-filters {
+  padding: .7rem 0 0; margin-bottom: 1rem;
+  border-top: 1px dashed var(--pta-line);
+  display: flex; flex-direction: column; gap: .45rem;
+}
+.pta-frow { display: flex; align-items: flex-start; gap: .55rem; }
+.pta-frow-label {
+  flex: 0 0 auto; width: 4rem; padding-top: .3rem;
+  font-size: .72rem; font-weight: 800; color: var(--pta-muted); letter-spacing: .02em;
+}
+.pta-frow-chips { display: flex; flex-wrap: wrap; gap: .3rem; min-width: 0; }
+.pta-chip {
+  display: inline-flex; align-items: center; gap: .3rem;
+  font-size: .8rem; line-height: 1.4; padding: .2rem .6rem;
+  border: 1px solid var(--pta-line); border-radius: 1rem;
+  background: #fff; color: var(--pta-ink); cursor: pointer;
+  transition: background .12s, border-color .12s, color .12s;
+}
+.pta-chip:hover:not(:disabled) { border-color: var(--pta-accent); color: var(--pta-accent); }
+.pta-chip.active { background: var(--pta-ink); border-color: var(--pta-ink); color: #fff; font-weight: 600; }
+.pta-chip.active b { background: rgba(255,255,255,.22); color: #fff; }
+.pta-chip b {
+  font-size: .7rem; font-weight: 700; padding: 0 .3rem; border-radius: .6rem;
+  background: var(--pta-soft); color: var(--pta-muted);
+}
+.pta-chip:disabled, .pta-chip.zero { opacity: .38; cursor: not-allowed; }
+
+/* 대응 N개를 한 팝업에서 비교 */
+.pta-compare-all {
+  margin-top: .4rem; font-size: .76rem; padding: .18rem .55rem;
+  border: 1px dashed var(--pta-line); border-radius: 1rem;
+  background: #fff; color: var(--pta-muted); cursor: pointer;
+}
+.pta-compare-all:hover { border-color: var(--pta-accent); color: var(--pta-accent); }
+
+/* ── 전후 조문 비교 팝업 ───────────────────────────────────────────────── */
+.ptc-summary { margin: .5rem 0 1rem; font-size: .9rem; color: var(--pta-ink); }
+.ptc-sim { font-size: .72rem; color: var(--pta-muted); align-self: center; }
+.ptc-grid {
+  display: grid; grid-template-columns: 1fr auto 1fr; gap: .75rem; align-items: start;
+}
+.ptc-side { min-width: 0; display: flex; flex-direction: column; gap: .6rem; }
+.ptc-side-label {
+  font-size: .72rem; font-weight: 700; color: var(--pta-muted); letter-spacing: .02em;
+}
+.ptc-side-label b { color: var(--pta-accent); }
+.ptc-arrow { align-self: center; color: var(--pta-muted); padding-top: 1.5rem; }
+.ptc-panel { border: 1px solid var(--pta-line); border-radius: .5rem; background: #fff; overflow: hidden; }
+.ptc-panel-head {
+  display: flex; align-items: center; justify-content: space-between; gap: .5rem;
+  padding: .45rem .6rem; background: var(--pta-soft); border-bottom: 1px solid var(--pta-line);
+  font-size: .82rem;
+}
+.ptc-panel-head span { display: block; font-size: .74rem; color: var(--pta-muted); font-weight: 400; }
+.ptc-panel-head a { color: var(--pta-muted); }
+.ptc-panel-head a:hover { color: var(--pta-accent); }
+.ptc-panel-body { padding: .6rem; max-height: 46vh; overflow-y: auto; font-size: .84rem; }
+.ptc-missing { color: var(--pta-muted); font-style: italic; font-size: .82rem; padding: .5rem; }
+
+/* 좁은 화면: 좌우 대조 → 세로 적층(화살표는 아래를 가리키게) */
+@media (max-width: 991.98px) {
+  .ptc-grid { grid-template-columns: 1fr; }
+  .ptc-arrow { padding: 0; transform: rotate(90deg); justify-self: center; }
+  .ptc-panel-body { max-height: none; }
+}
+
+/* ── 정밀 요약표(요약 탭) — '무엇이 바뀌었나' ── */
+.pta-themes { padding: .25rem 0 1rem; }
+.pta-themes-head { padding: 1.1rem 1.15rem; background: #fff; border: 1px solid var(--pta-line); border-radius: .6rem; margin-bottom: 1rem; }
+.pta-themes-head h2 { font-size: 1.15rem; font-weight: 800; margin: 0 0 .3rem; color: var(--pta-ink); }
+.pta-themes-head p { margin: 0; color: var(--pta-muted); font-size: .84rem; }
+.pta-theme-legend { display: flex; flex-wrap: wrap; gap: .35rem; margin-top: .7rem; }
+.pta-theme-cat { margin-bottom: 1.15rem; }
+.pta-theme-cat > h3 { font-size: .82rem; font-weight: 800; letter-spacing: .02em; color: var(--pta-accent);
+  text-transform: uppercase; margin: 0 0 .55rem; padding-left: .1rem; }
+/* 밴드: 세로로 쭉 쌓인다. 왼쪽=주제·근거(스캔), 오른쪽=설명(읽기, 폭 제한으로 줄길이 확보). */
+.pta-theme-grid { display: flex; flex-direction: column; gap: .55rem; }
+.pta-theme-card { display: grid; grid-template-columns: minmax(230px, 300px) minmax(0, 1fr); gap: 1.5rem;
+  align-items: start; background: #fff; border: 1px solid var(--pta-line); border-left: 3px solid #cbd2dd;
+  border-radius: .5rem; padding: 1rem 1.25rem; }
+.pta-theme-meta { min-width: 0; }
+.pta-theme-body { min-width: 0; }
+.pta-theme-card.impact-new { border-left-color: #2fa96a; }
+.pta-theme-card.impact-strengthened { border-left-color: #d1873f; }
+.pta-theme-card.impact-relaxed { border-left-color: #12a89c; }
+.pta-theme-card.impact-clarified { border-left-color: #3f76c9; }
+.pta-theme-card.impact-restructured { border-left-color: #9061c2; }
+.pta-theme-card.impact-maintained { border-left-color: #8b96a6; }
+.pta-theme-top { display: flex; align-items: baseline; gap: .5rem; margin-bottom: .45rem; }
+.pta-theme-top h4 { font-size: .98rem; font-weight: 800; margin: 0; color: var(--pta-ink); line-height: 1.3; }
+.pta-theme-impact { flex: none; display: inline-block; border-radius: 1rem; padding: .1rem .5rem; font-size: .66rem; font-weight: 800; border: 1px solid; }
+.pta-theme-impact.new { color: #17633d; background: #e2f4e9; border-color: #bfe4cd; }
+.pta-theme-impact.strengthened { color: #a44712; background: #fff8f2; border-color: #e6b58f; }
+.pta-theme-impact.relaxed { color: #08756d; background: #e9f7f5; border-color: #91d2cc; }
+.pta-theme-impact.clarified { color: #2759a5; background: #eef4fc; border-color: #a8c3e9; }
+.pta-theme-impact.restructured { color: #74429b; background: #f5eefb; border-color: #cbb3dd; }
+.pta-theme-impact.maintained { color: #4b5563; background: #eef1f5; border-color: #d3d9e2; }
+.pta-theme-refs { display: flex; align-items: center; gap: .4rem; flex-wrap: wrap; margin-bottom: .5rem; font-size: .76rem; }
+.pta-theme-refs .cur { color: var(--pta-current); }
+.pta-theme-refs .fut { color: var(--pta-future); font-weight: 700; }
+.pta-theme-refs i { color: #aab2c0; font-size: .7rem; }
+.pta-theme-summary { margin: 0 0 .6rem; font-size: .95rem; line-height: 1.68; color: #212b39; font-weight: 500; }
+.pta-theme-detail { margin: 0; font-size: .875rem; line-height: 1.75; color: #454f5e;
+  padding-top: .6rem; border-top: 1px dashed var(--pta-line); }
+.pta-theme-links { display: flex; flex-wrap: wrap; align-items: center; gap: .3rem; margin-top: .15rem; }
+.pta-theme-links > span { font-size: .7rem; font-weight: 700; color: #8b94a4; margin-right: .1rem; }
+.pta-theme-link { font-size: .72rem; font-weight: 700; text-decoration: none; color: var(--pta-accent);
+  border: 1px solid #cdd8ee; border-radius: .3rem; padding: .08rem .38rem; background: #f6f8fd; }
+.pta-theme-link:hover { background: var(--pta-accent); color: #fff; border-color: var(--pta-accent); }
+
+@media (max-width: 760px) {
+  .pta-theme-card { grid-template-columns: 1fr; gap: .55rem; }
+  .pta-theme-body { max-width: none; }
 }

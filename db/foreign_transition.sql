@@ -66,7 +66,9 @@ CREATE TABLE IF NOT EXISTS ldb_auth.foreign_transition_assessment (
   summary_ko       TEXT         DEFAULT NULL,
   detail_ko        MEDIUMTEXT   DEFAULT NULL,
   similarity_pct   DECIMAL(5,2) DEFAULT NULL,
-  review_status    ENUM('automatic','reviewed') NOT NULL DEFAULT 'automatic',
+  -- automatic = 코사인 유사도 자동초안 / analyzed = 원문 대조 정밀 대사(AI) / reviewed = 사람 검수.
+  -- 정밀 대사(analyzed)와 사람 검수(reviewed)는 재시드 시 보존한다(seed_psd_transition.ts UPSERT 참조).
+  review_status    ENUM('automatic','analyzed','reviewed') NOT NULL DEFAULT 'automatic',
   reviewed_by      BIGINT       DEFAULT NULL,
   reviewed_at      DATETIME     DEFAULT NULL,
   created_at       TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -78,4 +80,29 @@ CREATE TABLE IF NOT EXISTS ldb_auth.foreign_transition_assessment (
     FOREIGN KEY (version_id) REFERENCES ldb_auth.foreign_transition_version(id) ON DELETE CASCADE,
   CONSTRAINT fk_foreign_transition_assessment_reviewer
     FOREIGN KEY (reviewed_by) REFERENCES ldb_auth.member(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 정밀 요약표('무엇이 바뀌었나') — 조문별 정밀 대사를 주제 단위로 종합한 큐레이션 레이어.
+-- 이행분석 화면 상단 '요약' 탭에서 렌더한다. 조문 단위 근거는 article_links 로 이행분석에 딥링크.
+CREATE TABLE IF NOT EXISTS ldb_auth.foreign_transition_theme (
+  id              BIGINT       NOT NULL AUTO_INCREMENT,
+  version_id      INT          NOT NULL,
+  theme_key       VARCHAR(64)  NOT NULL,
+  sort_order      INT          NOT NULL DEFAULT 0,
+  category_ko     VARCHAR(64)  NOT NULL,   -- 대분류(사기·책임 / 소비자보호 / 오픈뱅킹·오픈파이낸스 / 시장접근 / 감독·집행 / 전자화폐통합 …)
+  title_ko        VARCHAR(255) NOT NULL,   -- 주제명
+  impact          ENUM('new','strengthened','relaxed','clarified','restructured','maintained') NOT NULL DEFAULT 'strengthened',
+  current_ref_ko  VARCHAR(512) DEFAULT NULL, -- 현행 근거(PSD2·EMD2 조문)
+  future_ref_ko   VARCHAR(512) DEFAULT NULL, -- 변경 근거(PSD3·PSR 조문)
+  summary_ko      TEXT         NOT NULL,   -- 무엇이 어떻게 바뀌었나
+  detail_ko       MEDIUMTEXT   DEFAULT NULL, -- 실무 영향·주의
+  article_links   JSON         DEFAULT NULL, -- [{"law_code":"eu_psr","article_no":"56"}] 이행분석 조문 딥링크
+  publish_status  ENUM('draft','published','archived') NOT NULL DEFAULT 'published',
+  created_at      TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at      TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_foreign_transition_theme (version_id, theme_key),
+  KEY idx_foreign_transition_theme_order (version_id, publish_status, sort_order),
+  CONSTRAINT fk_foreign_transition_theme_version
+    FOREIGN KEY (version_id) REFERENCES ldb_auth.foreign_transition_version(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

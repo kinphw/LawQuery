@@ -1,6 +1,10 @@
 #lawCheckboxes {
     display: flex;
     flex-direction: column;
+    /* ⚠️ nowrap 필수. column + wrap + 높이제한(아래 max-height)이 만나면 항목이 높이를 채운 뒤
+       '오른쪽 새 열'로 감겨 목록이 옆으로 뻗고 횡스크롤이 생긴다(목차는 아래로 흘러야 함).
+       HTML 에도 Bootstrap .flex-wrap 을 붙이지 말 것 — 그건 !important 라 여기서 못 막는다. */
+    flex-wrap: nowrap;
     /* 펼침 높이 제한: 자본시장법(616조) 같은 대형 법령에서 페이지가 수천 px 늘어나며
        아래 연계표 전체가 밀리는 것 방지(렉의 증폭 요인). 목록은 내부 스크롤로 탐색. */
     max-height: min(60vh, 520px);

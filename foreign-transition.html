@@ -56,6 +56,19 @@
     </div>
   </div>
 
+  <!-- 전후 조문 비교 — 대응조문 칩 클릭 시. 이동 대신 팝업이라 읽던 위치를 잃지 않는다. -->
+  <div class="modal fade" id="ptaCompareModal" tabindex="-1" aria-labelledby="ptaCompareTitle" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="ptaCompareTitle">전후 조문 비교</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="닫기"></button>
+        </div>
+        <div class="modal-body" id="ptaCompareBody"></div>
+      </div>
+    </div>
+  </div>
+
   <div class="modal fade" id="commonModal" tabindex="-1" aria-labelledby="commonModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg"><div class="modal-content">
       <div class="modal-header"><h5 class="modal-title" id="commonModalLabel">알림</h5>

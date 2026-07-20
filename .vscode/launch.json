@@ -28,11 +28,11 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Run dev:fast (watch+backend)",
+      "name": "Run dev (watch+backend, @4000)",
       "runtimeExecutable": "npm",
       "runtimeArgs": [
         "run",
-        "dev:fast"
+        "dev"
       ],
       "console": "integratedTerminal",
       "skipFiles": [
@@ -55,7 +55,7 @@
     {
       "name": "2) Fast Dev (Back debug + Front watch, browser F12)",
       "configurations": [
-        "Run dev:fast (watch+backend)"
+        "Run dev (watch+backend, @4000)"
       ],
       "stopAll": true
     }

@@ -9,6 +9,7 @@ export class PsdTransitionHandler {
 
   constructor() {
     this.router.get('/catalog', optionalAuth, this.controller.catalog);
+    this.router.get('/themes', proGuard, this.controller.themes);
     this.router.get('/view', proGuard, this.controller.view);
     this.router.put('/admin/assessment', adminGuard, this.controller.updateAssessment);
   }
