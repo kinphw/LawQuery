@@ -246,12 +246,21 @@ export class ForeignView {
    *   한다(통합본 = 마커 span + 본문 div 가 별도 DOM / 전문 = 마커 셀 + 본문 셀 2열 레이아웃).
    *   후자는 본문에 번호가 없어 화면에서 항 번호가 통째로 사라진다 → 여기서 되붙인다.
    *   이미 마커로 시작하면 그대로 둔다(중복 방지) — 원문/번역 각각 판정한다(번역만 마커가 빠진 경우가 있다).
+   *   ★괄호 유무가 어긋나는 계열이 있다: US Reg Z/E 해설(SUPPLEMENT I)은 para_no 가 '(i)'·'(2)'·'(C)'
+   *   인데 본문은 'i.'·'2.'·'C.' 로 시작한다 → 형태만 비교하면 못 걸러 번호가 두 번 나온다(실측 6,359건).
+   *   그래서 괄호를 벗긴 알맹이가 구분자([.)])를 달고 맨 앞에 오는지도 함께 본다.
    */
   private withMarker(t: string, prov: ForeignProvision): string {
     const mk = (prov.para_no || '').trim();
     if (!mk || !t.trim()) return t;
-    if (/^\s*\|/.test(t.trimStart())) return t;            // markdown 표는 손대지 않음
-    if (t.trimStart().startsWith(mk)) return t;            // OJ 계열 — 본문에 이미 있음
+    const s = t.trimStart();
+    if (s.startsWith('|')) return t;                       // markdown 표는 손대지 않음
+    if (s.startsWith(mk)) return t;                        // OJ 계열 — 본문에 이미 있음
+    const bare = mk.replace(/^\(|\)$/g, '');               // '(i)' → 'i'
+    if (bare && bare !== mk &&
+        new RegExp(`^${bare.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[.)]`).test(s)) {
+      return t;                                            // 괄호만 다를 뿐 본문에 이미 있음
+    }
     const label = /^\d+[a-z]?$/i.test(mk) ? `${mk}.` : mk; // 숫자항은 관보 표기대로 '1.', 괄호형은 그대로
     return `${label} ${t}`;
   }
