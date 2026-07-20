@@ -5,9 +5,10 @@
 ANNEX 행은 목차에서 article_no(ANNEX I)로 표시하므로 제외. 재실행 안전(미번역분만).
 
 사용
-  FINDB_ROOT_PW=genius python fill_heading.py
+  FINDB_ROOT_PW=genius python fill_heading.py                      # 전체 미번역분
+  FINDB_ROOT_PW=genius python fill_heading.py --code eu_psd2_rts   # 특정 법령만
 """
-import os, sys, io, json, time, requests, pymysql
+import os, sys, io, json, time, argparse, requests, pymysql
 from dotenv import load_dotenv
 
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
@@ -30,6 +31,9 @@ def trans_batch(items):
 
 
 def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--code", default="", help="콤마구분 code 만 번역(예: eu_psd2_rts). 생략 시 전체 미번역분")
+    args = ap.parse_args()
     if not KEY:
         print("ERROR: OPENAI_API_KEY 없음"); sys.exit(1)
     pw = os.environ.get("FINDB_ROOT_PW")
@@ -38,10 +42,17 @@ def main():
     conn = pymysql.connect(host="localhost", user="root", password=pw,
                            database="fin_law_db", charset="utf8mb4", autocommit=False)
     cur = conn.cursor(pymysql.cursors.DictCursor)
+    codes = [c.strip() for c in args.code.split(",") if c.strip()]
+    code_sql, code_params = "", ()
+    if codes:
+        code_sql = (" AND law_id IN (SELECT id FROM law WHERE code IN (%s))"
+                    % ",".join(["%s"] * len(codes)))
+        code_params = tuple(codes)
+    # 'ANNEX%' 는 파라미터로 — 리터럴로 두면 code_params 바인딩 시 % 포맷과 충돌한다.
     cur.execute("""SELECT id, heading FROM law_provision
                     WHERE heading IS NOT NULL AND heading <> ''
                       AND (heading_ko IS NULL OR heading_ko = '')
-                      AND article_no NOT LIKE 'ANNEX%'""")
+                      AND article_no NOT LIKE %s""" + code_sql, ("ANNEX%", *code_params))
     rows = cur.fetchall()
     print(f"제목 번역 대상: {len(rows)}건")
     done = 0
