@@ -18,8 +18,17 @@ import mysql, { RowDataPacket } from 'mysql2/promise';
 
 dotenv.config({ path: path.join(process.cwd(), '.env') });
 
-const VERSION_CODE = 'eu_psd_commission_2023';
-const LAW_CODES = new Set(['eu_psd2', 'eu_emd2', 'eu_psd3', 'eu_psr']);
+const VERSIONS: Record<string, string[]> = {
+  eu_psd_commission_2023: ['eu_psd2', 'eu_emd2', 'eu_psd3', 'eu_psr'],
+  eu_psd_agreed_2026: ['eu_psd2', 'eu_emd2', 'eu_psd3_2026', 'eu_psr_2026'],
+};
+const VERSION_CODE = (() => {
+  const i = process.argv.indexOf('--version');
+  const v = i >= 0 ? process.argv[i + 1] : 'eu_psd_commission_2023';
+  if (!VERSIONS[v]) throw new Error(`--version 은 ${Object.keys(VERSIONS).join(' | ')} 중 하나`);
+  return v;
+})();
+const LAW_CODES = new Set(VERSIONS[VERSION_CODE]);
 const IMPACTS = new Set(['new', 'strengthened', 'relaxed', 'clarified', 'restructured', 'maintained']);
 
 function argValue(flag: string): string | null {

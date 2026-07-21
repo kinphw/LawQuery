@@ -20,11 +20,41 @@ import mysql, { RowDataPacket } from 'mysql2/promise';
 
 dotenv.config({ path: path.join(process.cwd(), '.env') });
 
-const VERSION_CODE = 'eu_psd_commission_2023';
-const LAW_ORDER = ['eu_psd2', 'eu_emd2', 'eu_psd3', 'eu_psr'] as const;
-type LawCode = typeof LAW_ORDER[number];
-const ABBREV: Record<LawCode, string> = { eu_psd2: 'PSD2', eu_emd2: 'EMD2', eu_psd3: 'PSD3', eu_psr: 'PSR' };
+/**
+ * 대상 버전은 --version 으로 고른다. 2026 잠정합의문 버전은 future 쪽 법 코드가 다르고
+ * (eu_psd3_2026·eu_psr_2026) 조번호에 문자접미(110a·45a)가 있어 정렬 기준도 달라진다.
+ */
+const VERSIONS = {
+  eu_psd_commission_2023: {
+    laws: ['eu_psd2', 'eu_emd2', 'eu_psd3', 'eu_psr'],
+    abbrev: { eu_psd2: 'PSD2', eu_emd2: 'EMD2', eu_psd3: 'PSD3', eu_psr: 'PSR' } as Record<string, string>,
+    futureLabel: 'PSD3(지침안 COM/2023/366)·PSR(규정안 COM/2023/367)',
+  },
+  eu_psd_agreed_2026: {
+    laws: ['eu_psd2', 'eu_emd2', 'eu_psd3_2026', 'eu_psr_2026'],
+    abbrev: { eu_psd2: 'PSD2', eu_emd2: 'EMD2', eu_psd3_2026: 'PSD3', eu_psr_2026: 'PSR' } as Record<string, string>,
+    futureLabel: 'PSD3·PSR 2026 잠정합의문(2026-05-05 ECON 승인, PE787.673·PE787.675)',
+  },
+} as const;
+
+const versionArg = (() => {
+  const i = process.argv.indexOf('--version');
+  const v = i >= 0 ? process.argv[i + 1] : 'eu_psd_commission_2023';
+  if (!(v in VERSIONS)) throw new Error(`--version 은 ${Object.keys(VERSIONS).join(' | ')} 중 하나`);
+  return v as keyof typeof VERSIONS;
+})();
+
+const VERSION_CODE = versionArg;
+const CONF = VERSIONS[versionArg];
+const LAW_ORDER = CONF.laws as readonly string[];
+type LawCode = string;
+const ABBREV: Record<string, string> = CONF.abbrev;
 const isCurrent = (c: LawCode) => c === 'eu_psd2' || c === 'eu_emd2';
+/** '110a' 같은 문자접미 조번호를 숫자 우선으로 정렬한다. */
+const artKey = (a: string) => {
+  const m = /^(\d+)([a-z]*)$/.exec(a);
+  return m ? Number(m[1]) * 100 + (m[2] ? m[2].charCodeAt(0) - 96 : 0) : Number.MAX_SAFE_INTEGER;
+};
 const MAX_CLUSTER_ARTICLES = 8;   // 이보다 큰 연결요소는 현행 조문 기준으로 분해
 const MAX_SEG_CHARS = 7000;       // 조 하나가 지나치게 길면 원문/번역 잘라 프롬프트 폭주 방지
 
@@ -111,9 +141,10 @@ async function main(): Promise<void> {
               p.para_no, p.depth, p.text_original, p.text_ko, p.ordinal
          FROM fin_law_db.law l
          JOIN fin_law_db.law_provision p ON p.law_id=l.id
-        WHERE l.code IN ('eu_psd2','eu_emd2','eu_psd3','eu_psr')
-          AND p.article_no REGEXP '^[0-9]+$'
-        ORDER BY l.code, CAST(p.article_no AS UNSIGNED), p.ordinal`);
+        WHERE l.code IN (?)
+          AND p.article_no REGEXP '^[0-9]+[a-z]?$'
+        ORDER BY l.code, CAST(p.article_no AS UNSIGNED), p.article_no, p.ordinal`,
+      [LAW_ORDER as unknown as string[]]);
 
     const artText = new Map<string, Article>();
     for (const s of segs) {
@@ -342,7 +373,7 @@ async function main(): Promise<void> {
 
 function sortArts(arts: Article[]): Article[] {
   return arts.sort((a, b) =>
-    LAW_ORDER.indexOf(a.lawCode) - LAW_ORDER.indexOf(b.lawCode) || Number(a.articleNo) - Number(b.articleNo));
+    LAW_ORDER.indexOf(a.lawCode) - LAW_ORDER.indexOf(b.lawCode) || artKey(a.articleNo) - artKey(b.articleNo));
 }
 
 function renderWorkflow(clusters: Cluster[], batchNo = 1, batchTotal = 1): string {
@@ -364,7 +395,7 @@ const SCHEMA = {
     type: 'object', additionalProperties: false,
     required: ['law_code','article_no','change_type','summary_ko','detail_ko'],
     properties: {
-      law_code: { type: 'string', enum: ['eu_psd2','eu_emd2','eu_psd3','eu_psr'] },
+      law_code: { type: 'string', enum: ${JSON.stringify(LAW_ORDER)} },
       article_no: { type: 'string' },
       change_type: { type: 'string', enum: CHANGE_ENUM },
       summary_ko: { type: 'string', maxLength: 1200 },
@@ -394,7 +425,7 @@ function buildPrompt(cluster) {
 
   return [
 '당신은 EU 결제법제 전문 법률 애널리스트다. 현행 PSD2(지침 2015/2366)·EMD2(전자화폐지침 2009/110/EC) 가',
-'집행위원회 2023 제안 PSD3(지침안 COM/2023/366)·PSR(규정안 COM/2023/367) 로 어떻게 이행되는지를,',
+'${CONF.futureLabel} 로 어떻게 이행되는지를,',
 '아래 원문(EN=권위 있는 정본, KO=참고 번역)을 직접 대조해 "실제로 무엇이 바뀌었는지" 정밀 판정하라.',
 'EMD2 의 전자화폐 규율은 PSD3/PSR 로 통합(흡수)된다는 큰 그림을 전제로 한다.',
 '',

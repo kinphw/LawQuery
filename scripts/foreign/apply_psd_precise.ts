@@ -19,15 +19,29 @@ import mysql, { RowDataPacket } from 'mysql2/promise';
 
 dotenv.config({ path: path.join(process.cwd(), '.env') });
 
-const VERSION_CODE = 'eu_psd_commission_2023';
-const LAW_CODES = new Set(['eu_psd2', 'eu_emd2', 'eu_psd3', 'eu_psr']);
+const VERSIONS: Record<string, string[]> = {
+  eu_psd_commission_2023: ['eu_psd2', 'eu_emd2', 'eu_psd3', 'eu_psr'],
+  eu_psd_agreed_2026: ['eu_psd2', 'eu_emd2', 'eu_psd3_2026', 'eu_psr_2026'],
+};
+const VERSION_CODE = (() => {
+  const i = process.argv.indexOf('--version');
+  const v = i >= 0 ? process.argv[i + 1] : 'eu_psd_commission_2023';
+  if (!VERSIONS[v]) throw new Error(`--version 은 ${Object.keys(VERSIONS).join(' | ')} 중 하나`);
+  return v;
+})();
+const LAW_CODES = new Set(VERSIONS[VERSION_CODE]);
 const CHANGE_TYPES = new Set(['maintained', 'clarified', 'strengthened', 'relaxed', 'material_change', 'pending']);
 
 interface Item { law_code: string; article_no: string; change_type: string; summary_ko: string; detail_ko: string; }
 
+/**
+ * "제73조"→"73", "Article 110a"→"110a".
+ * ★ 문자접미를 반드시 살린다 — 2026 합의문은 협상 삽입 조문을 110a·59b 로 붙이므로
+ *   숫자만 뽑으면(구 구현: match(/\d+/)) 110a 가 110 으로 뭉개져 엉뚱한 조에 적재된다.
+ */
 function normArticle(value: string): string {
-  const m = String(value || '').match(/\d+/);
-  return m ? m[0] : String(value || '').trim();
+  const m = String(value || '').match(/\d+[a-z]?/i);
+  return m ? m[0].toLowerCase() : String(value || '').trim();
 }
 
 function argValues(flag: string): string[] {

@@ -3,9 +3,24 @@ import { ResultSetHeader } from 'mysql2/promise';
 
 const FIN_DB = 'fin_law_db';
 const AUTH_DB = process.env.AUTH_DB || 'ldb_auth';
-export const DEFAULT_TRANSITION_VERSION = 'eu_psd_commission_2023';
-export const PSD_LAW_CODES = ['eu_psd2', 'eu_emd2', 'eu_psd3', 'eu_psr'] as const;
-export type PsdLawCode = typeof PSD_LAW_CODES[number];
+// 기본은 2026 잠정합의문. 최종 목적이 "PSD2/EMD2 가 어떻게 되는가"라 최신 문안을 본다.
+// 2023 제안본은 ?version=eu_psd_commission_2023 으로 접근(데이터·상관표 보존).
+export const DEFAULT_TRANSITION_VERSION = 'eu_psd_agreed_2026';
+
+// 버전마다 미래측 법코드가 다르다(2026 은 _2026 접미). 현행측(PSD2·EMD2)은 공통.
+const VERSION_LAW_CODES: Record<string, readonly string[]> = {
+  eu_psd_commission_2023: ['eu_psd2', 'eu_emd2', 'eu_psd3', 'eu_psr'],
+  eu_psd_agreed_2026: ['eu_psd2', 'eu_emd2', 'eu_psd3_2026', 'eu_psr_2026'],
+};
+const ALL_PSD_LAW_CODES = ['eu_psd2', 'eu_emd2', 'eu_psd3', 'eu_psr', 'eu_psd3_2026', 'eu_psr_2026'] as const;
+export type PsdLawCode = typeof ALL_PSD_LAW_CODES[number];
+
+/** 버전별 노출 법코드(순서 = 탭 정렬). 미상 버전은 2026 로 폴백. */
+export function lawCodesForVersion(versionCode: string): readonly string[] {
+  return VERSION_LAW_CODES[versionCode] || VERSION_LAW_CODES[DEFAULT_TRANSITION_VERSION];
+}
+/** 어느 버전이든 유효한 PSD 법코드인지(컨트롤러 입력 검증용). */
+export const PSD_LAW_CODES = ALL_PSD_LAW_CODES;
 
 export type StructuralType = 'one_to_one' | 'split' | 'merge' | 'many_to_many' | 'new' | 'deleted' | 'pending';
 export type ChangeType = 'maintained' | 'clarified' | 'strengthened' | 'relaxed' | 'material_change' | 'pending';
@@ -68,6 +83,8 @@ export interface TransitionArticleAnalysis {
   articleNo: string;
   assessment: TransitionAssessment;
   relations: TransitionRelation[];
+  /** 조문 자체가 무슨 내용인지(요약표 뷰 가운데 칸). 변경사항(assessment.summaryKo)과 다른 축이다. */
+  gistKo: string;
 }
 
 export interface TransitionThemeLink {
@@ -127,6 +144,8 @@ export class PsdTransitionModel {
   async getCatalog(versionCode = DEFAULT_TRANSITION_VERSION): Promise<{ version: TransitionVersion; laws: TransitionCatalogLaw[]; conflictCount: number; themeCount: number } | null> {
     const found = await this.getVersion(versionCode);
     if (!found) return null;
+    const codes = lawCodesForVersion(versionCode);
+    const placeholders = codes.map(() => '?').join(',');
     const rows = await this.fin().query<any>(
       `SELECT l.code, l.abbrev, l.title_ko, l.status,
               COUNT(a.id) AS article_count,
@@ -138,10 +157,10 @@ export class PsdTransitionModel {
          FROM law l
          LEFT JOIN ${AUTH_DB}.foreign_transition_assessment a
            ON a.law_code=l.code AND a.version_id=?
-        WHERE l.code IN ('eu_psd2','eu_emd2','eu_psd3','eu_psr')
+        WHERE l.code IN (${placeholders})
         GROUP BY l.id
-        ORDER BY FIELD(l.code,'eu_psd2','eu_emd2','eu_psd3','eu_psr')`,
-      [found.id]
+        ORDER BY FIELD(l.code,${placeholders})`,
+      [found.id, ...codes, ...codes]
     );
     const conflictRows = await this.auth().query<any>(
       `SELECT COUNT(*) AS cnt FROM foreign_transition_group
@@ -263,6 +282,14 @@ export class PsdTransitionModel {
       }
     }
 
+    // 조문 주요내용(요약표 가운데 칸) — 이행분석 version 과 무관한 조문 자체의 속성이라 따로 조회한다.
+    const gistRows = await this.auth().query<any>(
+      `SELECT article_no, gist_ko FROM foreign_article_gist WHERE law_code=?`, [code]
+    );
+    const gistMap = new Map<string, string>(
+      gistRows.map((g: any) => [g.article_no, g.gist_ko || ''] as [string, string])
+    );
+
     const articles: TransitionArticleAnalysis[] = assessments.map((a: any) => ({
       articleNo: a.article_no,
       assessment: {
@@ -274,6 +301,7 @@ export class PsdTransitionModel {
         reviewStatus: a.review_status,
       },
       relations: [...(relationMap.get(a.article_no)?.values() || [])],
+      gistKo: gistMap.get(a.article_no) || '',
     }));
     return { version: found.version, articles };
   }

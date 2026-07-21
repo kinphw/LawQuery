@@ -21,8 +21,14 @@ import mysql, { RowDataPacket } from 'mysql2/promise';
 
 dotenv.config({ path: path.join(process.cwd(), '.env') });
 
-const VERSION_CODE = 'eu_psd_commission_2023';
-const OUT = 'C:/Users/USER/AppData/Local/Temp/claude/C--projects-LawQuery/b86f3455-b454-4c36-a8ce-f1511b2f8b8d/scratchpad/prod_psd_transition.sql';
+const VALID_VERSIONS = new Set(['eu_psd_commission_2023', 'eu_psd_agreed_2026']);
+const VERSION_CODE = (() => {
+  const i = process.argv.indexOf('--version');
+  const v = i >= 0 ? process.argv[i + 1] : 'eu_psd_commission_2023';
+  if (!VALID_VERSIONS.has(v)) throw new Error(`--version 은 ${[...VALID_VERSIONS].join(' | ')} 중 하나`);
+  return v;
+})();
+const OUT = `C:/Users/USER/AppData/Local/Temp/claude/C--projects-LawQuery/b86f3455-b454-4c36-a8ce-f1511b2f8b8d/scratchpad/prod_psd_transition${VERSION_CODE === 'eu_psd_agreed_2026' ? '_2026' : ''}.sql`;
 
 async function main(): Promise<void> {
   const conn = await mysql.createConnection({
