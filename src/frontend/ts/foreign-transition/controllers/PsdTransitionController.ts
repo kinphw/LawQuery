@@ -9,9 +9,10 @@ import {
   TransitionTheme,
   TransitionViewData,
 } from '../models/PsdTransitionFetchModel';
-import { PsdTransitionView, TransitionLanguageMode, TransitionRenderState } from '../views/PsdTransitionView';
+import { PsdTransitionView, TransitionLanguageMode, TransitionRenderState, TransitionViewMode } from '../views/PsdTransitionView';
 
-const CODES: PsdLawCode[] = ['eu_psd2', 'eu_emd2', 'eu_psd3', 'eu_psr'];
+// URL ?code= 검증용 전체 집합(버전 무관). 실제 노출 법은 catalog.laws 가 버전별로 내려준다.
+const CODES: PsdLawCode[] = ['eu_psd2', 'eu_emd2', 'eu_psd3', 'eu_psr', 'eu_psd3_2026', 'eu_psr_2026'];
 
 export class PsdTransitionController {
   private transitionModel = new PsdTransitionFetchModel();
@@ -23,7 +24,7 @@ export class PsdTransitionController {
   private meta: ForeignLawMeta | null = null;
   private provisions: ForeignProvision[] = [];
   private transition: TransitionViewData | null = null;
-  private state: TransitionRenderState = { outcome: 'all', status: 'all', search: '', language: 'ko' };
+  private state: TransitionRenderState = { outcome: 'all', status: 'all', search: '', language: 'ko', viewMode: 'detail' };
   private mode: 'summary' | 'law' = 'law';
   private themes: TransitionTheme[] | null = null;
   private searchTimer: number | null = null;
@@ -106,8 +107,14 @@ export class PsdTransitionController {
         // 같은 칩을 다시 누르면 해제(토글). '전체'(value=all) 는 그 축을 초기화.
         const next = chip.dataset.value!;
         (this.state as any)[dim] = (this.state as any)[dim] === next && next !== 'all' ? 'all' : next;
-        this.syncChips(app);
-        this.renderArticles();
+        // 결과(outcome)는 '이행 세부' 하위 행의 노출 여부를 바꾸므로 툴바째 다시 그린다.
+        // 상태(status) 칩은 행 구성이 그대로라 active 표시만 동기화하면 된다.
+        if (dim === 'outcome' && this.meta && this.transition) {
+          this.renderFrame(this.view.renderArticles(this.meta, this.provisions, this.transition, this.state));
+        } else {
+          this.syncChips(app);
+          this.renderArticles();
+        }
         return;
       }
       const language = target.closest<HTMLElement>('[data-language]');
@@ -115,6 +122,15 @@ export class PsdTransitionController {
         this.state.language = language.dataset.language as TransitionLanguageMode;
         app.querySelectorAll('[data-language]').forEach(el => el.classList.toggle('active', el === language));
         this.renderArticles();
+        return;
+      }
+      const viewMode = target.closest<HTMLElement>('[data-viewmode]');
+      if (viewMode?.dataset.viewmode) {
+        this.state.viewMode = viewMode.dataset.viewmode as TransitionViewMode;
+        // 표↔상세 전환은 툴바 자체(언어 토글 노출 여부)가 달라지므로 본문만이 아니라 틀째 다시 그린다.
+        if (this.meta && this.transition) {
+          this.renderFrame(this.view.renderArticles(this.meta, this.provisions, this.transition, this.state));
+        }
         return;
       }
       const edit = target.closest<HTMLElement>('[data-edit-article]');
@@ -158,6 +174,14 @@ export class PsdTransitionController {
 
   private async loadLaw(code: PsdLawCode, anchor = '', pushHistory = true): Promise<void> {
     if (!this.catalog) return;
+    // 법을 바꾸면 결과 필터를 초기화한다 — 법마다 결과 분포가 완전히 달라(현행법은 '신설' 0건,
+    // 예정법은 '이행없음' 0건) 필터를 유지하면 새 법에서 0건이 되어 빈 화면처럼 보인다.
+    // 표시 취향(언어·상세/표)은 유지한다. 검색어도 법이 바뀌면 맥락이 달라지므로 비운다.
+    if (code !== this.code) {
+      this.state.outcome = 'all';
+      this.state.status = 'all';
+      this.state.search = '';
+    }
     this.mode = 'law';
     this.code = code;
     this.meta = null;

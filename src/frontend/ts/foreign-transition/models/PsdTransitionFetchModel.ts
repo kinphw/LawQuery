@@ -1,4 +1,4 @@
-export type PsdLawCode = 'eu_psd2' | 'eu_emd2' | 'eu_psd3' | 'eu_psr';
+export type PsdLawCode = 'eu_psd2' | 'eu_emd2' | 'eu_psd3' | 'eu_psr' | 'eu_psd3_2026' | 'eu_psr_2026';
 export type StructuralType = 'one_to_one' | 'split' | 'merge' | 'many_to_many' | 'new' | 'deleted' | 'pending';
 export type ChangeType = 'maintained' | 'clarified' | 'strengthened' | 'relaxed' | 'material_change' | 'pending';
 export type ReviewStatus = 'automatic' | 'analyzed' | 'reviewed';
@@ -91,6 +91,8 @@ export interface TransitionArticleAnalysis {
   articleNo: string;
   assessment: TransitionAssessment;
   relations: TransitionRelation[];
+  /** 조문 자체가 무슨 내용인지(요약표 가운데 칸). 변경사항(assessment.summaryKo)과 다른 축이다. */
+  gistKo: string;
 }
 
 export interface TransitionViewData {

@@ -38,6 +38,8 @@ body { background: #f7f8fa; color: var(--pta-ink); }
 
 .pta-tabs { display: grid; grid-template-columns: auto 1fr 1fr; gap: 1px; background: #cfd5df;
   border: 1px solid #cfd5df; border-top: 0; }
+/* 요약 탭이 없을 때(테마 0건) — 현행·예정 두 그룹만 균등 분할. auto 칸이 비어 오른쪽 여백이 뜨던 문제. */
+.pta-tabs--nosummary { grid-template-columns: 1fr 1fr; }
 .pta-tab-group { display: grid; grid-template-columns: auto 1fr 1fr; align-items: stretch; background: #fff; }
 .pta-tab-summary { grid-template-columns: auto 1fr; }
 .pta-tab-label { display: flex; align-items: center; padding: 0 .85rem; font-size: .72rem; font-weight: 800;
@@ -149,7 +151,7 @@ body { background: #f7f8fa; color: var(--pta-ink); }
 @media (max-width: 980px) {
   .pta-hero { flex-direction: column; gap: .85rem; }
   .pta-version { min-width: 0; align-items: flex-start; text-align: left; }
-  .pta-tabs { grid-template-columns: 1fr; }
+  .pta-tabs, .pta-tabs--nosummary { grid-template-columns: 1fr; }
   .pta-toolbar { flex-wrap: wrap; }
   .pta-search { flex-basis: calc(100% - 170px); }
   .pta-total { display: none; }
@@ -193,6 +195,9 @@ body { background: #f7f8fa; color: var(--pta-ink); }
   font-size: .72rem; font-weight: 800; color: var(--pta-muted); letter-spacing: .02em;
 }
 .pta-frow-chips { display: flex; flex-wrap: wrap; gap: .3rem; min-width: 0; }
+/* '이행 세부' 하위 행 — 상위 '이행' 맥락일 때만 펼쳐지므로 살짝 들여 계층을 드러낸다. */
+.pta-frow-sub { margin-left: .5rem; padding-left: .55rem; border-left: 2px solid var(--pta-line); }
+.pta-frow-sub .pta-frow-label { font-weight: 700; color: var(--pta-muted); }
 .pta-chip {
   display: inline-flex; align-items: center; gap: .3rem;
   font-size: .8rem; line-height: 1.4; padding: .2rem .6rem;
@@ -295,4 +300,57 @@ body { background: #f7f8fa; color: var(--pta-ink); }
 @media (max-width: 760px) {
   .pta-theme-card { grid-template-columns: 1fr; gap: .55rem; }
   .pta-theme-body { max-width: none; }
+}
+
+/* ── 보기 방식 토글(상세/요약표) — 언어 토글과 같은 형태로 나란히 둔다 ───────────── */
+.pta-viewmode { display: inline-flex; border: 1px solid #cfd5df; border-radius: .38rem; overflow: hidden; }
+.pta-viewmode button { border: 0; border-left: 1px solid #dfe3e9; background: #fff; padding: .3rem .62rem; font-size: .76rem; color: #5e6878; }
+.pta-viewmode button:first-child { border-left: 0; }
+.pta-viewmode button.active { color: #fff; background: var(--pta-ink); }
+
+/* ── 요약표(조문·구분·주요내용·변경사항) ───────────────────────────────────────────
+   ★1순위 용도 = HWP·엑셀에 복사해 보고서 붙임표로. 그래서 셀 내용을 단순 평문으로 유지하고
+   (색칠 배경 '카드'를 셀 안에 넣지 않는다 — 붙여넣기에서 음영 박스로 깨진다) 테두리 있는
+   <table> 로 그린다. 좁은 화면에서는 접지 않고 가로 스크롤(열 대응이 무너지면 표 의미 상실). */
+.ptt-wrap { overflow-x: auto; margin-top: .1rem; }
+.ptt-table { width: 100%; border-collapse: collapse; font-size: .82rem; background: #fff; min-width: 820px; }
+.ptt-table th, .ptt-table td { border: 1px solid #dfe3e9; padding: .5rem .6rem; vertical-align: top; text-align: left; }
+.ptt-table thead th { background: #f4f6f9; font-weight: 600; color: #38414f; position: sticky; top: 0; z-index: 1; }
+.ptt-table th.ptt-art, .ptt-table td.ptt-art { width: 17%; min-width: 128px; }
+.ptt-table th.ptt-kind, .ptt-table td.ptt-kind { width: 7%; min-width: 62px; white-space: nowrap; }
+.ptt-table th.ptt-gist, .ptt-table td.ptt-gist { width: 38%; }
+.ptt-table th.ptt-change, .ptt-table td.ptt-change { width: 38%; }
+.ptt-table tbody tr:nth-child(even) { background: #fbfcfd; }
+.ptt-table tbody tr:hover { background: #eef4ff; }
+
+/* 조번호+국문 제목을 한 줄로(제N조 제목). 영문 제목만 아랫줄 평문. */
+.ptt-art-line { color: #2c3440; line-height: 1.4; }
+.ptt-art-line b { color: var(--pta-ink); }
+.ptt-title-en { color: #8a94a3; font-size: .72rem; margin-top: .12rem; line-height: 1.34; font-style: italic; }
+/* '구분' = 결과 분류를 평문 색글자로(배경 없음 → 복사 시 깔끔). */
+.ptt-kind-txt { font-weight: 600; font-size: .78rem; }
+.ptt-kind-txt.o-new { color: #2058d8; }
+.ptt-kind-txt.o-strengthened { color: #c0392b; }
+.ptt-kind-txt.o-relaxed { color: #1e8e4e; }
+.ptt-kind-txt.o-material { color: #7d3cc0; }
+.ptt-kind-txt.o-maintained { color: #5e6878; }
+.ptt-kind-txt.o-deleted { color: #8a94a3; }
+.ptt-kind-txt.o-pending { color: #b8791a; }
+.ptt-gist { line-height: 1.64; }
+.ptt-change { line-height: 1.64; color: #38414f; }
+.ptt-none { color: #aeb6c2; }
+
+@media (prefers-color-scheme: dark) {
+  .ptt-table { background: transparent; }
+  .ptt-table thead th { background: #222834; color: #dfe3e9; }
+  .ptt-table th, .ptt-table td { border-color: #39414f; }
+  .ptt-table tbody tr:nth-child(even) { background: #1d222c; }
+  .ptt-table tbody tr:hover { background: #232c3b; }
+  .ptt-art-line { color: #dfe3e9; }
+  .ptt-title-en { color: #7e8896; }
+  .ptt-change { color: #cfd5df; }
+  .ptt-kind-txt.o-new { color: #6f9bff; }
+  .ptt-kind-txt.o-strengthened { color: #f08a80; }
+  .ptt-kind-txt.o-relaxed { color: #67d99a; }
+  .ptt-kind-txt.o-material { color: #c79bf0; }
 }
