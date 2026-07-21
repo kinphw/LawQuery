@@ -14,9 +14,19 @@ import mysql, { RowDataPacket } from 'mysql2/promise';
 
 dotenv.config({ path: path.join(process.cwd(), '.env') });
 
-const VERSION_CODE = 'eu_psd_commission_2023';
-const OUT = 'C:/Users/USER/AppData/Local/Temp/claude/C--projects-LawQuery/b86f3455-b454-4c36-a8ce-f1511b2f8b8d/scratchpad/psd_digest.json';
-const ORDER = "FIELD(law_code,'eu_psd2','eu_emd2','eu_psd3','eu_psr'), CAST(article_no AS UNSIGNED)";
+const VERSION_ORDER: Record<string, string[]> = {
+  eu_psd_commission_2023: ['eu_psd2', 'eu_emd2', 'eu_psd3', 'eu_psr'],
+  eu_psd_agreed_2026: ['eu_psd2', 'eu_emd2', 'eu_psd3_2026', 'eu_psr_2026'],
+};
+const VERSION_CODE = (() => {
+  const i = process.argv.indexOf('--version');
+  const v = i >= 0 ? process.argv[i + 1] : 'eu_psd_commission_2023';
+  if (!VERSION_ORDER[v]) throw new Error(`--version 은 ${Object.keys(VERSION_ORDER).join(' | ')} 중 하나`);
+  return v;
+})();
+const SCRATCH = 'C:/Users/USER/AppData/Local/Temp/claude/C--projects-LawQuery/b86f3455-b454-4c36-a8ce-f1511b2f8b8d/scratchpad';
+const OUT = `${SCRATCH}/psd_digest${VERSION_CODE === 'eu_psd_agreed_2026' ? '_2026' : ''}.json`;
+const ORDER = `FIELD(law_code,${VERSION_ORDER[VERSION_CODE].map(c => `'${c}'`).join(',')}), CAST(article_no AS UNSIGNED)`;
 
 async function main(): Promise<void> {
   const connection = await mysql.createConnection({
