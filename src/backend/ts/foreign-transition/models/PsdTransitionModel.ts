@@ -141,9 +141,20 @@ export class PsdTransitionModel {
     };
   }
 
-  async getCatalog(versionCode = DEFAULT_TRANSITION_VERSION): Promise<{ version: TransitionVersion; laws: TransitionCatalogLaw[]; conflictCount: number; themeCount: number } | null> {
+  /** 전환 드롭박스용 — 게시된 모든 버전(최초본·잠정본…)을 as_of 순으로. */
+  async listVersions(): Promise<Array<{ code: string; labelKo: string; asOfDate: string; lifecycle: string }>> {
+    const rows = await this.auth().query<any>(
+      `SELECT code, label_ko, DATE_FORMAT(as_of_date, '%Y-%m-%d') AS as_of_date, lifecycle
+         FROM foreign_transition_version WHERE publish_status='published'
+        ORDER BY as_of_date, id`
+    );
+    return rows.map(r => ({ code: r.code, labelKo: r.label_ko, asOfDate: r.as_of_date, lifecycle: r.lifecycle }));
+  }
+
+  async getCatalog(versionCode = DEFAULT_TRANSITION_VERSION): Promise<{ version: TransitionVersion; versions: Array<{ code: string; labelKo: string; asOfDate: string; lifecycle: string }>; laws: TransitionCatalogLaw[]; conflictCount: number; themeCount: number } | null> {
     const found = await this.getVersion(versionCode);
     if (!found) return null;
+    const versions = await this.listVersions();
     const codes = lawCodesForVersion(versionCode);
     const placeholders = codes.map(() => '?').join(',');
     const rows = await this.fin().query<any>(
@@ -172,6 +183,7 @@ export class PsdTransitionModel {
     );
     return {
       version: found.version,
+      versions,
       conflictCount: Number(conflictRows[0]?.cnt || 0),
       themeCount: Number(themeRows[0]?.cnt || 0),
       laws: rows.map((r: any) => ({

@@ -28,8 +28,17 @@ export interface TransitionCatalogLaw {
   reviewedCount: number;
 }
 
+/** 전환 드롭박스 항목(게시된 버전 하나). */
+export interface TransitionVersionOption {
+  code: string;
+  labelKo: string;
+  asOfDate: string;
+  lifecycle: string;
+}
+
 export interface TransitionCatalog {
   version: TransitionVersion;
+  versions: TransitionVersionOption[];
   laws: TransitionCatalogLaw[];
   conflictCount: number;
   themeCount: number;
@@ -102,8 +111,9 @@ export interface TransitionViewData {
 }
 
 export class PsdTransitionFetchModel {
-  async getCatalog(): Promise<TransitionCatalog | null> {
-    const response = await fetch('/api/foreign-transition/catalog', { credentials: 'include' });
+  async getCatalog(version?: string): Promise<TransitionCatalog | null> {
+    const qs = version ? `?version=${encodeURIComponent(version)}` : '';
+    const response = await fetch(`/api/foreign-transition/catalog${qs}`, { credentials: 'include' });
     if (!response.ok) return null;
     const json = await response.json();
     return json.success ? json.data : null;

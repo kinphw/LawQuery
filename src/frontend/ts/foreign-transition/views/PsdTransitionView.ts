@@ -116,7 +116,7 @@ export class PsdTransitionView {
         </div>
         <div class="pta-version">
           <span class="pta-proposal">미발효·입법 진행 중</span>
-          <strong>${this.esc(catalog.version.labelKo)}</strong>
+          ${this.versionSelect(catalog)}
           <span>${this.esc(catalog.version.basisKo)}</span>
           <div class="pta-source-links">${sources}</div>
         </div>
@@ -128,6 +128,28 @@ export class PsdTransitionView {
       ${catalog.unlocked && !summaryActive ? this.toolbar(state, selected?.articleCount || 0, counts) : ''}
       <main id="ptaBody">${body}</main>
     </div>`;
+  }
+
+  /**
+   * 버전 전환 드롭박스 — 최초본(2023)·잠정본(2026)… 게시된 버전 사이를 오간다.
+   * 옵션 라벨은 긴 labelKo("…패키지 — 2026 잠정합의문")에서 '—' 뒤만 잘라 간결하게.
+   * 버전이 하나뿐이면 드롭박스 없이 제목만(전환할 게 없다).
+   */
+  private versionSelect(catalog: TransitionCatalog): string {
+    const short = (labelKo: string) => {
+      const i = labelKo.lastIndexOf('—');
+      return (i >= 0 ? labelKo.slice(i + 1) : labelKo).trim();
+    };
+    if (!catalog.versions || catalog.versions.length < 2) {
+      return `<strong>${this.esc(catalog.version.labelKo)}</strong>`;
+    }
+    const opts = catalog.versions.map(v =>
+      `<option value="${this.esc(v.code)}"${v.code === catalog.version.code ? ' selected' : ''}>${this.esc(short(v.labelKo))}</option>`
+    ).join('');
+    return `<label class="pta-version-switch">
+      <span class="pta-version-switch-label">기준 문안</span>
+      <select id="ptaVersionSelect" aria-label="이행분석 기준 문안 선택">${opts}</select>
+    </label>`;
   }
 
   renderLocked(): string {

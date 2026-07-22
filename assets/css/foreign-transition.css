@@ -26,6 +26,18 @@ body { background: #f7f8fa; color: var(--pta-ink); }
   min-width: 350px; font-size: .78rem; color: #cdd5e5; }
 .pta-version strong { color: #fff; margin: .2rem 0; font-size: .88rem; }
 .pta-proposal { display: inline-block; color: #ffe8a3; font-weight: 700; }
+/* 기준 문안 전환 드롭박스 — 히어로(어두운 배경) 위에 얹히므로 밝은 글자. */
+.pta-version-switch { display: inline-flex; align-items: center; gap: .4rem; margin: .3rem 0; }
+.pta-version-switch-label { color: #9fb0cc; font-size: .72rem; font-weight: 700; white-space: nowrap; }
+.pta-version-switch select {
+  background: rgba(255,255,255,.12); color: #fff; border: 1px solid rgba(255,255,255,.35);
+  border-radius: .35rem; padding: .28rem 1.6rem .28rem .55rem; font-size: .84rem; font-weight: 600;
+  cursor: pointer; appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='%23ffffff' d='M0 0l5 6 5-6z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right .5rem center;
+}
+.pta-version-switch select:hover { background-color: rgba(255,255,255,.2); }
+.pta-version-switch select option { color: #1b2432; }
 .pta-source-links { margin-top: .3rem; }
 .pta-source-links a { color: #a9c2ff; text-decoration: none; }
 .pta-source-links a:hover { color: #fff; text-decoration: underline; }

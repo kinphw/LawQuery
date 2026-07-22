@@ -5,6 +5,15 @@ import { ForeignOverviewView } from '../views/ForeignOverviewView';
 import { ForeignScrollAnchor } from '../util/ForeignScrollAnchor';
 import { Header } from '../../common/components/Header';
 import { ToastManager } from '../../common/components/ToastManager';
+import { exportViewAsHtml, tidyForeignMemoColumn } from '../../common/util/StaticHtmlExporter';
+
+/** 정적 HTML 내보내기 시 사본에서 통째로 걷어낼 조작·내비 UI 선택자. */
+const FOREIGN_EXPORT_REMOVE = [
+  '.fm-back',        // ← 해외법령 목록 백링크
+  '.flt-open-btn',   // 계열 3단 연계표 보기(내비 버튼)
+  '.fm-copy-btn', '.fm-admin-edit', '.fm-fav-toggle', '.fm-review', '.fm-edited',
+  'tr.fm-lazy-ph',   // 지연 mount placeholder(전량 mount 후 잔재 방지)
+];
 
 /**
  * 해외법령 컨트롤러. 드롭다운으로 법령 선택 → 원문/번역 2단 표 + 메모(PRO).
@@ -74,6 +83,7 @@ export class ForeignController {
     this.bindAdminEditDelegation();
     this.bindCopyDelegation();
     this.bindLinkTableDelegation();
+    this.bindExport();
 
     // ?link=<family> = 3단 연계표 / ?code = 단일 법 본문 / 둘 다 없으면 카탈로그(랜딩).
     // #fa-<article> 해시(연계 칩 딥링크)가 있으면 로드 후 그 조로 스크롤.
@@ -97,6 +107,7 @@ export class ForeignController {
     if (box) box.textContent = '국가별 목록';
     const results = document.getElementById('results')!;
     results.innerHTML = this.overview.render(this.laws);
+    this.setExportVisible(false); // 카탈로그(랜딩)는 내보낼 표가 없다
     if (location.search) history.replaceState(null, '', location.pathname);
   }
 
@@ -109,6 +120,7 @@ export class ForeignController {
     results.innerHTML = '<div class="container py-5 text-center text-muted">연계표 불러오는 중…</div>';
     const box = document.getElementById('currentForeignBox');
     if (box) box.textContent = '3단 연계표';
+    this.setExportVisible(false); // 내보내기 범위 = 단일 법령 본문(개별 조회)만
     const data = await this.model.getLinkTable(family, rel);
     if (!data) {
       results.innerHTML = '<div class="container"><div class="alert alert-warning">연계표를 불러오지 못했습니다.</div></div>';
@@ -200,6 +212,7 @@ export class ForeignController {
     // 연계 칩 딥링크(#fa-…)면 URL에 해시 보존(공유·복원용), 아니면 기존대로 code만.
     history.replaceState(null, '', `?code=${code}${anchor ? '#' + anchor : ''}`);
     this.updateLabel();
+    this.setExportVisible(true); // 개별 법령 본문 로드 완료 → 정적 HTML 저장 가능
 
     // 조 단위 위치 저장·복원 — 모바일 탭 폐기→리로드 복귀 시 위치가 바뀌던 버그의 해법.
     // (entry에서 scrollRestoration='manual'로 브라우저 픽셀 복원을 껐고, 여기서 앵커로 복원)
@@ -619,6 +632,76 @@ export class ForeignController {
   private closeModal(): void {
     if (this.popCleanup) { this.popCleanup(); this.popCleanup = null; }
     if (this.modalEl) { this.modalEl.remove(); this.modalEl = null; }
+  }
+
+  // ── 정적 HTML 내보내기(의사결정자 전달용 원문·번역 표) ─────────────────────────
+  private bindExport(): void {
+    document.getElementById('foreignExportBtn')?.addEventListener('click', () => this.exportCurrent());
+  }
+
+  /** 개별 법령 본문일 때만 저장 버튼 노출(카탈로그·3단 연계표에서는 숨김). */
+  private setExportVisible(on: boolean): void {
+    document.getElementById('foreignExportBtn')?.classList.toggle('d-none', !on);
+  }
+
+  private async exportCurrent(): Promise<void> {
+    const results = document.getElementById('results');
+    if (!results || !this.meta || !this.currentCode) return;
+    const btn = document.getElementById('foreignExportBtn') as HTMLButtonElement | null;
+    if (btn) btn.disabled = true;
+    try {
+      const law = this.meta;
+      const name = law.abbrev || law.title_ko;
+      await exportViewAsHtml({
+        source: results,
+        title: `${law.title_ko}${law.abbrev ? ` (${law.abbrev})` : ''} — 원문·번역`,
+        filename: `해외법령_${name}_${this.currentCode}`,
+        removeSelectors: FOREIGN_EXPORT_REMOVE,
+        footnote: this.exportFootnote(law.translation_source),
+        beforeSnapshot: () => this.mountAllForExport(),
+        transformClone: tidyForeignMemoColumn,
+      });
+      this.toast.showToast('HTML 파일로 저장했습니다');
+    } catch (e) {
+      console.error('export 실패', e);
+      this.toast.showToast('저장에 실패했습니다');
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  }
+
+  /**
+   * 내보내기 전, 대형 법령의 지연 mount 조를 전량 실제 행으로 채운다(placeholder만 저장되는 것 방지).
+   * 소형 법령(임계 이하)은 segsByArticle 이 비어 있어 자연히 no-op. 이미 mount된 조는 건너뛴다.
+   */
+  private mountAllForExport(): void {
+    const results = document.getElementById('results');
+    if (!results) return;
+    const showMemo = this.canEditMemo || Object.keys(this.memos).length > 0;
+    const cols = showMemo ? 3 : 2;
+    results.querySelectorAll<HTMLElement>('tbody[data-lazy]').forEach(tb => {
+      const articleNo = tb.dataset.article || '';
+      const segs = this.segsByArticle.get(articleNo);
+      if (!segs) return;
+      const rows = this.view.renderArticleRows(segs, {
+        code: this.currentCode, memos: this.memos, showMemo, cols,
+        canEdit: this.canEdit, canEditMemo: this.canEditMemo,
+        canFavorite: this.canFavorite, favorites: this.favorites,
+      });
+      const ph = tb.querySelector('tr.fm-lazy-ph');
+      if (ph) { ph.insertAdjacentHTML('beforebegin', rows); ph.remove(); }
+      else tb.insertAdjacentHTML('beforeend', rows);
+      delete tb.dataset.lazy;
+      delete tb.dataset.mounting;
+    });
+  }
+
+  private exportFootnote(translationSource: string): string {
+    const trans = translationSource === 'machine' ? '기계번역(참고용)'
+      : translationSource === 'official' ? '공식번역' : '참고용 번역';
+    const today = new Date().toISOString().slice(0, 10);
+    return `이 문서는 LawQuery 해외법령 조회 화면을 정적 파일로 내보낸 참고자료입니다. `
+      + `번역문은 ${trans}이며, 법적 효력은 원문에 있습니다. 내보낸 날짜: ${today}.`;
   }
 
   private esc(s: string): string {
