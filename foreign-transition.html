@@ -16,6 +16,13 @@
 </head>
 <body>
   <div id="header"></div>
+  <!-- 현재 조회 화면(요약/상세/요약표)을 정적 HTML로 저장 — 콘텐츠 로드 후 노출 -->
+  <div class="container mt-2 mb-1 text-end">
+    <button type="button" id="ptaExportBtn" class="btn btn-sm btn-outline-dark d-none"
+      title="지금 보고 있는 이행분석 화면을 정적 HTML 파일로 저장합니다">
+      <i class="fas fa-download"></i> HTML로 저장
+    </button>
+  </div>
   <div id="transitionApp" class="pta-app">
     <div class="pta-loading"><div class="spinner-border spinner-border-sm" role="status"></div> 이행분석 준비 중…</div>
   </div>

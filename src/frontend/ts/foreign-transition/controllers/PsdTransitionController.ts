@@ -10,15 +10,28 @@ import {
   TransitionViewData,
 } from '../models/PsdTransitionFetchModel';
 import { PsdTransitionView, TransitionLanguageMode, TransitionRenderState, TransitionViewMode } from '../views/PsdTransitionView';
+import { ToastManager } from '../../common/components/ToastManager';
+import { exportViewAsHtml } from '../../common/util/StaticHtmlExporter';
 
 // URL ?code= 검증용 전체 집합(버전 무관). 실제 노출 법은 catalog.laws 가 버전별로 내려준다.
 const CODES: PsdLawCode[] = ['eu_psd2', 'eu_emd2', 'eu_psd3', 'eu_psr', 'eu_psd3_2026', 'eu_psr_2026'];
+
+/** 정적 HTML 내보내기 시 사본에서 걷어낼 조작·내비 UI(탭·툴바·필터·백링크·비교/검수 버튼). */
+const TRANSITION_EXPORT_REMOVE = [
+  '.pta-back',
+  '.pta-tabs',
+  '.pta-toolbar',
+  '.pta-filters',
+  '.pta-edit', '.pta-compare-all',
+  '.pta-article-head a', // 조 헤더의 '본문' 외부이동 링크
+];
 
 export class PsdTransitionController {
   private transitionModel = new PsdTransitionFetchModel();
   private foreignModel = new ForeignFetchModel();
   private view = new PsdTransitionView();
   private header = new Header();
+  private toast = new ToastManager();
   private catalog: TransitionCatalog | null = null;
   private code: PsdLawCode = 'eu_psd2';
   private meta: ForeignLawMeta | null = null;
@@ -45,7 +58,10 @@ export class PsdTransitionController {
     if (requested && CODES.includes(requested)) this.code = requested;
     this.bindEvents();
 
-    this.catalog = await this.transitionModel.getCatalog();
+    document.getElementById('ptaExportBtn')?.addEventListener('click', () => this.exportCurrent());
+
+    // ?tv= (transition version) — 기준 문안(최초본/잠정본) 지정. 없으면 백엔드 기본(잠정본).
+    this.catalog = await this.transitionModel.getCatalog(params.get('tv') || undefined);
     if (!this.catalog) {
       document.getElementById('transitionApp')!.innerHTML = this.view.renderError('이행분석 기준정보를 불러오지 못했습니다.');
       return;
@@ -143,9 +159,20 @@ export class PsdTransitionController {
       if (this.searchTimer != null) window.clearTimeout(this.searchTimer);
       this.searchTimer = window.setTimeout(() => this.renderArticles(), 160);
     });
+    app.addEventListener('change', event => {
+      const target = event.target as HTMLElement;
+      if (target.id === 'ptaVersionSelect') this.switchVersion((target as HTMLSelectElement).value);
+    });
     document.getElementById('ptaAssessmentSave')?.addEventListener('click', () => this.saveAssessment());
     window.addEventListener('popstate', () => {
       const params = new URLSearchParams(location.search);
+      const tv = params.get('tv');
+      // 버전 전환 뒤로/앞으로 — 먼저 popped URL 의 뷰(요약/법)로 mode 를 맞춘 뒤 버전 교체.
+      if (this.catalog && tv && tv !== this.catalog.version.code) {
+        this.mode = params.get('view') === 'summary' ? 'summary' : 'law';
+        this.switchVersion(tv);
+        return;
+      }
       if (params.get('view') === 'summary') {
         if (this.mode !== 'summary') this.loadSummary(false);
         return;
@@ -155,6 +182,33 @@ export class PsdTransitionController {
         this.loadLaw(next, location.hash.replace(/^#/, ''), false);
       }
     });
+  }
+
+  /** 현재 버전을 URL 에 실을 쿼리 조각(&tv=…). 상태 보존·공유용. */
+  private tvParam(): string {
+    const code = this.catalog?.version.code;
+    return code ? `&tv=${encodeURIComponent(code)}` : '';
+  }
+
+  /** 버전 전환 시 현재 보던 법을 새 버전의 대응 법으로 매핑(없으면 첫 법). eu_psr↔eu_psr_2026. */
+  private mapCode(code: PsdLawCode, catalog: TransitionCatalog): PsdLawCode {
+    if (catalog.laws.some(l => l.code === code)) return code;
+    const alt = (code.endsWith('_2026') ? code.replace('_2026', '') : `${code}_2026`) as PsdLawCode;
+    if (catalog.laws.some(l => l.code === alt)) return alt;
+    return catalog.laws[0]?.code || code;
+  }
+
+  /** 기준 문안(최초본/잠정본) 전환 — catalog 재조회 후 보던 맥락(요약/법)을 새 버전으로 이어 렌더. */
+  private async switchVersion(versionCode: string): Promise<void> {
+    if (!this.catalog || versionCode === this.catalog.version.code) return;
+    const next = await this.transitionModel.getCatalog(versionCode);
+    if (!next) { this.toast.showToast('해당 기준 문안을 불러오지 못했습니다.'); return; }
+    this.catalog = next;
+    this.themes = null;                 // 테마는 버전별 → 캐시 무효화
+    this.provisionCache.clear();        // 조문 캐시도 버전별 법코드가 달라 무효화
+    this.state = { ...this.state, outcome: 'all', status: 'all', search: '' };
+    if (this.mode === 'summary' && next.themeCount > 0) await this.loadSummary(false);
+    else await this.loadLaw(this.mapCode(this.code, next), '', false);
   }
 
   /** 요약 탭 — 정밀 대사를 주제로 종합한 '무엇이 바뀌었나'. 조문뷰와 독립. */
@@ -167,7 +221,8 @@ export class PsdTransitionController {
       this.themes = data?.themes || [];
     }
     this.renderFrame(this.view.renderThemes(this.themes));
-    const url = 'foreign-transition.html?view=summary';
+    this.setExportVisible(true);
+    const url = `foreign-transition.html?view=summary${this.tvParam()}`;
     if (pushHistory) history.pushState(null, '', url); else history.replaceState(null, '', url);
     window.scrollTo({ top: 0 });
   }
@@ -194,6 +249,7 @@ export class PsdTransitionController {
     ]);
     if (!foreign || !transition) {
       this.renderFrame(this.view.renderError('조문 또는 이행분석을 불러오지 못했습니다. 이용 권한과 서버 상태를 확인해 주세요.'));
+      this.setExportVisible(false);
       return;
     }
     this.meta = foreign.meta;
@@ -201,8 +257,9 @@ export class PsdTransitionController {
     this.provisionCache.set(code, foreign.provisions); // 비교 팝업이 재요청하지 않도록 공유
     this.transition = transition;
     this.renderFrame(this.view.renderArticles(this.meta, this.provisions, this.transition, this.state));
+    this.setExportVisible(true);
 
-    const url = `foreign-transition.html?code=${encodeURIComponent(code)}${anchor ? '#' + anchor : ''}`;
+    const url = `foreign-transition.html?code=${encodeURIComponent(code)}${this.tvParam()}${anchor ? '#' + anchor : ''}`;
     if (pushHistory) history.pushState(null, '', url); else history.replaceState(null, '', url);
     if (anchor) this.scrollTo(anchor);
     else window.scrollTo({ top: 0 });
@@ -294,6 +351,48 @@ export class PsdTransitionController {
 
   private findAnalysis(articleNo: string): TransitionArticleAnalysis | undefined {
     return this.transition?.articles.find(article => article.articleNo === articleNo);
+  }
+
+  // ── 정적 HTML 내보내기(의사결정자 전달용 이행검토 표) ─────────────────────────
+  private setExportVisible(on: boolean): void {
+    document.getElementById('ptaExportBtn')?.classList.toggle('d-none', !on);
+  }
+
+  /** 현재 탭(요약 / 법별 상세·요약표)을 '조회 그대로' 정적 HTML로 저장. */
+  private async exportCurrent(): Promise<void> {
+    const app = document.getElementById('transitionApp');
+    if (!app || !this.catalog) return;
+    const btn = document.getElementById('ptaExportBtn') as HTMLButtonElement | null;
+    if (btn) btn.disabled = true;
+    try {
+      const version = this.catalog.version.labelKo;
+      let scope: string;
+      let titleScope: string;
+      if (this.mode === 'summary') {
+        scope = '요약_무엇이바뀌었나';
+        titleScope = '요약(무엇이 바뀌었나)';
+      } else {
+        const abbr = this.meta?.abbrev || this.code;
+        const mode = this.state.viewMode === 'table' ? '요약표' : '상세';
+        scope = `${abbr}_${mode}`;
+        titleScope = `${abbr} ${mode}`;
+      }
+      await exportViewAsHtml({
+        source: app,
+        title: `PSD 이행분석 — ${titleScope}`,
+        filename: `PSD이행분석_${scope}`,
+        removeSelectors: TRANSITION_EXPORT_REMOVE,
+        footnote: `이 문서는 LawQuery의 PSD 이행분석 화면을 정적 파일로 내보낸 참고자료입니다. `
+          + `${version} 기준이며, 번역·분석은 참고용입니다. 법적 효력은 원문에 있습니다. `
+          + `내보낸 날짜: ${new Date().toISOString().slice(0, 10)}.`,
+      });
+      this.toast.showToast('HTML 파일로 저장했습니다');
+    } catch (e) {
+      console.error('export 실패', e);
+      this.toast.showToast('저장에 실패했습니다');
+    } finally {
+      if (btn) btn.disabled = false;
+    }
   }
 
   private openEditor(articleNo: string): void {
