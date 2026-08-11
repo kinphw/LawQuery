@@ -17,15 +17,26 @@
   },
   "scripts": {
     "build": "webpack --config webpack.config.js",
+    "build:backend": "tsc -p tsconfig.backend.json",
+    "build:scss": "sass assets/scss/style.scss:assets/css/style.css --style=compressed --no-source-map",
+    "build:all": "npm run build:backend && npm run build && npm run build:scss",
+    "serve": "npm run build:all && pm2 restart lawquery --update-env",
+    "pm2:start": "pm2 start ecosystem.local.config.js && pm2 save",
+    "pm2:stop": "pm2 stop lawquery",
+    "pm2:restart": "pm2 restart lawquery --update-env",
+    "pm2:logs": "pm2 logs lawquery",
+    "pm2:status": "pm2 ls",
     "watch": "webpack --watch --config webpack.config.js",
     "typecheck:watch": "tsc --noEmit --watch",
     "predev": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/kill-stale.ps1",
     "dev": "concurrently \"npm:watch\" \"npm run dev:backend\" \"npm run scss:watch\"",
+    "postdev": "pm2 start ecosystem.local.config.js",
     "dev:backend": "ts-node-dev --respawn --transpile-only src/backend/ts/index.ts",
     "dev:server": "webpack serve --config webpack.config.js",
     "scss:watch": "sass --watch assets/scss/style.scss:assets/css/style.css",
     "predev:full": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/kill-stale.ps1",
-    "dev:full": "concurrently \"npm run dev:server\" \"npm run dev:backend\" \"npm run typecheck:watch\" \"npm run scss:watch\""
+    "dev:full": "concurrently \"npm run dev:server\" \"npm run dev:backend\" \"npm run typecheck:watch\" \"npm run scss:watch\"",
+    "postdev:full": "pm2 start ecosystem.local.config.js"
   },
   "dependencies": {
     "@types/compression": "^1.8.1",

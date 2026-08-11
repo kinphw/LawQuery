@@ -64,7 +64,11 @@
 
   // 검색결과 요약 테이블: 제목이 폭을 독점하고 날짜/일련번호가 깨지는 문제 해결
   // 인라인 table-layout:fixed 를 모바일에선 auto 로 덮어써 컬럼이 내용폭에 맞게
-  #results .table {
+  // ⚠ style.css 는 법령·유권해석 공용 번들이고 결과 컨테이너 id 도 양쪽 다 #results 다.
+  //   .law-table 을 빼지 않으면 이 규칙(ID 특이성+!important)이 _table.scss 의
+  //   `.law-table{table-layout:fixed}` 를 이겨 법령 연계표의 단(段) 폭이 내용에 따라
+  //   제각각 벌어진다. 유권해석 요약표에만 적용되도록 스코프를 좁힌다.
+  #results .table:not(.law-table) {
     font-size: 0.8rem;
     table-layout: auto !important;
     width: 100%;

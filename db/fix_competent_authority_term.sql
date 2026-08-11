@@ -8,9 +8,35 @@
 --       권한 있는 인물/직원/사람 = authorized person/officer  (← 건드리면 안 됨)
 --       권한 있는 기관         = authorized institution(hk_amlo) 또는 competent authority(EU)
 --     그래서 무차별 '권한 있는'→'관할' 치환은 금지. 아래처럼 좁혀서만 바꾼다:
+--       · 번역문에 남은 competent/компетent authority(ies) → 관할 당국
 --       · '권한 있는 당국'  → 원문에 competent 있는 행만 (당국=authorities 라 거의 안전, 가드로 확정)
 --       · '권한 있는 기관'  → EU 법령 + 원문 competent authority + authorized institution/body 아님
 -- ───────────────────────────────────────────────────────────────────────────
+
+-- ⓪ 해외법령 원문 번역(fin_law_db) — 번역에 잔존한 competent/компетent 표기
+--    authority(ies)를 먼저 치환해야 '관할 authorities' 같은 혼합 표기가 생기지 않는다.
+UPDATE fin_law_db.law_provision
+   SET text_ko = REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(text_ko,
+       'компетent한 당국', '관할 당국'),
+       'компетent authorities', '관할 당국'),
+       'компетent authority', '관할 당국'),
+       'компетent 당국', '관할 당국'),
+       'Competent authorities', '관할 당국'),
+       'Competent authority', '관할 당국'),
+       'competent authorities', '관할 당국'),
+       'competent authority', '관할 당국'),
+       'компетent', '관할')
+ WHERE text_ko REGEXP 'компетent|[Cc]ompetent';
+
+--    authority(ies) 뒤에 남은 영문식 조사는 한국어 조사로 정규화한다.
+UPDATE fin_law_db.law_provision
+   SET text_ko = REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(text_ko,
+       '관할 당국는', '관할 당국은'),
+       '관할 당국가', '관할 당국이'),
+       '관할 당국를', '관할 당국을'),
+       '관할 당국와', '관할 당국과'),
+       '관할 당국로', '관할 당국으로')
+ WHERE text_ko REGEXP '관할 당국[는가와를로]';
 
 -- ① 해외법령 원문 번역(fin_law_db) — '당국'형: competent 원문 가드
 UPDATE fin_law_db.law_provision
