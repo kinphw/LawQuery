@@ -46,3 +46,6 @@ assets/css/style.css
 .claude/settings.local.json
 
 .mcp.json
+
+# 인증서 발급용 임시 검증 파일 (assetlinks.json 만 추적)
+.well-known/acme-challenge/

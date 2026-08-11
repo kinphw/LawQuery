@@ -68,9 +68,31 @@ npm run dev:full
 # 타입체크만
 npm run typecheck:watch
 
-# 프로덕션 배포 (git pull → tsc → webpack → scss → pm2 restart)
+# ★ 로컬 상시가동 (pm2) — 개발을 안 할 때도 https://codexa.test 가 늘 살아있게
+npm run pm2:start     # 기동 + 부팅복원 목록 저장(pm2 save)
+npm run serve         # 코드 수정 반영: 빌드(backend+webpack+scss) → pm2 restart
+npm run pm2:logs      # 로그 / pm2:stop, pm2:restart, pm2:status
+
+# 프로덕션 배포 (git pull → tsc → webpack → scss → pm2 restart) — 공개서버 종료로 현재 미사용
 ./deploy.sh
 ```
+
+### 로컬 상시가동 구성 (2026-08-10~, 공개서버 codexa.kro.kr 종료 후)
+
+이 PC 한 대가 곧 서버다. 공개 노출 없이 **로컬 접속 전용**(`https://codexa.test`).
+
+| 조각 | 상시가동 방식 |
+|---|---|
+| Apache 2.4 (443 정적 + `/api`→4000 프록시) | Windows 서비스, 자동 시작 |
+| MariaDB (3306) | Windows 서비스, 자동 시작 |
+| Node 백엔드 (4000) | **pm2** — `ecosystem.local.config.js`, 로그온 시 작업 스케줄러 `LawQuery pm2 autostart` → `scripts/pm2-boot.ps1` (`pm2 resurrect`, 실패 시 ecosystem 폴백) |
+
+- pm2 가 실행하는 것은 **컴파일된 `src/backend/js`** (편집 중 깨져도 서비스가 유지되도록 ts watch 를 쓰지 않음)
+  → 백엔드 코드를 고쳤으면 **`npm run serve`** 해야 반영된다.
+- `npm run dev` 진입 시 `predev`(kill-stale.ps1)가 pm2 백엔드를 **자동 정지**(4000 충돌 회피),
+  종료 시 `postdev` 가 **자동 재기동**한다. 수동 복구는 `npm run pm2:start`.
+- 부팅 자동복원은 **로그온 트리거** — 로그인해야 뜬다. 로그인 전부터 띄우려면 관리자 권한으로
+  pm2 를 Windows 서비스로 등록해야 한다(미적용).
 
 > **⚠️ 백엔드(4000)는 API 전용 — 정적 파일을 서빙하지 않는다.** `express.static` 이 없다.
 > 정적(HTML·`dist/`·assets)은 **Apache 가 서빙**하고 `/api/*` 만 4000 으로 프록시한다(동일출처).
