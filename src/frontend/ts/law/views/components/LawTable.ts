@@ -8,6 +8,12 @@ type Path = [
     LawTreeNode | null, LawTreeNode | null,
     LawTreeNode | null, LawTreeNode | null, LawTreeNode | null];
 
+/** 스크롤 앵커 — 기준선에 걸린 조문 셀 id + 그 셀 안에서의 상대 위치(0~1). */
+export interface LawScrollAnchor {
+    id: string;
+    ratio: number;
+}
+
 export class LawTable {
 
     // Test
@@ -96,7 +102,9 @@ export class LawTable {
         const windowed = results.length > LawTable.WINDOW_MIN;   // 대형 법령만 가상화(소·중형은 기존 경로)
         this.winResults = null;                                  // 매 렌더마다 초기화
 
-        let html = '<div class="table-responsive law-table-wrap"><table class="table table-bordered law-table">';
+        // --lq-step: 단(段) 수를 CSS 로 넘긴다. step 은 URL 파라미터라 CSS 가 알 수 없는데,
+        // 모바일 세로에서 최소폭을 '단 수 × 열폭'으로 잡아야 4단·5단의 열 폭이 같아진다(_responsive.scss).
+        let html = `<div class="table-responsive law-table-wrap"><table class="table table-bordered law-table" style="--lq-step:${this.step}">`;
         // 윈도잉 시 placeholder(colspan 행)가 열폭을 깨지 않도록 colgroup으로 폭 고정(table-layout:fixed)
         if (windowed) {
             const w = (100 / this.step).toFixed(4);
@@ -189,15 +197,25 @@ export class LawTable {
             const i = this.winResults.findIndex(r => String(r.id) === id);
             if (i >= 0) {
                 const tb = host.querySelector(`tbody.lq-vblock[data-widx="${i}"]`) as HTMLElement | null;
-                if (tb && tb.classList.contains('lq-ph')) {
-                    this.observer?.unobserve(tb);
-                    tb.classList.remove('lq-ph');
-                    tb.innerHTML = this.renderLawRows(this.winResults[i], this.winSearch);
-                }
+                if (tb) this.mountBlock(tb);
                 cell = host.querySelector(sel) as HTMLElement | null;
             }
         }
         return cell;
+    }
+
+    /**
+     * 윈도잉 placeholder 블록을 실제 행으로 즉시 채운다(이미 채워졌거나 비가상화면 no-op).
+     * 정적 HTML 내보내기처럼 '화면에 안 보이는 블록까지' 내용이 필요할 때 호출한다 —
+     * placeholder 상태로 저장하면 빈 스페이서만 남는다.
+     */
+    mountBlock(tb: HTMLElement): void {
+        if (!this.winResults || !tb.classList.contains('lq-ph')) return;
+        const i = parseInt(tb.dataset.widx || '-1', 10);
+        if (i < 0 || !this.winResults[i]) return;
+        this.observer?.unobserve(tb);   // 관찰 해제 → 나중에 중복 렌더되지 않게
+        tb.classList.remove('lq-ph');
+        tb.innerHTML = this.renderLawRows(this.winResults[i], this.winSearch);
     }
 
     /** 분할 항/호 노드 id → 소속 조('A2_3h'→'A2', 'E14_2_1h'→'E14_2') + 표시 라벨. 조 자체/별표면 null. */
@@ -412,6 +430,79 @@ export class LawTable {
 
     setTextSize(size: string): void {
         this.currentTextSize = size;
+    }
+
+    // ── 글자크기 변경: 재렌더 없이 반영 + 보던 조문 위치 유지 ──
+
+    /**
+     * 글자크기를 '이미 그려진 셀의 클래스 교체'로만 반영한다(재렌더 X).
+     * 재렌더하면 (1) 윈도잉 placeholder가 되살아나 추정높이로 돌아가고 (2) content-visibility가
+     * 기억한 블록 실측높이도 초기화돼, 같은 픽셀 y가 전혀 다른 조를 가리킨다 = "스크롤이 튄다".
+     * 클래스 교체는 DOM·이벤트·윈도잉 상태를 그대로 두므로 높이 변화만 남는다.
+     */
+    applyTextSize(size: string): void {
+        const prev = this.currentTextSize;
+        this.currentTextSize = size;                 // 이후 렌더(placeholder 지연 채움 포함)에도 반영
+        if (prev === size) return;
+        document.getElementById('results')?.querySelectorAll('td.law-box').forEach(td => {
+            if (prev) td.classList.remove(prev);     // '보통'은 빈 문자열이라 remove/add 대상 아님
+            if (size) td.classList.add(size);
+        });
+    }
+
+    /** sticky 요소(회원바 + thead) 아래 기준선 — 조문이 실제로 보이기 시작하는 뷰포트 y. */
+    private static anchorLine(): number {
+        const userbarH = parseFloat(
+            getComputedStyle(document.documentElement).getPropertyValue('--lq-userbar-h')) || 0;
+        const thead = document.querySelector('.law-table thead') as HTMLElement | null;
+        return userbarH + (thead ? thead.getBoundingClientRect().height : 0);
+    }
+
+    /** 기준선에 걸쳐 있는 조문 셀을 앵커로 기록. 최상단이면 null(복원 불필요). */
+    captureScrollAnchor(): LawScrollAnchor | null {
+        const host = document.getElementById('results');
+        if (!host || window.scrollY <= 0) return null;
+        const line = LawTable.anchorLine();
+
+        // 대형 법령(수천 셀)에서 전체 스캔을 피한다 — 기준선에 걸친 블록 안에서만 셀을 본다.
+        const blocks = Array.from(host.querySelectorAll('tbody.lq-vblock')) as HTMLElement[];
+        const block = blocks.find(b => b.getBoundingClientRect().bottom > line);
+        const cells = Array.from((block ?? host).querySelectorAll('td[data-id]')) as HTMLElement[];
+
+        // 행은 위→아래 순서라 top은 비감소 — 기준선을 지나면 더 볼 필요 없다.
+        let best: { cell: HTMLElement; rect: DOMRect } | null = null;
+        for (const cell of cells) {
+            const rect = cell.getBoundingClientRect();
+            if (rect.bottom <= line) continue;                            // 이미 화면 위로 지나간 셀
+            if (rect.top > line) { best = best ?? { cell, rect }; break; } // 기준선 아래 첫 셀
+            // 기준선을 가로지르는 셀 중 가장 작은 것 = rowspan 큰 상위 셀보다 위치가 정확한 앵커
+            if (!best || rect.height < best.rect.height) best = { cell, rect };
+        }
+        if (!best) return null;
+
+        const ratio = best.rect.height > 0
+            ? Math.min(1, Math.max(0, (line - best.rect.top) / best.rect.height))
+            : 0;
+        return { id: best.cell.dataset.id!, ratio };
+    }
+
+    /** 앵커 조문이 다시 기준선의 같은 자리에 오도록 스크롤 복원(픽셀이 아니라 조문 기준). */
+    restoreScrollAnchor(anchor: LawScrollAnchor | null): void {
+        if (!anchor) return;
+        const host = document.getElementById('results');
+        if (!host) return;
+        const key = (window as any).CSS?.escape ? CSS.escape(anchor.id) : anchor.id;
+
+        const align = (): void => {
+            const cell = host.querySelector(`td[data-id="${key}"]`) as HTMLElement | null;
+            if (!cell) return;
+            const rect = cell.getBoundingClientRect();
+            const y = rect.top + window.scrollY + rect.height * anchor.ratio - LawTable.anchorLine();
+            window.scrollTo({ top: Math.max(0, y), behavior: 'auto' });
+        };
+        align();
+        // 새로 화면에 들어온 블록이 실측 높이로 갱신되며 목표가 밀린다 → 다음 프레임에 한 번 더 수렴.
+        requestAnimationFrame(align);
     }
 
     private formatContent(text: string | null, scheduledText: string | null, scheduledDate: string | null, searchText: string, focus: Set<number> = new Set()): string {

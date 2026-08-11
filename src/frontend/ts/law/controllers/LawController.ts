@@ -10,6 +10,8 @@ import { LawHeaderEventManager } from "./event/LawHeaderEventManager";
 import { LawTextSizeEventManager } from "./event/LawTextSizeEventManager";
 import { LawSearchEventManager } from "./event/LawSearchEventManager";
 import { LawTextSearchEventManager } from "./event/LawTextSearchEventManager";
+import { LawExportEventManager } from "./event/LawExportEventManager";
+import { LawRevisionEventManager } from "./event/LawRevisionEventManager";
 import { LawPenaltyEventManager } from "./event/penalty/LawPenaltyEventManager"; // 250504
 import { LawReferenceEventManager } from "./event/reference/LawReferenceEventManager"; //250514
 
@@ -99,6 +101,7 @@ export class LawController implements ILawController {
     private eventManagers: ILawEventManager[];
     private penaltyEventManager: LawPenaltyEventManager;
     private referenceEventManager: LawReferenceEventManager; // 250515
+    private textSizeEventManager: LawTextSizeEventManager;
     private annexEventManager: import("./event/annex/LawAnnexEventManager").LawAnnexEventManager;
 
     constructor() {
@@ -127,6 +130,7 @@ export class LawController implements ILawController {
 
         this.penaltyEventManager = new LawPenaltyEventManager(this);
         this.referenceEventManager = new LawReferenceEventManager(); // 250515
+        this.textSizeEventManager = new LawTextSizeEventManager(this); // 티저에서도 단독 바인딩
 
         // Dynamic import workaround for now unless we import at top
         const { LawAnnexEventManager } = require('./event/annex/LawAnnexEventManager');
@@ -135,10 +139,12 @@ export class LawController implements ILawController {
         // 이벤트매니저들을 배열로 관리
         this.eventManagers = [
             new LawHeaderEventManager(this),
-            new LawTextSizeEventManager(this),
+            this.textSizeEventManager,
             new LawSearchEventManager(this),
             new LawTextSearchEventManager(this),
-            // new LawPenaltyEventManager(this) // ← 추가            
+            new LawRevisionEventManager(this), // 시행예정 개정 조문만 보기(개정비교)
+            new LawExportEventManager(this),   // 선택한 조만 정적 HTML로 저장
+            // new LawPenaltyEventManager(this) // ← 추가
             this.penaltyEventManager, // ← 바로 등록
             // new LawReferenceEventManager(), // ← 추가      
             this.referenceEventManager, // ← 바로 등록      
@@ -236,12 +242,18 @@ export class LawController implements ILawController {
     private async showLinkedTeaser(): Promise<void> {
         this.hideEl('penaltyBtn');
         this.hideEl('annexBtn');
+        this.hideEl('lawRevisionBtn');
+        this.hideEl('lawExportBtn');
         this.hideEl('lawArticleCard');
         this.hideEl('lawSearchCard');
 
         const all = await this.modelFetchAll.getAllLaws(); // 비회원엔 상위 3개 조 + locked
         this.dataManager.setCurrentResults(all.data);
         this.view.render(this.dataManager.getCurrentResults());
+
+        // 티저는 bindAllEvents()를 부르지 않는다(잠긴 기능까지 살아나므로) — 다만 글자크기는
+        // 버튼이 보이는 채로 무반응이었어서 이것만 단독 바인딩한다.
+        this.textSizeEventManager.bindEvents();
 
         // 표 아래 안내(실제 잠긴 내용은 담지 않음)
         UpsellNotice.appendInside('results', '회원가입 시 전체 연계표(법·시행령·감독규정·세칙·별표)를 조회할 수 있습니다');

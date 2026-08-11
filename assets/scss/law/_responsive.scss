@@ -73,9 +73,12 @@
     -webkit-overflow-scrolling: touch;   // iOS 관성 스크롤
   }
 
-  // 단 수만큼 최소폭을 확보해 각 단이 짓눌리지 않고 스크롤로 읽히게
+  // 단 수만큼 최소폭을 확보해 각 단이 짓눌리지 않고 스크롤로 읽히게.
+  // 720px 고정이면 4단은 열당 180px, 5단은 144px 로 단 수에 따라 열이 좁아졌다
+  // → 단 수에 비례시켜 어느 법령이든 열당 180px 을 보장한다(4단 720 / 5단 900).
+  // --lq-step 은 LawTable 이 <table> 인라인으로 심는다(fallback 4).
   .law-table {
-    min-width: 720px;
+    min-width: calc(var(--lq-step, 4) * 180px);
     font-size: 0.8rem;
   }
 

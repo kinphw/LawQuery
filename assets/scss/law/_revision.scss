@@ -1,0 +1,30 @@
+// 개정비교 모드 — 시행예정 개정이 걸린 조문만 남긴 연계표.
+// 표 자체(인라인 diff <del>/<ins>)는 common/_base.scss 가 이미 담당한다. 여기는 모드 표시만.
+
+.lq-rev-banner {
+  .alert {
+    border-left: 4px solid #c62828;
+  }
+
+  // 범례의 del/ins 는 본문 diff 와 같은 모양이어야 '이 색이 곧 개정'임이 읽힌다.
+  .lq-rev-legend {
+    del,
+    ins {
+      margin-right: 0.15rem;
+    }
+  }
+}
+
+// 개정비교 진입 버튼 — 켜져 있는 동안 눌린 상태로 둔다(모드에 갇힌 느낌 방지).
+#lawRevisionBtn.active {
+  background-color: #c62828;
+  border-color: #c62828;
+  color: #fff;
+}
+
+// 좁은 화면에선 배너에서 보조 정보부터 접는다(개수·해제 버튼은 끝까지 남긴다).
+@media (max-width: 575.98px) {
+  .lq-rev-banner .lq-rev-legend {
+    display: none;
+  }
+}

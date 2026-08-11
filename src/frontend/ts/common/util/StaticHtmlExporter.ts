@@ -47,8 +47,10 @@ body { margin: 0; padding: 24px 20px 40px; background: #fff; color: #212529;
 .lq-export-foot { max-width: 1760px; margin: 34px auto 0; padding-top: 12px;
   border-top: 1px solid #dee2e6; color: #868e96; font-size: .78rem; line-height: 1.65; }
 /* 화면 밖 렌더 스킵(content-visibility)은 저장본에서 내용이 비어 보일 수 있어 해제 */
-.fm-table tbody.fm-art-group, .pta-article, .flt-band {
+.fm-table tbody.fm-art-group, .pta-article, .flt-band, .law-table tbody.lq-vblock {
   content-visibility: visible !important; contain-intrinsic-size: auto !important; }
+/* 법령 연계표: 저장본엔 sticky 기준(회원바)이 없어 헤더가 겹쳐 보일 수 있으므로 고정 해제 */
+.law-table thead.sticky-top { position: static !important; }
 /* 저장본은 항상 밝게 — 요약표가 열람자 다크모드를 상속하지 않도록 */
 @media (prefers-color-scheme: dark) {
   .ptt-table, .ptt-table thead th, .ptt-table th, .ptt-table td,

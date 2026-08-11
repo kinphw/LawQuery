@@ -1,5 +1,5 @@
 import { Header } from '../../common/components/Header';
-import { LawTable } from './components/LawTable';
+import { LawTable, LawScrollAnchor } from './components/LawTable';
 import { LawCheckbox } from './components/LawCheckbox';
 
 import { LawResult } from '../types/LawResult';
@@ -86,8 +86,30 @@ export class LawView {
         this.lawTable.names = names;
     }
 
+    getLawNames(): string[] {
+        return this.lawTable.names;
+    }
+
+    /** 가상화 placeholder 블록을 실제 행으로 채운다(정적 HTML 내보내기 전 호출). */
+    mountBlock(tb: HTMLElement): void {
+        this.lawTable.mountBlock(tb);
+    }
+
     setTextSize(size: string): void {
         this.lawTable.setTextSize(size);
+    }
+
+    /** 글자크기 변경을 재렌더 없이 반영(스크롤 튐 방지 — LawTable.applyTextSize 주석 참조). */
+    applyTextSize(size: string): void {
+        this.lawTable.applyTextSize(size);
+    }
+
+    captureScrollAnchor(): LawScrollAnchor | null {
+        return this.lawTable.captureScrollAnchor();
+    }
+
+    restoreScrollAnchor(anchor: LawScrollAnchor | null): void {
+        this.lawTable.restoreScrollAnchor(anchor);
     }
 
     setInfoButtonHandler(): void {

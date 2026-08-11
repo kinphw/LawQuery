@@ -1,0 +1,77 @@
+// ── 정적 HTML 내보내기: 조(밴드) 선택 모드 ──────────────────────────────
+// 평소 조회 화면은 그대로 두고, 'HTML 저장'을 누른 동안만 표가 선택 가능해진다.
+// 선택 단위는 조 밴드(tbody.lq-vblock) — 5단표는 rowspan 병합이라 밴드 통째가 안전한 단위다.
+
+#results.lq-pick {
+  padding-bottom: 5rem;              // 하단 조작 바에 마지막 행이 가리지 않게
+
+  .law-table tbody.lq-vblock {
+    cursor: pointer;
+    user-select: none;               // 클릭할 때 본문 텍스트가 드래그 선택되지 않도록
+  }
+
+  // 선택모드에선 셀 안 기능버튼(벌칙·별표·참조)을 죽여, 클릭이 모달이 아니라 밴드 선택으로 흐르게 한다.
+  .law-table td .btn {
+    pointer-events: none;
+    opacity: .45;
+  }
+
+  .law-table tbody.lq-vblock:hover td {
+    background-color: #f8f9fa;
+  }
+
+  .law-table tbody.lq-picked td {
+    background-color: #e7f1ff;
+  }
+  // 밴드의 시작·끝을 굵은 선으로 — 어디부터 어디까지 고른 것인지 한눈에.
+  .law-table tbody.lq-picked > tr:first-child > td {
+    border-top: 3px solid #0d6efd;
+  }
+  .law-table tbody.lq-picked > tr:last-child > td {
+    border-bottom: 3px solid #0d6efd;
+  }
+  .law-table tbody.lq-picked > tr:first-child > td:first-child::before {
+    content: "✓ ";
+    color: #0d6efd;
+    font-weight: 700;
+  }
+}
+
+// 선택모드 하단 조작 바(선택 개수·전체선택·저장·닫기)
+.lq-pick-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1080;                     // 글자크기 floating(1000)·검색 버튼보다 위
+  background-color: #fff;
+  border-top: 1px solid #dee2e6;
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, .08);
+  padding: .5rem .75rem;
+  padding-bottom: calc(.5rem + env(safe-area-inset-bottom, 0px));  // 모바일 홈 인디케이터
+}
+
+.lq-pick-bar-inner {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  flex-wrap: wrap;
+}
+
+.lq-pick-acts {
+  margin-left: auto;
+  display: flex;
+  gap: .4rem;
+  flex-wrap: wrap;
+}
+
+// 선택모드 중엔 떠 있는 '검색' 버튼이 조작 바와 겹치므로 감춘다(미지원 브라우저는 겹쳐 보일 뿐 무해).
+body:has(.lq-pick-bar) .floating-search-btn {
+  display: none;
+}
+
+@media (max-width: 575.98px) {
+  .lq-pick-msg {
+    display: none;                   // 좁은 화면에선 안내문 대신 개수·버튼만
+  }
+}
