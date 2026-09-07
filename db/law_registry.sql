@@ -23,4 +23,8 @@ INSERT IGNORE INTO law_registry (code, sort_order, kind) VALUES
   ('g', 40, 'law'),
   ('c', 50, 'law'),
   ('t', 60, 'law'),
-  ('z', 70, 'law');
+  ('z', 70, 'law'),
+  ('v', 80, 'law'),
+  ('x', 90, 'law'),
+  ('b', 100, 'law'),
+  ('p', 110, 'law');

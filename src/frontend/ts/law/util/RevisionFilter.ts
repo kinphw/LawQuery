@@ -12,9 +12,10 @@ import { LawTreeNode } from '../types/LawTreeNode';
  * '개정비교' 모드가 된다(국가법령정보센터 신구법비교의 '(생 략)' 압축과 같은 효과).
  */
 
-/** 이 노드 자체에 시행예정 내용이 붙어 있는가. */
+/** 이 노드 자체에 비교본 내용이 붙어 있는가(빈 비교본 = 과거본에 없던 조 = 신설도 개정으로 센다). */
 export function isRevised(n: LawTreeNode): boolean {
-    return !!(n.scheduledTitle && n.scheduledTitle.trim());
+    if (n.scheduledTitle == null) return false;
+    return !!n.scheduledTitle.trim() || n.revDirection === 'past';
 }
 
 /** 자기 또는 자손(하위규정) 중 하나라도 개정이면 true. */
