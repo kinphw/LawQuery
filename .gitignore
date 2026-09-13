@@ -49,3 +49,7 @@ assets/css/style.css
 
 # 인증서 발급용 임시 검증 파일 (assetlinks.json 만 추적)
 .well-known/acme-challenge/
+# 로컬(오프라인) 배포 산출물
+dist-local/
+dist-local-offline/
+release/

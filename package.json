@@ -5,6 +5,7 @@
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^22.14.1",
     "@types/nodemailer": "^8.0.0",
+    "@types/sql.js": "^1.4.11",
     "concurrently": "^9.1.2",
     "sass": "^1.87.0",
     "ts-loader": "^9.5.2",
@@ -36,7 +37,15 @@
     "scss:watch": "sass --watch assets/scss/style.scss:assets/css/style.css",
     "predev:full": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/kill-stale.ps1",
     "dev:full": "concurrently \"npm run dev:server\" \"npm run dev:backend\" \"npm run typecheck:watch\" \"npm run scss:watch\"",
-    "postdev:full": "pm2 start ecosystem.local.config.js"
+    "postdev:full": "pm2 start ecosystem.local.config.js",
+    "export:local": "python scripts/export-local.py",
+    "build:local": "webpack --config webpack.local.config.js && node scripts/build-local.js",
+    "local": "npm run export:local && npm run build:local",
+    "local:zip": "python scripts/export-local.py --offline && webpack --config webpack.local.config.js && node scripts/build-local.js --offline --zip",
+    "local:open": "node scripts/open-local.js",
+    "local:serve": "node scripts/serve-local.js",
+    "local:serve:offline": "node scripts/serve-local.js --offline",
+    "local:verify": "node scripts/verify-local.js"
   },
   "dependencies": {
     "@types/compression": "^1.8.1",
@@ -54,6 +63,7 @@
     "jsonwebtoken": "^9.0.3",
     "mysql2": "^3.14.0",
     "nodemailer": "^8.0.10",
-    "pm2": "^6.0.5"
+    "pm2": "^6.0.5",
+    "sql.js": "^1.14.2"
   }
 }

@@ -79,7 +79,12 @@ export class LawModel extends LawBaseModel {
     // 하위/상위 레벨 테이블 LEFT JOIN + COALESCE 로 node 내용/seq 를 뽑는 헬퍼
     const sideSelect = (cteAlias: string, sideLevels: string[], dir: string) => {
       const joins = sideLevels.map(lv => `LEFT JOIN db_${lv} x_${lv} ON x_${lv}.id_${lv} = ${cteAlias}.node_id`).join('\n        ');
-      const coal = (col: string) => `COALESCE(${sideLevels.map(lv => `x_${lv}.${col.replace('{lv}', lv)}`).join(', ')})`;
+      // ⚠️ COALESCE 는 인자가 2개 이상이어야 한다(SQLite). 레벨이 하나뿐이면 그 컬럼을 그대로 쓴다.
+      //    (MySQL 은 인자 1개도 받아주지만 결과가 같으므로 이렇게 써도 무방하다)
+      const coal = (col: string) => {
+        const cols = sideLevels.map(lv => `x_${lv}.${col.replace('{lv}', lv)}`);
+        return cols.length === 1 ? cols[0] : `COALESCE(${cols.join(', ')})`;
+      };
       return `
         SELECT ${cteAlias}.base_seq, ${cteAlias}.base_id, NULL AS base_content, NULL AS base_sched, NULL AS base_date,
                ${cteAlias}.node_id,
@@ -131,8 +136,14 @@ export class LawModel extends LawBaseModel {
     const cte = ctes.length ? `WITH RECURSIVE ${ctes.join(',\n')}\n` : '';
 
     // base 먼저(루트) → up/down(각 depth 오름차순으로 부모가 자식보다 먼저 생기게).
-    const query = `${cte}${unionParts.join('\nUNION ALL\n')}
-      ORDER BY base_seq, FIELD(dir,'base','up','down'), depth, node_seq`;
+    //
+    // ⚠️ MySQL 의 FIELD() 는 SQLite 에 없고, UNION 결과에 ORDER BY 식을 직접 붙이는 것도
+    //    SQLite 가 거부한다("ORDER BY term does not match any column in the result set").
+    //    → 합집합을 서브쿼리로 감싸고 바깥에서 CASE 로 정렬한다(두 DB 모두 동일하게 동작).
+    const query = `${cte}SELECT * FROM (
+${unionParts.join('\nUNION ALL\n')}
+      ) pivot_rows
+      ORDER BY base_seq, CASE dir WHEN 'base' THEN 0 WHEN 'up' THEN 1 ELSE 2 END, depth, node_seq`;
 
     return this.db.query<PivotRow>(query);
   }
@@ -736,7 +747,7 @@ export class LawModel extends LawBaseModel {
         JOIN rdb ON rdb.id_start = c.node_id AND rdb.id_end <> c.node_id
         WHERE c.depth < 4 AND rdb.id_end REGEXP '^[ESR]'
       )
-      SELECT DISTINCT c.node_id AS id, LOWER(LEFT(c.node_id, 1)) AS origin, c.depth AS depth,
+      SELECT DISTINCT c.node_id AS id, LOWER(SUBSTR(c.node_id, 1, 1)) AS origin, c.depth AS depth,
              COALESCE(e.content_e, s.content_s, r.content_r) AS content
       FROM chain c
       LEFT JOIN db_e e ON e.id_e = c.node_id

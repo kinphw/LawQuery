@@ -8,6 +8,7 @@
  * 버전: 0.0.2
  */
 import { ModalManager } from './ModalManager';
+import { appInfoHtml } from './appInfo';
 
 export class Header {
 
@@ -59,28 +60,11 @@ export class Header {
     // `);
     // }
 
+    // 모달 본문은 appInfo 모듈에 둔다 — 로컬(오프라인) 배포본에서는 그 모듈이 통째로
+    // 교체되어 서비스 주소·저장소 링크가 실리지 않는다. 링크 추가는 반드시 그쪽에서.
     private showInfo(): void {
-        ModalManager.showModal('LawQuery 정보', `
-            <div class="mb-2">
-                <strong>LawQuery</strong> <span class="text-secondary">전금법령, 유권해석, 비조치의견서 검색 및 조회</span>
-            </div>
-            <div class="mb-2 p-2 rounded" style="background:#f1f3f5">
-                <i class="fas fa-globe text-primary"></i> 웹에서도 이용하실 수 있어요:
-                <a href="https://codexa.kro.kr" target="_blank" rel="noopener"><strong>codexa.kro.kr</strong></a>
-            </div>
-            <div class="mb-1">
-                <a href="https://github.com/kinphw/LawQuery" target="_blank" rel="noopener">
-                    <i class="fab fa-github"></i> github.com/kinphw/LawQuery
-                </a>
-            </div>
-            <div class="mb-1">
-                <a href="https://github.com/kinphw/LawQuery/releases" target="_blank" rel="noopener">
-                    <i class="fas fa-history"></i> 업데이트 내역 (Releases)
-                </a>
-            </div>
-            <div class="text-muted small">Apache license 2.0</div>
-        `);
-    }    
+        ModalManager.showModal('LawQuery 정보', appInfoHtml());
+    }
     
 
 
