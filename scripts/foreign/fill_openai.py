@@ -10,7 +10,7 @@ seg-level 번역 — law_provision 의 미번역 seg(text_ko NULL/'')를 OpenAI 
   FINDB_ROOT_PW=genius python fill_openai.py --code eu_psd2
   FINDB_ROOT_PW=genius python fill_openai.py --code eu_crr,eu_crd --model gpt-4o-mini
 """
-import os, sys, io, json, argparse, time, requests, pymysql
+import os, sys, io, re, json, argparse, time, requests, pymysql
 from dotenv import load_dotenv
 
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
@@ -30,24 +30,54 @@ def _post(messages, model, response_format=None):
     return r.json()["choices"][0]["message"]["content"]
 
 
+SENT_SPLIT_RE = re.compile(r"(?<=[.;:])\s+")
+
+
+def _split_long_line(line, cap=5000):
+    """개행이 없는 초장문 1줄(개정 지시문에 통째로 인용된 신설 조문 등)을 문장 경계로 쪼갠다.
+    문단(개행) 청크만으로는 안 쪼개져 한 요청에 2만자가 실리고 응답이 max_tokens 에서 잘린다."""
+    if len(line) <= cap:
+        return [line]
+    out, buf = [], ""
+    for sent in SENT_SPLIT_RE.split(line):
+        if buf and len(buf) + len(sent) + 1 > cap:
+            out.append(buf); buf = sent
+        else:
+            buf = (buf + " " + sent) if buf else sent
+    if buf:
+        out.append(buf)
+    return out
+
+
 def translate_one(text, lang, model):
-    """긴 seg 개별 — 6000자 초과 시 문단 청크."""
+    """긴 seg 개별 — 6000자 초과 시 문단(개행) 청크, 개행이 없는 초장문 1줄은 문장 청크."""
     sysp = (f"Translate the following {lang} statutory/legal text into Korean (한국어). "
             "Preserve the exact line breaks and the leading indentation of every line "
             "(the nesting hierarchy is encoded by newlines + 2-space-per-level indent — keep it identical). "
             "Preserve numbering/markers and any markdown tables. Output only the Korean translation.")
     if len(text) <= 6000:
         return _post([{"role": "system", "content": sysp}, {"role": "user", "content": text}], model).strip()
-    chunks, buf = [], ""
-    for para in text.split("\n"):
-        if buf and len(buf) + len(para) > 5000:
-            chunks.append(buf); buf = para
+
+    # (앞 조각에 이어붙일 구분자, 조각) — 줄 경계는 개행, 한 줄을 쪼갠 조각끼리는 공백
+    pieces = []
+    for li, line in enumerate(text.split("\n")):
+        for pi, part in enumerate(_split_long_line(line)):
+            pieces.append(("" if (li == 0 and pi == 0) else ("\n" if pi == 0 else " "), part))
+
+    chunks, cur, cur_sep = [], "", ""
+    for sep, part in pieces:
+        if cur and len(cur) + len(sep) + len(part) > 5000:
+            chunks.append((cur_sep, cur)); cur, cur_sep = part, sep
         else:
-            buf = (buf + "\n" + para) if buf else para
-    if buf:
-        chunks.append(buf)
-    return "\n".join(_post([{"role": "system", "content": sysp}, {"role": "user", "content": c}], model).strip()
-                     for c in chunks)
+            cur = (cur + sep + part) if cur else part
+    if cur:
+        chunks.append((cur_sep, cur))
+
+    res = ""
+    for sep, c in chunks:
+        ko = _post([{"role": "system", "content": sysp}, {"role": "user", "content": c}], model).strip()
+        res += (sep + ko) if res else ko
+    return res
 
 
 def translate_batch(items, lang, model):

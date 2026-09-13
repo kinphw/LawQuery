@@ -18,6 +18,12 @@ UPDATE fin_law_db.law_provision
  WHERE text_ko LIKE '%신용 이체%'
    AND LOWER(text_original) LIKE '%credit transfer%';
 
+-- ①-b 조 제목 번역(heading_ko) — 같은 오역이 목차·바로가기에도 남는다. 같은 원문 가드.
+UPDATE fin_law_db.law_provision
+   SET heading_ko = REPLACE(heading_ko, '신용 이체', '입금이체')
+ WHERE heading_ko LIKE '%신용 이체%'
+   AND LOWER(heading) LIKE '%credit transfer%';
+
 -- ② 조문 주요내용(gist)
 UPDATE ldb_auth.foreign_article_gist
    SET gist_ko = REPLACE(gist_ko, '신용 이체', '입금이체')
