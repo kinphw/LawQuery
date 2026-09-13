@@ -106,19 +106,6 @@ export class InterpretationModel {
     return results.length > 0 ? results[0] : null;
   }
 
-  /** 여러 id의 본문을 한 번에. 비회원 티저(보이는 행들)의 본문 인라인 전달용. */
-  async getDetailsByIds(ids: number[]): Promise<DetailResult[]> {
-    if (!ids.length) return [];
-    const placeholders = ids.map(() => '?').join(',');
-    const query = `
-      SELECT
-        id, 질의요지, 회답, 이유
-      FROM db_i
-      WHERE id IN (${placeholders})
-    `;
-    return this.db.query<DetailResult>(query, ids);
-  }
-
   async getInitialData(): Promise<SearchResult[]> {
     return this.search({
       type: "전체",

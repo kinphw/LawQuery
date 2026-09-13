@@ -10,6 +10,7 @@ import { FavoriteHandler } from './handlers/FavoriteHandler';
 import { AuthHandler } from './handlers/AuthHandler';
 import { BoardHandler } from './handlers/BoardHandler';
 import { PsdTransitionHandler } from './handlers/PsdTransitionHandler';
+import { authGuard } from './auth/middleware/authGuard';
 
 const app = express();
 const PORT = 4000;
@@ -51,14 +52,22 @@ const authHandler = new AuthHandler();
 // 인증 라우터 (게이트 밖)
 app.use('/api', authHandler.router);
 
-// 법령/유권해석: 게이트는 각 핸들러 내부에서 엔드포인트별로 적용
-//  - 무료(optionalAuth): 단일 법령 본문·메타  /  PRO(proGuard): 연계표·벌칙·참조·별표·유권해석
+// ★ 전면 로그인 벽 (2026-09-01, 1인 사용 체제 — 유료화·등급 개념 없음)
+//   비로그인은 아무 데이터도 볼 수 없다. /api/auth/* (login·me·logout·visit·banner 등)와
+//   /api/admin/* 는 위 authHandler 에서 이미 처리되므로 여기 도달하지 않는다.
+//   → 아래에 등록되는 법령·유권해석·해외법령·즐겨찾기·게시판 라우터 전부가 로그인 필수가 된다.
+//   개별 라우터에는 게이트를 붙이지 않는다(붙이면 요청당 회원 조회가 중복된다).
+//   관리자 전용 라우트만 adminGuard 를 따로 건다.
+//   ⚠️ 로컬(오프라인) 빌드는 이 파일을 쓰지 않고, authGuard 도 authStub 으로 치환되므로 영향 없음.
+app.use('/api', authGuard);
+
+// 법령/유권해석 등 데이터 라우터 — 위 게이트를 이미 통과한 요청만 들어온다.
 app.use('/api/law', lawHandler.router);
 app.use('/api/interpretation', interpretationHandler.router);
 app.use('/api/foreign', new ForeignHandler().router); // 해외법령(원문·번역 2단 + 개인 메모)
-app.use('/api/foreign-transition', new PsdTransitionHandler().router); // PSD2/EMD2 → PSD3/PSR 이행분석(PRO)
+app.use('/api/foreign-transition', new PsdTransitionHandler().router); // PSD2/EMD2 → PSD3/PSR 이행분석
 app.use('/api/favorite', new FavoriteHandler().router); // 즐겨찾기(회원별 북마크, 해외·국내 공용)
-app.use('/api/board', new BoardHandler().router); // 게시판(내부에서 authGuard 적용)
+app.use('/api/board', new BoardHandler().router); // 건의사항 게시판
 
 // 404 처리
 app.use((req, res) => {

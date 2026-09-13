@@ -4,11 +4,7 @@ import { BaseLawController } from './BaseLawController';
 // import { LawService } from '../services/LawService';
 import { LawModel } from '../models/LawModel';
 import { LawTreeNode } from '../types/LawTreeNode';
-import { isPro } from '../../auth/middleware/authGuard';
 import DbContext from '../../common/DbContext';
-
-// 비회원 연계표 티저: 상위 N개 '조'(최상위 법 노드, id != null)까지만 노출
-const TEASER_ARTICLES = 3;
 
 export class LawController extends BaseLawController<LawModel> {
   // private service: LawService;
@@ -18,7 +14,7 @@ export class LawController extends BaseLawController<LawModel> {
     super(new LawModel());
   }
 
-  // /all — 연계표. pro면 전체, 비회원/free면 상위 3개 조만 티저로 내려준다(나머지는 미전송 → 무유출).
+  // /all — 연계표(전체).
   async getAll(req: Request, res: Response): Promise<void> {
 
     // 요청별 구조를 읽는다
@@ -30,33 +26,13 @@ export class LawController extends BaseLawController<LawModel> {
     const dataTemp = await this.model.getAllLaws(dbContext, step, track);
     const data = this.model.toLawTree(dataTemp);
 
-    // pro가 아니면 상위 3개 조까지만 잘라서 보내고 locked 플래그/전체 조 수(total)를 함께 내려준다.
-    if (!isPro(req.member?.plan)) {
-      const { nodes, total } = LawController.teaserTree(data, TEASER_ARTICLES);
-      res.status(200).json({ success: true, data: nodes, locked: true, total });
-      return;
-    }
-
     res.status(200).json({ success: true, data });
-  }
-
-  /** 트리(최상위 = 조 단위)를 상위 max개 조까지만 남긴다. total은 원래 조 수. */
-  private static teaserTree(tree: LawTreeNode[], max: number): { nodes: LawTreeNode[]; total: number } {
-    const total = tree.reduce((n, node) => n + (node.id != null ? 1 : 0), 0);
-    const nodes: LawTreeNode[] = [];
-    let count = 0;
-    for (const node of tree) {
-      if (node.id != null && count >= max) break; // 다음 조부터 차단
-      nodes.push(node);
-      if (node.id != null) count++;
-    }
-    return { nodes, total };
   }
 
   // async getByIds(req: IncomingMessage, res: ServerResponse, lawIds: string[] | null) {
   async getByIds(req: Request, res: Response): Promise<void> {
 
-    // 요청별 구조를 읽는다 (선택 연계표 = PRO 전용)
+    // 요청별 구조를 읽는다 (선택 연계표)
     const dbName: string = req.query.law as string;
     const step: number = parseInt(req.query.step as string);
     const track: string | undefined = (req.query.track as string) || undefined;
@@ -159,7 +135,7 @@ export class LawController extends BaseLawController<LawModel> {
     res.status(200).json({ success: true, data });
   }
 
-  // 기준 전환 피벗 연계표 (/api/law/pivot?law=&step=&base=) — PRO 전용(킬).
+  // 기준 전환 피벗 연계표 (/api/law/pivot?law=&step=&base=)
   // base(기준 레벨)의 각 조문 기준으로 위·아래 연결조문을 묶어 1행씩 내려준다.
   async getPivot(req: Request, res: Response): Promise<void> {
     const dbName: string = req.query.law as string;

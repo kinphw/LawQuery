@@ -67,7 +67,7 @@ UX 토글로 4·5열(감독규정/세칙)만 바꿔 보이게 한다. 첫 케이
 ### 2) 백엔드 (LawQuery `src/backend`)
 - `LawModel.getAllLaws/getLawByIds/getPivot(step, track?)`: 멀티트랙이면 재귀 CTE의 rdb JOIN에 `AND (rdb.track IS NULL OR rdb.track = ?)` 추가. 단일트랙이면 현 쿼리.
 - `getLawRegistry`/`/api/law/list`: 법령별 `tracks: [{code,label,r_short,b_short}]` 포함(db_track+db_meta.track).
-- 티저(상위 3개 법조문)·annex/ref/penalty 엔드포인트: **변경 거의 없음**(법조문 기준·distinct ID).
+- annex/ref/penalty 엔드포인트: **변경 거의 없음**(법조문 기준·distinct ID).
 
 ### 3) 프론트 (LawQuery `src/frontend`)
 - `LawController.bootstrap`: 법령이 멀티트랙이면 **세그먼트 토글** 렌더(예: `[금융투자업] [증권발행·공시]`). 단일트랙이면 미표시.

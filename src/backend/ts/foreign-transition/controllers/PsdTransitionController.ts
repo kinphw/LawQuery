@@ -20,7 +20,7 @@ export class PsdTransitionController {
         res.status(404).json({ success: false, error: '이행분석 버전을 찾을 수 없습니다.' });
         return;
       }
-      res.json({ success: true, data: { ...data, unlocked: req.member?.plan === 'pro' } });
+      res.json({ success: true, data });
     } catch (error) {
       console.error('[foreign-transition] catalog', error);
       res.status(500).json({ success: false, error: '이행분석 목록 조회 실패' });

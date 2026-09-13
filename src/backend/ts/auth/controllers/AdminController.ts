@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
-import { MemberModel, MemberStatus, MemberPlan } from '../models/MemberModel';
+import { MemberModel, MemberStatus } from '../models/MemberModel';
 import { AccessLogModel, AccessEvent } from '../models/AccessLogModel';
 import { SettingModel } from '../models/SettingModel';
 
@@ -147,7 +147,6 @@ export class AdminController {
         signup_source: m.signup_source,
         status: m.status,
         role: m.role,
-        plan: m.plan,
         created_at: m.created_at,
         approved_at: m.approved_at,
         last_login_at: m.last_login_at,
@@ -185,36 +184,6 @@ export class AdminController {
     }
   };
 
-  /** 관리자가 회원 등급(plan)을 변경. free↔pro 수동 부여. */
-  setPlan = async (req: Request, res: Response): Promise<void> => {
-    try {
-      const id = parseInt(req.params.id, 10);
-      if (!id) {
-        res.status(400).json({ success: false, error: '잘못된 회원 ID입니다.' });
-        return;
-      }
-      const plan = (req.body?.plan ?? '').toString() as MemberPlan;
-      if (!['free', 'pro'].includes(plan)) {
-        res.status(400).json({ success: false, error: 'plan은 free/pro 중 하나여야 합니다.' });
-        return;
-      }
-      const target = await this.model.findById(id);
-      if (!target) {
-        res.status(404).json({ success: false, error: '회원을 찾을 수 없습니다.' });
-        return;
-      }
-      // 관리자 계정 등급은 강제 보호(삭제·정지와 동일). 항상 PRO 유지.
-      if (target.role === 'admin') {
-        res.status(400).json({ success: false, error: '관리자 계정의 등급은 변경할 수 없습니다.' });
-        return;
-      }
-      await this.model.updatePlan(id, plan);
-      res.json({ success: true, id, plan });
-    } catch (e) {
-      console.error('setPlan 오류:', e);
-      res.status(500).json({ success: false, error: '등급 변경 중 오류가 발생했습니다.' });
-    }
-  };
 
   /** 관리자가 회원 비밀번호를 강제 변경(현재 비번 불필요). */
   resetPassword = async (req: Request, res: Response): Promise<void> => {

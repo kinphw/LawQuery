@@ -3,7 +3,7 @@ import { FavoriteModel, FavoriteScope } from '../models/FavoriteModel';
 
 /**
  * 즐겨찾기(favorite) 통합 컨트롤러 — 로그인 회원별(북마크).
- *  - 라우터에서 authGuard 적용 → req.member.id 로 소유자 판정(회원별 격리).
+ *  - 로그인 게이트는 index.ts 가 /api 전체에 건다 → req.member.id 로 소유자 판정(회원별 격리).
  *  - GET  /api/favorite?scope=&code=   : 그 회원의 (scope, law_code) node_key 목록
  *  - PUT  /api/favorite                : { scope, law_code, node_key, on } 토글
  */
@@ -34,7 +34,7 @@ export class FavoriteController {
     }
   };
 
-  /** 즐겨찾기 토글. on=true 추가 / on=false 삭제. 로그인 회원 전용(authGuard). */
+  /** 즐겨찾기 토글. on=true 추가 / on=false 삭제. */
   putFavorite = async (req: Request, res: Response): Promise<void> => {
     const memberId = req.member?.id;
     const scope = parseScope(req.body?.scope);

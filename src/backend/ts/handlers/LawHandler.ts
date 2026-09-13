@@ -3,7 +3,6 @@ import { LawController } from '../law/controllers/LawController';
 import { PenaltyController } from '../law/controllers/PenaltyController';
 import { ReferenceController } from '../law/controllers/ReferenceController';
 import { AnnexController } from '../law/controllers/AnnexController';
-import { optionalAuth, proGuard } from '../auth/middleware/authGuard';
 
 export class LawHandler {
   public router: Router;
@@ -27,25 +26,21 @@ export class LawHandler {
     // 법률 관련 미들웨어 적용 :
     // this.router.use(LawMiddleware); 
 
-    // ── 무료(비회원 허용, optionalAuth) ──
-    this.router.get('/list', optionalAuth, this.controller.getLawList.bind(this.controller)); // 법령 목록(드롭다운/설정 단일 출처)
-    this.router.get('/getTitles', optionalAuth, this.controller.getTitles.bind(this.controller));
-    this.router.get('/article', optionalAuth, this.controller.getArticle.bind(this.controller));
-    this.router.get('/meta', optionalAuth, this.controller.getMeta.bind(this.controller));
-    // 버튼 표시 플래그(어디에 PRO 기능이 있는지)는 무료도 받아 잠금 버튼 노출
-    this.router.get('/penaltyIds', optionalAuth, this.penaltyController.getPenaltyIds.bind(this.penaltyController));
-    this.router.get('/referenceIds', optionalAuth, this.referenceController.getReferenceIds.bind(this.referenceController));
-    this.router.get('/annexIds', optionalAuth, this.annexController.getAnnexIds.bind(this.annexController));
-
-    // ── 연계표(킬) — 비회원에게도 '상위 3개 조'만 티저로 공개(optionalAuth). 전체는 컨트롤러가 pro만 내려줌 ──
-    this.router.get('/all', optionalAuth, this.controller.getAll.bind(this.controller));      // 5단 연계표(비회원=상위 3개 조 티저)
-    // ── PRO 전용(proGuard) — 킬 기능 ──
-    this.router.get('/get', proGuard, this.controller.getByIds.bind(this.controller));       // 선택 연계표(킬)
-    this.router.get('/pivot', proGuard, this.controller.getPivot.bind(this.controller));     // 기준 전환 피벗 연계표(킬)
-    this.router.get('/penalty', proGuard, this.penaltyController.getPenalty.bind(this.penaltyController));
-    this.router.get('/delegation', proGuard, this.controller.getDelegationChain.bind(this.controller)); // 벌칙 위반조 위임 하위(시행령 등)
-    this.router.get('/highlights', proGuard, this.controller.getHighlights.bind(this.controller)); // 5단표 강조쌍(전체)
-    this.router.get('/reference', proGuard, this.referenceController.getReference.bind(this.referenceController));
-    this.router.get('/annex', proGuard, this.annexController.getAnnex.bind(this.annexController));
+    // 게이트는 index.ts 가 /api 전체에 authGuard 로 한 번 건다(여기선 붙이지 않는다).
+    this.router.get('/list', this.controller.getLawList.bind(this.controller)); // 법령 목록(드롭다운/설정 단일 출처)
+    this.router.get('/getTitles', this.controller.getTitles.bind(this.controller));
+    this.router.get('/article', this.controller.getArticle.bind(this.controller));
+    this.router.get('/meta', this.controller.getMeta.bind(this.controller));
+    this.router.get('/penaltyIds', this.penaltyController.getPenaltyIds.bind(this.penaltyController));
+    this.router.get('/referenceIds', this.referenceController.getReferenceIds.bind(this.referenceController));
+    this.router.get('/annexIds', this.annexController.getAnnexIds.bind(this.annexController));
+    this.router.get('/all', this.controller.getAll.bind(this.controller));         // 5단 연계표(전체)
+    this.router.get('/get', this.controller.getByIds.bind(this.controller));       // 선택 연계표
+    this.router.get('/pivot', this.controller.getPivot.bind(this.controller));     // 기준 전환 피벗 연계표
+    this.router.get('/penalty', this.penaltyController.getPenalty.bind(this.penaltyController));
+    this.router.get('/delegation', this.controller.getDelegationChain.bind(this.controller)); // 벌칙 위반조 위임 하위(시행령 등)
+    this.router.get('/highlights', this.controller.getHighlights.bind(this.controller)); // 5단표 강조쌍(전체)
+    this.router.get('/reference', this.referenceController.getReference.bind(this.referenceController));
+    this.router.get('/annex', this.annexController.getAnnex.bind(this.annexController));
   }
 }

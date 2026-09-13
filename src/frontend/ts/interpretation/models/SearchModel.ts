@@ -6,7 +6,6 @@ export class SearchModel {
   // constructor(private db: SearchDatabase) {}
 
   private lastSearchCount: number = 0;
-  private lastTotal: number = 0;      // 비회원 티저: 잘리기 전 전체 매칭 수(없으면 count와 동일)
 
   // 실제 검색을 수행하는 메서드
   // 사용자정의 검색조건을 받아서 다시 사용자정의 검색결과를 반환
@@ -96,8 +95,7 @@ export class SearchModel {
       
       // 검색 결과 건수를 저장
       this.lastSearchCount = result.count || 0;
-      this.lastTotal = result.total ?? result.count ?? 0;
-
+  
       return result.data || [];
     } catch (error) {
       console.error('Search API error:', error);
@@ -151,8 +149,7 @@ export class SearchModel {
       
       // 검색 결과 건수를 저장
       this.lastSearchCount = result.count || 0;
-      this.lastTotal = result.total ?? result.count ?? 0;
-
+  
       return result.data || [];
     } catch (error) {
       console.error('Initial data API error:', error);
@@ -163,11 +160,6 @@ export class SearchModel {
   // 마지막 검색 결과 건수를 가져오는 메서드
   getLastSearchCount(): number {
     return this.lastSearchCount;
-  }
-
-  // 비회원 티저에서 잘리기 전 전체 매칭 수
-  getLastTotal(): number {
-    return this.lastTotal;
   }
 
 }

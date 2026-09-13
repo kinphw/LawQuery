@@ -16,8 +16,8 @@ const FOREIGN_EXPORT_REMOVE = [
 ];
 
 /**
- * 해외법령 컨트롤러. 드롭다운으로 법령 선택 → 원문/번역 2단 표 + 메모(PRO).
- * plan 분기는 auth-gate.js 가 노출한 window.__lqMePromise 를 재사용(중복 fetch 방지).
+ * 해외법령 컨트롤러. 드롭다운으로 법령 선택 → 원문/번역 2단 표 + 메모.
+ * 관리자 여부는 auth-gate.js 가 노출한 window.__lqMePromise 를 재사용(중복 fetch 방지).
  */
 const JURIS_ORDER = ['eu', 'us', 'jp', 'hk', 'sg', 'other'];
 const JURIS_LABEL: Record<string, string> = {

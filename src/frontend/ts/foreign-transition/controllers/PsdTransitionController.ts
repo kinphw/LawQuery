@@ -66,10 +66,6 @@ export class PsdTransitionController {
       document.getElementById('transitionApp')!.innerHTML = this.view.renderError('이행분석 기준정보를 불러오지 못했습니다.');
       return;
     }
-    if (!this.catalog.unlocked) {
-      this.renderFrame(this.view.renderLocked());
-      return;
-    }
     // 요약(무엇이 바뀌었나)을 기본 진입으로 — 단, 특정 법(code)이나 view=law 를 명시하면 조문뷰.
     const wantSummary = params.get('view') === 'summary'
       || (!requested && params.get('view') !== 'law' && this.catalog.themeCount > 0);

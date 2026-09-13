@@ -3,7 +3,7 @@ import { ForeignModel } from '../models/ForeignModel';
 
 /**
  * 해외법령 조회 + 메모 + 본문 교정.
- *  - list / provisions : 본문(원문·번역 + 교정 오버레이 병합). 무료 공개(optionalAuth).
+ *  - list / provisions : 본문(원문·번역 + 교정 오버레이 병합).
  *  - memo (GET/PUT/DELETE) : 운영자 큐레이션(열람 공개 / 작성 admin).
  *  - admin/override (PUT) : 관리자 본문 교정. adminGuard. 원본은 보존, 교정은 ldb_auth 레이어에 저장
  *    (운영에서도 안전 — 이관이 안 건드림). 되돌리기 = 빈 값 저장(원본 복귀).
@@ -80,7 +80,7 @@ export class ForeignController {
 
   /**
    * 일본법 하위규정 연계(자동 추출). code 의 각 조별 { refs(인용), citedBy(피인용) }.
-   * 무료 공개(optionalAuth). 비 일본법·연계없음이면 빈 맵.
+   * 비 일본법·연계없음이면 빈 맵.
    */
   getLinks = async (req: Request, res: Response): Promise<void> => {
     const code = String(req.query.code || '').trim();
@@ -99,7 +99,7 @@ export class ForeignController {
 
   /**
    * 일본 결제법 계열 3단 연계표(법→시행령→부령[트랙]). family=jp_epi|jp_funds.
-   * 무료 공개(optionalAuth). 미지원 family면 404.
+   * 미지원 family면 404.
    */
   getLinkTable = async (req: Request, res: Response): Promise<void> => {
     const family = String(req.query.family || '').trim();
@@ -167,7 +167,7 @@ export class ForeignController {
   };
 
   // ── 메모(운영자 큐레이션, 전역) — 논리키 (code, article_no, seg_index) ──────────
-  //    열람=공개(optionalAuth), 작성/삭제=운영자(adminGuard) — 라우터에서 게이트 적용.
+  //    작성/삭제=운영자(adminGuard) — 라우터에서 게이트 적용.
   getMemos = async (req: Request, res: Response): Promise<void> => {
     const code = String(req.query.code || '').trim();
     if (!code) {

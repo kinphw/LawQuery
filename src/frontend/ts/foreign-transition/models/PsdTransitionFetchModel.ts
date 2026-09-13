@@ -42,7 +42,6 @@ export interface TransitionCatalog {
   laws: TransitionCatalogLaw[];
   conflictCount: number;
   themeCount: number;
-  unlocked: boolean;
 }
 
 export interface TransitionThemeLink {

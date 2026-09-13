@@ -125,7 +125,7 @@ export class PsdTransitionView {
         ${catalog.conflictCount ? `<span class="pta-conflict-count">상관표 불일치 ${catalog.conflictCount}건</span>` : ''}
       </div>
       ${this.tabs(catalog, current, summaryActive)}
-      ${catalog.unlocked && !summaryActive ? this.toolbar(state, selected?.articleCount || 0, counts) : ''}
+      ${!summaryActive ? this.toolbar(state, selected?.articleCount || 0, counts) : ''}
       <main id="ptaBody">${body}</main>
     </div>`;
   }
@@ -150,18 +150,6 @@ export class PsdTransitionView {
       <span class="pta-version-switch-label">기준 문안</span>
       <select id="ptaVersionSelect" aria-label="이행분석 기준 문안 선택">${opts}</select>
     </label>`;
-  }
-
-  renderLocked(): string {
-    return `<section class="pta-locked">
-      <div class="pta-lock-icon"><i class="fas fa-lock"></i></div>
-      <h2>이행분석은 연계정보 이용 권한이 필요합니다</h2>
-      <p>법령 본문은 해외법령에서 계속 무료로 볼 수 있습니다. 이 화면은 공식 상관표와 조문별 변경 분석을 결합한 큐레이션 기능입니다.</p>
-      <div class="d-flex gap-2 justify-content-center flex-wrap">
-        <a class="btn btn-dark" href="login.html?next=foreign-transition.html">로그인</a>
-        <a class="btn btn-outline-secondary" href="foreign.html">해외법령 본문 보기</a>
-      </div>
-    </section>`;
   }
 
   renderLoading(): string {

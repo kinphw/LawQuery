@@ -39,8 +39,6 @@ import { LawAnnexView } from "../views/components/LawAnnexView";
 
 import { CurrentLawBox } from "../views/components/CurrentLawBox";
 
-import { getMe, isPro } from "../../common/AuthState";
-import { UpsellNotice } from "../../common/components/UpsellNotice";
 
 export interface ILawController extends IController {
 
@@ -130,7 +128,7 @@ export class LawController implements ILawController {
 
         this.penaltyEventManager = new LawPenaltyEventManager(this);
         this.referenceEventManager = new LawReferenceEventManager(); // 250515
-        this.textSizeEventManager = new LawTextSizeEventManager(this); // 티저에서도 단독 바인딩
+        this.textSizeEventManager = new LawTextSizeEventManager(this);
 
         // Dynamic import workaround for now unless we import at top
         const { LawAnnexEventManager } = require('./event/annex/LawAnnexEventManager');
@@ -142,7 +140,7 @@ export class LawController implements ILawController {
             this.textSizeEventManager,
             new LawSearchEventManager(this),
             new LawTextSearchEventManager(this),
-            new LawRevisionEventManager(this), // 시행예정 개정 조문만 보기(개정비교)
+            new LawRevisionEventManager(this), // 개정 조문만 보기(개정비교)
             // new LawExportEventManager(this), // 선택한 조만 정적 HTML로 저장 — 사용 안 해 숨김(2026-09-13)
             // new LawPenaltyEventManager(this) // ← 추가
             this.penaltyEventManager, // ← 바로 등록
@@ -169,8 +167,6 @@ export class LawController implements ILawController {
 
         // DB에서 법령명 메타 로드 → LawConfig 하드코딩 대체 (단일/연계 공통)
         const meta = await this.modelFetchMeta.getMeta();
-        const me = await getMe();
-        const pro = isPro(me);
 
         // 공통: 법령명/현재법령 박스/별표 원규정 표시명
         if (meta.length > 0) {
@@ -187,15 +183,11 @@ export class LawController implements ILawController {
         // 헤더는 1회만 (정렬기준 셀렉터가 그 아래 위치)
         this.view.renderHeaderOnly();
 
-        // 연계표 단일 진입. 비회원/free는 '상위 3개 조' 티저로 첫 화면에서 킬 기능을 바로 본다.
-        if (pro) {
-            await this.showLinkedMode(meta);
-        } else {
-            await this.showLinkedTeaser();
-        }
+        // 연계표 단일 진입.
+        await this.showLinkedMode(meta);
     }
 
-    /** 연계표 모드(PRO). 기준=법(a)이면 기존 5단 연계, 그 외(e/s/r/b)면 피벗 연계표. */
+    /** 연계표 모드. 기준=법(a)이면 기존 5단 연계, 그 외(e/s/r/b)면 피벗 연계표. */
     private async showLinkedMode(meta: import("../models/LawFetchMetaModel").LawMeta[]): Promise<void> {
         // 상단 기준 셀렉터(법·시행령·…) — base=a는 기존 5단표, 나머지는 피벗.
         const base = this.getBase();
@@ -221,7 +213,7 @@ export class LawController implements ILawController {
         // 본문을 흐리게만 만들어 방해됨. base='a'에서는 비활성(highlights 빈 채로 둠).
         this.view.setHighlights([]);
 
-        // 초기 데이터 로드 및 렌더링 (pro는 전체 데이터)
+        // 초기 데이터 로드 및 렌더링(전체)
         const all = await this.modelFetchAll.getAllLaws();
         this.dataManager.setCurrentResults(all.data);
         this.view.render(this.dataManager.getCurrentResults());
@@ -234,31 +226,7 @@ export class LawController implements ILawController {
         this.bindAllEvents();
     }
 
-    /**
-     * 연계표 티저(비회원·free). 서버가 상위 3개 조만 내려준다(나머지 미전송 → 무유출).
-     * 표 아래에 "회원가입 시 전체 조회" 안내 플레이스홀더를 덧붙인다.
-     * 벌칙·별표·참조·조문선택 등 부가 킬 기능은 티저에서 감춘다(클릭 시 잠긴 엔드포인트라 혼란 방지).
-     */
-    private async showLinkedTeaser(): Promise<void> {
-        this.hideEl('penaltyBtn');
-        this.hideEl('annexBtn');
-        this.hideEl('lawRevisionBtn');
-        this.hideEl('lawExportBtn');
-        this.hideEl('lawArticleCard');
-        this.hideEl('lawSearchCard');
-
-        const all = await this.modelFetchAll.getAllLaws(); // 비회원엔 상위 3개 조 + locked
-        this.dataManager.setCurrentResults(all.data);
-        this.view.render(this.dataManager.getCurrentResults());
-
-        // 티저는 bindAllEvents()를 부르지 않는다(잠긴 기능까지 살아나므로) — 다만 글자크기는
-        // 버튼이 보이는 채로 무반응이었어서 이것만 단독 바인딩한다.
-        this.textSizeEventManager.bindEvents();
-
-        // 표 아래 안내(실제 잠긴 내용은 담지 않음)
-        UpsellNotice.appendInside('results', '회원가입 시 전체 연계표(법·시행령·감독규정·세칙·별표)를 조회할 수 있습니다');
-    }
-
+    /** 해당 화면에서 의미 없는 컨트롤을 감춘다(예: 피벗에선 조문별 선택조회). */
     private hideEl(id: string): void {
         const el = document.getElementById(id);
         if (el) el.classList.add('d-none');

@@ -1,15 +1,15 @@
 /**
  * LawQuery 인증 게이트 (classic script — 반드시 <head>에서, 번들보다 "먼저" 로드)
  *
- * 정책 변경(free/pro 게이팅):
- *   - "본문은 비로그인 개방" → 미로그인도 콘텐츠를 본다(로그인 벽 제거).
- *   - /api/auth/me 로 상태를 확인해 상단 바만 분기(로그인 사용자 / 게스트).
- *   - me 결과는 window.__lqMePromise 로 노출 → 번들(law/interpretation)이 plan을 보고
- *     무료 단일뷰 / PRO 연계표를 분기한다(중복 fetch 방지).
- *   - 보호 API(PRO 전용)가 401/403을 줘도 더 이상 로그인으로 강제 이동하지 않는다.
- *     잠금/가입 유도 UI는 각 화면(컨트롤러)이 직접 처리한다.
- *   - 앱(TWA)도 자동가입 없이 웹과 동일하게 명시적 이메일 가입만 사용한다(app-enter 제거).
- *   - account.html·admin.html 등 "로그인 필수" 페이지는 자체 me 체크로 보호한다.
+ * 정책(2026-09-01, 1인 사용 체제 — 전면 로그인 벽):
+ *   - 비로그인은 아무것도 못 본다. me 확인 후 미로그인이면 즉시 login.html 로 보낸다.
+ *     (그 전까진 body 를 숨긴 상태이므로 콘텐츠가 한 순간도 노출되지 않는다.)
+ *   - 데이터 차단의 본체는 백엔드다(src/backend/ts/index.ts 의 app.use('/api', authGuard)).
+ *     이 스크립트는 화면 전환만 담당한다 — 정적 HTML 은 Apache 가 그냥 주기 때문.
+ *   - 접근 기록(page_visit)은 리다이렉트 전에 keepalive 로 발사한다(비로그인 접근도 관재 대상).
+ *   - me 결과는 window.__lqMePromise 로 노출 → 번들이 관리자 여부 확인에 재사용(중복 fetch 방지).
+ *   - login.html·privacy.html 등은 이 스크립트를 로드하지 않는다(무한 이동 방지).
+ *   - account.html·admin.html 등 "로그인 필수" 페이지는 자체 me 체크로도 보호된다.
  */
 (function () {
   var LOGIN = 'login.html';
@@ -28,8 +28,6 @@
     '.lq-userbar__who{margin-right:auto}' +
     '.lq-userbar__badge{background:#0d6efd;color:#fff;border-radius:.25rem;' +
       'padding:.05rem .4rem;font-size:.7rem;margin-left:.25rem}' +
-    '.lq-userbar__badge--pro{background:#6f42c1}' +
-    '.lq-userbar__badge--free{background:#6c757d}' +
     '.lq-userbar__actions{display:flex;align-items:center;gap:.75rem;flex-wrap:wrap}' +
     '.lq-userbar__remember{display:flex;align-items:center;gap:.2rem;color:#cfe2ff;' +
       'font-size:.8rem;cursor:pointer;user-select:none}' +
@@ -71,9 +69,7 @@
     } catch (e) { /* noop */ }
   }
 
-  /**
-   * 로그인 상태바. 앱 익명계정은 "앱 사용자"로 표기. plan 뱃지(PRO/FREE) 표시.
-   */
+  /** 로그인 상태바. 앱 익명계정은 "앱 사용자"로 표기. */
   function renderStatusBar(me) {
     var host = ensureUserbarHost(function () { renderStatusBar(me); });
     if (!host) return;
@@ -83,7 +79,6 @@
     else if (me.source === 'app') who = '앱 사용자';
     else who = me.loginId || '사용자';
 
-    // 사용자에게 'PRO/FREE' 등급 명칭은 노출하지 않는다(반감 방지). 이름 + (관리자) 뱃지만.
     var adminLink = me.role === 'admin'
       ? '<a href="admin.html" class="lq-userbar__link">관리자</a>' : '';
 
@@ -131,57 +126,15 @@
     }
   }
 
-  /** 게스트(비로그인) 상태바 — 로그인 벽 대신 가입 유도 CTA. */
-  function renderGuestBar() {
-    var host = ensureUserbarHost(renderGuestBar);
-    if (!host) return;
-    var next = encodeURIComponent(location.pathname.replace(/^\//, '') + location.search);
-    host.innerHTML =
-      '<div class="lq-userbar">' +
-        '<span class="lq-userbar__who">' +
-          '<i class="fas fa-user-circle"></i> 둘러보는 중' +
-        '</span>' +
-        '<span class="lq-userbar__actions">' +
-          '<a href="board.html" class="lq-userbar__link">건의사항</a>' +
-          '<a href="' + LOGIN + '?next=' + next + '" class="lq-userbar__link">로그인</a>' +
-          '<a href="' + LOGIN + '?next=' + next + '" class="lq-userbar__cta">가입</a>' +
-        '</span>' +
-      '</div>';
-    exposeUserbarHeight(host);
-  }
-
-  // 가입 직후 1회 온보딩: "전체 기능 이용 가능" 안내. login.html이 가입 성공 시 플래그를 심는다.
-  function maybeShowOnboarding(me) {
-    var FLAG = 'lq_onboard_pro';
-    try { if (!localStorage.getItem(FLAG)) return; } catch (e) { return; }
-    var unlocked = me && me.plan === 'pro';
-    try { localStorage.removeItem(FLAG); } catch (e) { /* noop */ }
-    if (!unlocked) return;
-    function show() {
-      if (document.getElementById('lq-onboard')) return;
-      var ov = document.createElement('div');
-      ov.id = 'lq-onboard';
-      ov.setAttribute('style',
-        'position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,.5);' +
-        'display:flex;align-items:center;justify-content:center;padding:1rem');
-      ov.innerHTML =
-        '<div style="max-width:420px;background:#fff;border-radius:.6rem;padding:1.5rem;' +
-          'text-align:center;box-shadow:0 8px 30px rgba(0,0,0,.25)">' +
-          '<div style="font-size:2rem">🎉</div>' +
-          '<h5 style="margin:.5rem 0 .25rem">회원가입 완료 — 전체 기능 이용 가능</h5>' +
-          '<p style="color:#555;font-size:.92rem;margin:0 0 1rem">' +
-            '<strong>5단 연계표·유권해석·벌칙·별표</strong> 등 <strong>모든 기능</strong>을 ' +
-            '지금 바로 이용하실 수 있어요.</p>' +
-          '<button id="lq-onboard-ok" style="background:#0d6efd;color:#fff;border:0;' +
-            'border-radius:.4rem;padding:.5rem 1.4rem;font-size:.95rem;cursor:pointer">시작하기</button>' +
-        '</div>';
-      document.body.appendChild(ov);
-      var ok = document.getElementById('lq-onboard-ok');
-      if (ok) ok.addEventListener('click', function () { ov.remove(); });
-      ov.addEventListener('click', function (e) { if (e.target === ov) ov.remove(); });
-    }
-    if (document.body) show();
-    else document.addEventListener('DOMContentLoaded', show);
+  /**
+   * 비로그인 → 로그인 화면으로 이동. 콘텐츠는 계속 숨긴 채(reveal 하지 않음) 전환한다.
+   * replace 를 쓰는 이유: 뒤로가기로 숨겨진 페이지에 되돌아오는 것을 막기 위함.
+   */
+  function gotoLogin() {
+    if (/(^|\/)login\.html$/i.test(location.pathname)) { reveal(); return; } // 자기참조 방어
+    var here = location.pathname.replace(/^\//, '') + location.search;
+    var next = encodeURIComponent(here || 'index.html');
+    location.replace(LOGIN + '?next=' + next);
   }
 
   var origFetch = window.fetch.bind(window);
@@ -223,6 +176,7 @@
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ path: location.pathname }),
+        keepalive: true, // 비로그인 리다이렉트로 문서가 떠나도 기록은 남는다
       }).catch(function () { /* noop */ });
     } catch (e) { /* noop */ }
   }
@@ -237,17 +191,15 @@
     .then(function (r) { return r.json(); })
     .catch(function () { return { authenticated: false }; });
 
-  // 번들(law/interpretation)이 plan 분기에 사용 (중복 fetch 방지)
+  // 번들이 관리자 여부 확인에 재사용 (중복 fetch 방지)
   window.__lqMePromise = mePromise;
 
   mePromise.then(function (me) {
     if (me && me.authenticated) {
       renderStatusBar(me);
-      reveal(); // 로그인/게스트 모두 콘텐츠 표시
-      maybeShowOnboarding(me); // 가입 직후 1회 PRO 안내
-    } else {
-      renderGuestBar();
       reveal();
+    } else {
+      gotoLogin(); // 비로그인: 아무것도 보여주지 않고 로그인 화면으로
     }
   });
 })();

@@ -4,8 +4,8 @@ import ApiUrlBuilder from '../util/ApiUrlBuilder';
 export class LawFetchPivotModel {
 
     /**
-     * GET /api/law/pivot?law&step&base — PRO 전용.
-     * 기준(base) 재배치된 LawTreeNode 트리를 반환(기존 5단표와 동일 렌더 경로 사용). 비-PRO/에러면 빈 배열.
+     * GET /api/law/pivot?law&step&base
+     * 기준(base) 재배치된 LawTreeNode 트리를 반환(기존 5단표와 동일 렌더 경로 사용). 에러면 빈 배열.
      */
     async getPivot(base: string): Promise<LawTreeNode[]> {
         const url = ApiUrlBuilder.buildWithParams('/api/law/pivot', { base });

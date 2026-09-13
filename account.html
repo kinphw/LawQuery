@@ -35,8 +35,6 @@
         <div id="accEmail" class="mb-2">-</div>
         <div class="text-muted small">가입 경로 / 권한</div>
         <div id="accMeta">-</div>
-        <div class="text-muted small mt-2">이용 상태</div>
-        <div id="accPlan">-</div>
       </div>
     </div>
 
@@ -90,12 +88,6 @@
           if (!me.authenticated) { location.href = 'login.html?next=account.html'; return; }
           $('accEmail').textContent = me.loginId || '-';
           $('accMeta').textContent = `${me.source === 'app' ? '앱' : '웹'} / ${me.role === 'admin' ? '관리자' : '일반'}`;
-          // 이용 상태 표시 (PRO/FREE 같은 등급 명칭 대신 사용자 친화 문구)
-          const unlocked = me.plan === 'pro';
-          const planLabel = unlocked ? '전체 기능 이용 중' : '기본';
-          const planBg = unlocked ? '#198754' : '#6c757d';
-          $('accPlan').innerHTML =
-            `<span class="badge" style="background:${planBg};color:#fff">${planLabel}</span>`;
           if (me.displayName) $('displayName').value = me.displayName;
           // 앱 익명계정은 비번이 없으므로 비번 변경 카드 숨김
           if (me.source === 'app') $('pwCard').classList.add('d-none');

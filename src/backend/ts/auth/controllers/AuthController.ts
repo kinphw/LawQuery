@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
-import { MemberModel, effectivePlan } from '../models/MemberModel';
+import { MemberModel } from '../models/MemberModel';
 import { AccessLogModel } from '../models/AccessLogModel';
 import { SettingModel } from '../models/SettingModel';
 import { signToken, verifyToken, newSessionToken, AUTH_COOKIE, cookieOptions, expiryFor } from '../utils/jwt';
@@ -112,9 +112,8 @@ export class AuthController {
       }
 
       if (isFirstAdmin) {
-        // plan=pro 무기한(베타). ▶ 정식 출시 시 30일 트라이얼은 일반 가입에만 적용.
         const id = await this.model.createWebMember(
-          loginId, hash, displayName, 'admin', 'approved', 'pro'
+          loginId, hash, displayName, 'admin', 'approved'
         );
         const sid = newSessionToken();
         await this.model.setSessionToken(id, sid);
@@ -134,7 +133,7 @@ export class AuthController {
           return;
         }
         memberId = await this.model.createWebMember(
-          loginId, hash, displayName, 'user', 'pending', 'pro'
+          loginId, hash, displayName, 'user', 'pending'
         );
       }
 
@@ -395,8 +394,6 @@ export class AuthController {
         authenticated: member.status === 'approved',
         status: member.status,
         role: member.role,
-        plan: effectivePlan(member), // 만료 반영 실효 등급(베타엔 원래 plan과 동일)
-        planExpiresAt: member.plan_expires_at, // 프론트 "n일 남음" 표시용(현재 NULL)
         loginId: member.login_id,
         displayName: member.display_name,
         source: member.signup_source,

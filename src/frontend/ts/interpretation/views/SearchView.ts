@@ -72,27 +72,6 @@ export class SearchView {
     }
   }
 
-  /**
-   * 비회원 티저 안내(검색은 막지 않는다). 검색 폼 위 한 줄 + 전체복사 버튼 숨김.
-   * 검색은 가능하되 결과는 상위 3건만 보이고, 클릭하면 본문이 펼쳐진다(인라인).
-   */
-  showTeaserNote(): void {
-    // 비회원에겐 전체복사(대량 본문 요청)는 숨김
-    document.getElementById('copyAllBtn')?.classList.add('d-none');
-
-    if (document.getElementById('lqTeaserNote')) return; // 중복 방지
-    const note = document.createElement('div');
-    note.id = 'lqTeaserNote';
-    note.className = 'alert alert-light border d-flex align-items-center gap-2 py-2 small mb-2';
-    note.innerHTML =
-      '<i class="fas fa-circle-info text-secondary"></i>' +
-      '<span>미리보기입니다 — <strong>검색은 상위 3건</strong>, 최근 목록은 <strong>10건</strong>까지 표시됩니다. ' +
-      '행을 클릭하면 본문을 볼 수 있어요. <strong>회원가입 시 전체</strong>가 열립니다.</span>';
-    const form = document.getElementById('searchForm');
-    if (form && form.parentElement) form.parentElement.insertBefore(note, form);
-    else if (this.resultsContainer) this.resultsContainer.parentElement?.insertBefore(note, this.resultsContainer);
-  }
-
   showToast(message: string): void {
     this.toastManager.showToast(message);
   }
