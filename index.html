@@ -73,11 +73,8 @@
             <i class="fas fa-code-compare"></i> 개정비교
           </button>
 
-          <!-- 표에서 필요한 조만 골라 정적 HTML로 저장(누르면 선택모드) -->
-          <button class="btn btn-outline-dark ms-2" id="lawExportBtn" aria-pressed="false"
-            title="표에서 필요한 조를 골라 정적 HTML 파일로 저장합니다">
-            <i class="fas fa-download"></i> HTML 저장
-          </button>
+          <!-- 'HTML 저장'(조 선택 → 정적 HTML) 버튼은 쓰지 않아 숨김(2026-09-13).
+               되살리려면 #lawExportBtn 버튼을 복원하고 LawController 에 LawExportEventManager 를 다시 등록. -->
 
         </div>
       </div>

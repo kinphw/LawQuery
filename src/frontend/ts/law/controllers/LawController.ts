@@ -10,7 +10,7 @@ import { LawHeaderEventManager } from "./event/LawHeaderEventManager";
 import { LawTextSizeEventManager } from "./event/LawTextSizeEventManager";
 import { LawSearchEventManager } from "./event/LawSearchEventManager";
 import { LawTextSearchEventManager } from "./event/LawTextSearchEventManager";
-import { LawExportEventManager } from "./event/LawExportEventManager";
+// import { LawExportEventManager } from "./event/LawExportEventManager"; // 'HTML 저장' 숨김(2026-09-13)
 import { LawRevisionEventManager } from "./event/LawRevisionEventManager";
 import { LawPenaltyEventManager } from "./event/penalty/LawPenaltyEventManager"; // 250504
 import { LawReferenceEventManager } from "./event/reference/LawReferenceEventManager"; //250514
@@ -143,7 +143,7 @@ export class LawController implements ILawController {
             new LawSearchEventManager(this),
             new LawTextSearchEventManager(this),
             new LawRevisionEventManager(this), // 시행예정 개정 조문만 보기(개정비교)
-            new LawExportEventManager(this),   // 선택한 조만 정적 HTML로 저장
+            // new LawExportEventManager(this), // 선택한 조만 정적 HTML로 저장 — 사용 안 해 숨김(2026-09-13)
             // new LawPenaltyEventManager(this) // ← 추가
             this.penaltyEventManager, // ← 바로 등록
             // new LawReferenceEventManager(), // ← 추가      

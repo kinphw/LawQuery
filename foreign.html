@@ -231,11 +231,8 @@
             <li><span class="dropdown-item-text text-muted">불러오는 중…</span></li>
           </ul>
         </div>
-        <!-- 현재 조회 화면을 정적 HTML로 저장(개별 법령 본문일 때만 노출) -->
-        <button type="button" id="foreignExportBtn" class="btn btn-sm btn-outline-dark d-none"
-          title="지금 보고 있는 원문·번역 표를 정적 HTML 파일로 저장합니다">
-          <i class="fas fa-download"></i> HTML로 저장
-        </button>
+        <!-- 'HTML로 저장' 버튼은 쓰지 않아 숨김(2026-09-13). 컨트롤러는 버튼이 없으면 아무 일도 안 하므로
+             되살리려면 #foreignExportBtn(btn btn-sm btn-outline-dark d-none) 버튼만 복원하면 된다. -->
       </div>
     </div>
     <p class="text-center text-muted small mt-2 mb-0">
