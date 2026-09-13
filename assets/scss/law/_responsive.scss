@@ -113,9 +113,14 @@
     word-break: break-word;
   }
 
+  // ⚠️ font-size 는 반드시 em(상대값) — rem 절대값을 쓰면 글자크기 버튼이 죽는다.
+  // 크게/보통/작게는 td.law-box 의 클래스(fs-5 / 없음 / small)만 바꾸고, 본문 div 는
+  // .small(0.875em)로 그 크기를 곱해 받는 구조라서(LawTable.formatContent),
+  // 여기서 rem 을 박으면 명시도(0,2,0)로 이겨버려 td 크기가 전달되지 않는다.
+  // 1em = 보통일 때 종전과 같은 크기(table 의 0.72rem)를 유지하면서 버튼에 반응한다.
   .law-table .box-item {
     padding: 0.25rem !important;
-    font-size: 0.72rem;
+    font-size: 1em;
   }
 
   // 셀 안 버튼(참조/벌칙/별표)도 작게
