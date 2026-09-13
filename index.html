@@ -39,6 +39,9 @@
         </div>
       </div>
 
+      <!-- 1a) 보기 전환(기본조회 | 연혁비교). 컨트롤러가 채움 -->
+      <div id="lawViewTabs" class="d-flex justify-content-center"></div>
+
       <!-- 1b) 행정규칙 트랙 토글(멀티트랙 법령만). 컨트롤러가 채움 -->
       <div id="lawTrackHost" class="d-flex justify-content-center mb-1"></div>
 
@@ -130,6 +133,9 @@
 
 
   <div id="results"></div>
+
+  <!-- 연혁비교(?view=hist) — 규정별 신구대비표. HistoryController 가 채움 -->
+  <div id="lawHistHost" class="container mb-5" hidden></div>
 
   <!-- 기본 라이브러리 -->
   <script src="assets/vendor/bootstrap.bundle.min.js"></script>

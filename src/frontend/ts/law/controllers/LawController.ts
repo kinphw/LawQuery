@@ -38,6 +38,7 @@ import { LawAnnexView } from "../views/components/LawAnnexView";
 // import { LawResult } from "../types/LawResult";
 
 import { CurrentLawBox } from "../views/components/CurrentLawBox";
+import { HistoryController } from "../history/HistoryController";
 
 
 export interface ILawController extends IController {
@@ -183,8 +184,50 @@ export class LawController implements ILawController {
         // 헤더는 1회만 (정렬기준 셀렉터가 그 아래 위치)
         this.view.renderHeaderOnly();
 
+        // 보기 전환(기본조회 | 연혁비교). 연혁비교는 연계표와 데이터·화면이 따로라 여기서 갈라진다.
+        this.renderViewTabs();
+        if (this.isHistoryView()) {
+            this.showHistoryMode();
+            await new HistoryController().initialize();
+            this.bindAllEvents();
+            return;
+        }
+
         // 연계표 단일 진입.
         await this.showLinkedMode(meta);
+    }
+
+    // ── 보기 전환(기본조회 | 연혁비교) ─────────────────────────────
+
+    private isHistoryView(): boolean {
+        return new URLSearchParams(window.location.search).get('view') === 'hist';
+    }
+
+    /** 보기 전환 탭. 클릭 시 ?view= 갱신 후 리로드(정렬기준·트랙 전환과 같은 방식). */
+    private renderViewTabs(): void {
+        const host = document.getElementById('lawViewTabs');
+        if (!host) return;
+        const hist = this.isHistoryView();
+        host.innerHTML = `
+            <div class="btn-group btn-group-sm" role="group" aria-label="보기 전환">
+                <button type="button" class="btn ${hist ? 'btn-outline-dark' : 'btn-dark'}" data-view="" aria-pressed="${!hist}">기본조회</button>
+                <button type="button" class="btn ${hist ? 'btn-dark' : 'btn-outline-dark'}" data-view="hist" aria-pressed="${hist}">연혁비교</button>
+            </div>`;
+        host.querySelectorAll<HTMLElement>('[data-view]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const next = btn.dataset.view || '';
+                if ((next === 'hist') === hist) return;
+                const p = new URLSearchParams(window.location.search);
+                if (next) p.set('view', next); else { p.delete('view'); p.delete('h'); }
+                window.location.search = p.toString();
+            });
+        });
+    }
+
+    /** 연혁비교에서는 연계표 전용 컨트롤을 치운다(정렬기준·검색·조문별 선택조회·표·글자크기). */
+    private showHistoryMode(): void {
+        ['lawBaseHost', 'lawSearchCard', 'lawArticleCard', 'results'].forEach(id => this.hideEl(id));
+        document.querySelector('.floating-controls')?.classList.add('d-none');
     }
 
     /** 연계표 모드. 기준=법(a)이면 기존 5단 연계, 그 외(e/s/r/b)면 피벗 연계표. */
@@ -297,8 +340,9 @@ export class LawController implements ILawController {
         if (!ul) return;
         const esc = (s: string) => s
             .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        const keep = this.isHistoryView() ? '&view=hist' : '';   // 연혁비교에서 법령을 바꾸면 연혁비교에 머문다
         ul.innerHTML = list.map(e =>
-            `<li><a class="dropdown-item${e.code === current ? ' active' : ''}" href="?law=${encodeURIComponent(e.code)}&step=${e.step}">${esc(e.label)}</a></li>`,
+            `<li><a class="dropdown-item${e.code === current ? ' active' : ''}" href="?law=${encodeURIComponent(e.code)}&step=${e.step}${keep}">${esc(e.label)}</a></li>`,
         ).join('');
     }
 

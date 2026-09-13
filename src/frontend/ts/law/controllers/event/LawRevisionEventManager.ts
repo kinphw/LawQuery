@@ -7,6 +7,7 @@ import { countRevised, filterRevised, formatSchedDate, revisionDates } from '../
  * LawRevisionEventManager
  * ------------------------------------------------------------------
  * '개정비교' 모드 — 시행예정 개정이 걸린 조문만 남긴 연계표.
+ * (두 시점을 골라 견주는 신구대비표는 별개 기능인 '연혁비교' 탭 — law/history/)
  *
  * 표를 새로 그리는 게 아니라 데이터만 걸러 기존 렌더 경로(view.render → LawTable)로
  * 되돌려 보낸다. 현행↔시행예정 인라인 diff(<del>/<ins>)는 LawTable 이 이미 그리므로
@@ -46,14 +47,14 @@ export class LawRevisionEventManager implements ILawEventManager {
         const n = countRevised(all);
 
         if (!n || !filtered.length) {
-            this.controller.view.showToast('지금 선택된 비교본에는 달라진 조문이 없습니다');
+            this.controller.view.showToast('시행예정 개정이 걸린 조문이 없습니다');
             return;
         }
 
         this.on = true;
         this.setTriggerActive(true);
         this.rerender(filtered);
-        this.renderBanner(n, revisionDates(all), this.direction(all));
+        this.renderBanner(n, revisionDates(all));
         this.watchExternalRender();
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
@@ -101,34 +102,17 @@ export class LawRevisionEventManager implements ILawEventManager {
 
     // ── 안내 배너 ──────────────────────────────────────────────────
 
-    /** 지금 얹혀 있는 비교본의 방향(첫 개정 노드에서 읽는다). 기본은 시행예정(future). */
-    private direction(nodes: LawTreeNode[]): 'future' | 'past' {
-        const walk = (list: LawTreeNode[]): 'future' | 'past' | null => {
-            for (const n of list) {
-                if (n.scheduledTitle != null && n.revDirection) return n.revDirection;
-                const hit = walk(n.children ?? []);
-                if (hit) return hit;
-            }
-            return null;
-        };
-        return walk(nodes) ?? 'future';
-    }
-
-    private renderBanner(n: number, dates: string[], dir: 'future' | 'past' = 'future'): void {
+    private renderBanner(n: number, dates: string[]): void {
         const host = document.getElementById('results');
         if (!host || !host.parentNode) return;
 
         const when = dates.map(formatSchedDate).join(' · ');
         const el = document.createElement('div');
         el.className = 'container lq-rev-banner';
-        // 방향에 따라 읽는 말이 달라진다: 앞으로 이렇게 된다(시행예정) / 그때는 이랬다(직전본).
-        const whenText = dir === 'past'
-            ? (when ? ` · 직전본 시행 ${when}` : ' · 직전본 대비')
-            : (when ? ` · 시행 ${when}` : '');
         el.innerHTML = `
             <div class="alert alert-warning d-flex align-items-center flex-wrap gap-2 py-2 mb-2">
                 <span class="fw-bold"><i class="fas fa-code-compare"></i> 개정비교</span>
-                <span class="small">달라진 조문 ${n}건만 표시 중${whenText}</span>
+                <span class="small">시행예정 개정 ${n}건만 표시 중${when ? ` · 시행 ${when}` : ''}</span>
                 <span class="small text-muted lq-rev-legend">
                     <del class="law-del">삭제</del> <ins class="law-ins">신설·변경</ins>
                 </span>

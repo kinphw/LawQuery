@@ -1,0 +1,162 @@
+// 연혁비교(?view=hist) — 규정별 신구대비표. 법제처 신구법비교와 같은 좌우 2단.
+// 색의 약속: 종전 쪽에서 사라진 문언 = 빨강, 개정 쪽에서 들어온 문언 = 파랑(법제처와 같다).
+// 색만으로 구분하지 않도록 옅은 바탕을 함께 깐다.
+
+#lawViewTabs .btn {
+  min-width: 5.5rem;
+}
+
+.lq-hist-ctl {
+  font-size: 0.875rem;
+
+  .lq-hist-legend .lq-h-del,
+  .lq-hist-legend .lq-h-ins {
+    padding: 0 0.25rem;
+    border-radius: 0.2rem;
+  }
+}
+
+.lq-hist-rows {
+  display: grid;
+  row-gap: 0.35rem;
+}
+
+.lq-hist-row {
+  display: grid;
+  grid-template-columns: 5.5rem auto minmax(0, 1fr) auto auto minmax(0, 1fr) 7rem;
+  align-items: center;
+  column-gap: 0.5rem;
+
+  .lq-hist-tier {
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  .lq-hist-lbl {
+    color: #6c757d;
+    font-size: 0.8125rem;
+  }
+
+  .lq-hist-arrow {
+    color: #adb5bd;
+  }
+
+  .form-select {
+    font-size: 0.8125rem;
+  }
+
+  .lq-hist-count {
+    text-align: right;
+    white-space: nowrap;
+    text-decoration: none;
+  }
+}
+
+.lq-hist-sec {
+  margin-bottom: 2rem;
+  scroll-margin-top: 1rem;
+}
+
+.lq-hist-title {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  font-size: 1rem;
+  font-weight: 700;
+  margin: 0 0 0.5rem;
+
+  .lq-hist-top {
+    font-weight: 400;
+    text-decoration: none;
+  }
+}
+
+.lq-hist-table {
+  table-layout: fixed;
+  min-width: 40rem;
+  font-size: 0.875rem;
+  background: #fff;
+
+  thead th {
+    width: 50%;
+    background: #eef3f9;
+    text-align: center;
+    vertical-align: middle;
+    font-weight: 600;
+
+    small {
+      display: block;
+      margin-top: 0.15rem;
+      font-weight: 400;
+      color: #495057;
+    }
+  }
+
+  .lq-hist-side {
+    display: inline-block;
+    margin-right: 0.35rem;
+    padding: 0 0.35rem;
+    border-radius: 0.25rem;
+    background: #495057;
+    color: #fff;
+    font-size: 0.75rem;
+    vertical-align: 0.1em;
+  }
+
+  td {
+    vertical-align: top;
+    padding: 0.3rem 0.6rem;
+    overflow-wrap: anywhere;
+  }
+
+  // 조가 바뀌는 경계를 굵게 — 한 조가 여러 행(머리·접힌 줄·바뀐 줄)으로 나뉘기 때문
+  tr.lq-hist-art-start td {
+    border-top: 2px solid #adb5bd;
+  }
+
+  tr.lq-h-same td {
+    padding-top: 0.1rem;
+    padding-bottom: 0.1rem;
+  }
+}
+
+.lq-h-line {
+  line-height: 1.65;
+}
+
+.lq-h-ind-1 { padding-left: 1em; }
+.lq-h-ind-2 { padding-left: 2em; }
+.lq-h-ind-3 { padding-left: 3em; }
+
+.lq-h-omit,
+.lq-h-mark {
+  color: #6c757d;
+}
+
+.lq-h-del {
+  color: #c62828;
+  background: #fdecea;
+}
+
+.lq-h-ins {
+  color: #1565c0;
+  background: #e8f0fe;
+}
+
+@media (max-width: 767.98px) {
+  .lq-hist-row {
+    grid-template-columns: auto minmax(0, 1fr);
+    row-gap: 0.25rem;
+
+    .lq-hist-tier,
+    .lq-hist-count {
+      grid-column: 1 / -1;
+      text-align: left;
+    }
+
+    .lq-hist-arrow {
+      display: none;
+    }
+  }
+}

@@ -84,6 +84,8 @@ def export_db(env: dict[str, str], db_name: str, only: set[str] | None) -> dict:
     tables = [r[0] for r in cur.fetchall()]
     if only is not None:
         tables = [t for t in tables if t in only]
+    # 연혁비교 아카이브는 넣지 않는다 — 로컬판은 연혁비교를 제공하지 않고, 크기만 크게 는다.
+    tables = [t for t in tables if not t.startswith('db_hist_')]
 
     lite = sqlite3.connect(out_path)
     lite.execute('PRAGMA journal_mode=OFF')

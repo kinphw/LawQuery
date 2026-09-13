@@ -7,13 +7,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 **LawQuery** — 전자금융거래법 등 금융법령, 유권해석, 비조치의견서 검색·조회 웹 애플리케이션.
 모브랜드(가칭 Kinphw Query) 아래 동등 서비스로 확장 예정: LawQuery + **AccountingQuery**(회계기준·BC, 예정).
 
-### ★ 제품·수익 전략 → [docs/STRATEGY.md](docs/STRATEGY.md) 필독
-- **본질은 "검색"이 아니라 "전문가 큐레이션 + 연계뷰"** (검색은 무료여야 함)
-- **킬 기능(pro)**: 법령 **5단 연계표**·별표팝업·법령해석검색 / 회계 **기준서↔BC 2단뷰**
-- **미끼(free)**: 법령 본문·기준서 본문 조회만
-- **게이팅(free/pro)은 지금 구현, 결제(웹 PG)는 활성 100명 검증 후.** plan은 우선 관리자 수동 부여
-- 가격: 월 4,900 → 7,900~9,900 (1,000원은 폐기). 미래 핵심 수익 = **팀 라이선스(B2B)**
-- 결제는 넷플릭스식(앱=뷰어, 웹에서 PG). member.plan ENUM(free/pro) 이미 추가됨
+### ★ 유료화·등급 철폐 / 1인 사용 체제 (2026-09-01)
+- **유료화 계획 폐기.** free/pro 등급, 결제, 티저·업셀 UI는 코드에서 전부 제거했다. 되살리지 말 것.
+- **비로그인은 아무것도 못 본다.** `index.ts` 가 `/api` 전체에 `authGuard` 를 한 번 걸고,
+  `auth-gate.js` 가 미로그인 방문자를 `login.html` 로 보낸다. 개별 라우터엔 게이트를 붙이지 않는다
+  (붙이면 요청당 회원 조회가 중복된다). 관리자 전용 라우트만 `adminGuard`.
+- **로그인은 유지한다** — 접근 기록(`access_log`)과 관리자 화면 보호가 로그인에 매달려 있기 때문.
+  방문 기록은 비로그인도 남는다(`POST /api/auth/visit`).
+- 기능 구분은 이제 **회원 / 관리자** 둘뿐이다.
 
 ### 약어 규칙 (도메인 핵심)
 | 용어 | 영어 | 약자 | DB명 |
@@ -52,7 +53,7 @@ LawQuery-frc  ──(크롤)──→ Excel/Pickle ──(LawQuery-sqlhandler �
 ```
 - **국내법령·해외법령 데이터를 고칠 일 = `LawQuery-law`** (여기서 고치지 말 것). 운영 이관도 그쪽 `replicate*`.
 - **유권해석 데이터가 이상하다 = frc(크롤 단계) 또는 sqlhandler(적재 단계)** 를 봐야 한다. 웹앱은 읽기만.
-- `ldb_auth` (회원·게이팅·메모·교정·즐겨찾기·해외 카탈로그)만 **웹앱이 직접 쓴다**.
+- `ldb_auth` (회원·접근기록·메모·교정·즐겨찾기·해외 카탈로그)만 **웹앱이 직접 쓴다**.
 
 ## 개발 명령어
 
@@ -76,6 +77,21 @@ npm run pm2:logs      # 로그 / pm2:stop, pm2:restart, pm2:status
 # 프로덕션 배포 (git pull → tsc → webpack → scss → pm2 restart) — 공개서버 종료로 현재 미사용
 ./deploy.sh
 ```
+
+### 로컬(오프라인) 배포본 — 폐쇄망용, 브라우저만으로 동작
+
+```bash
+npm run local:zip   # ★전달용: 추출→빌드→유출검사→zip → release/*.zip (약 16MB)
+npm run local       # 서버 호스팅용 폴더만 → dist-local/ (47MB, zip 없음)
+```
+루트의 **`build-offline.bat` 더블클릭**으로도 `local:zip` 과 같은 일을 한다.
+만든 배포본은 압축을 풀지 않고 바로 확인한다 — `npm run local:verify`(file:// 자동검증) ·
+`npm run local:open`(브라우저로 띄우기) · `npm run local:serve`(http 판 :5100).
+
+호스팅이 메인이고 **로컬판은 필요할 때 뽑는 부산물**이다. 포크가 아니라 **빌드 타깃**이며,
+`webpack.local.config.js` 가 `DbContext`→`SqlJsDbContext`(sql.js), `authGuard`→`authStub`(전량 개방)
+두 모듈만 치환한다. 백엔드 Model/Controller·프론트 코드는 무수정으로 재사용된다.
+자세한 내용·규율은 **[docs/LOCAL.md](docs/LOCAL.md)** 참조.
 
 ### 로컬 상시가동 구성 (2026-08-10~, 공개서버 codexa.kro.kr 종료 후)
 
@@ -117,7 +133,7 @@ index.html(법령=시작화면)    ──→   /api/law/*     ──→   ldb_j 
 interpretation.html(유권해석) ──→   /api/interpretation/*  ──→   ldb_i (MySQL)
 ```
 
-> **시작화면 = 법령(index.html).** 무료 본문이 미끼이므로 루트(`/`)·앱 start_url·로그인 후 모두 법령으로 진입. 유권해석은 `interpretation.html`(PRO 전용). `index.html`은 `law.bundle.js`, `interpretation.html`은 `interpretation.bundle.js`를 로드.
+> **시작화면 = 법령(index.html).** 루트(`/`)·앱 start_url·로그인 후 모두 법령으로 진입. 유권해석은 `interpretation.html`. `index.html`은 `law.bundle.js`, `interpretation.html`은 `interpretation.bundle.js`를 로드.
 
 빌드 결과물: `dist/law.bundle.js`, `dist/interpretation.bundle.js`
 프론트엔드 진입점: `src/frontend/ts/entry/law.ts`, `src/frontend/ts/entry/interpretation.ts`
@@ -173,6 +189,25 @@ interpretation/
 
 **ApiUrlBuilder**: 모든 API fetch 호출 시 현재 URL의 `law`, `step` 파라미터를 자동으로 붙여 보냄.
 **이벤트매니저 패턴**: `bindEvents()` (초기화 시 1회) + `bindArticleEvents()` / `bindPostRenderEvents()` (동적 렌더링 후)
+
+### 기본조회와 연혁비교 — 서로 다른 두 비교 (2026-09-13)
+
+법령 화면 상단 탭 **기본조회 | 연혁비교**(`?view=hist`)로 갈린다. 둘은 데이터도 화면도 따로다 —
+섞지 말 것(2026-09-02 에 시행예정 에셋을 재활용해 '버전 바'로 한데 얹었다가 UX 가 흐려져 걷어냈다).
+
+- **기본조회** = 연계표(법→시행령→감독규정→세칙) + **시행예정은 늘 겹쳐 표시**(적재 시 박은
+  `content_*_sched` → `LawTable` 인라인 diff). '개정비교' 버튼은 시행예정이 걸린 조만 남기는 필터
+  (`LawRevisionEventManager`). 비교 시점을 고르는 UI 는 없다(버전 바의 뒷단 `db_version`·`applyCompare`·`?cmp=` 도 2026-09-14 제거).
+- **연혁비교** = 규정마다 **두 시점을 골라** 법제처 신구법비교 모양(좌 종전 | 우 개정)으로 견준다.
+  - 데이터: `db_hist_version` · `db_hist_article` · `db_hist_text`(조 본문, 해시로 중복 제거).
+    적재는 LawQuery-law `python -m pipeline.history <code> --apply` — **법·시행령·행정규칙 전 단의 law.go.kr 연혁**.
+  - API: `GET /api/law/history/versions`(단별 버전 목록) · `GET /api/law/history/compare?origin=&old=&new=`
+    (`LawHistoryController` — `<개정 …>`·`[본조신설 …]` 같은 개정 표기를 걷어낸 뒤 달라진 조만 돌려준다).
+  - 프론트 `src/frontend/ts/law/history/`: `HistoryController`(선택 · URL `?h=a:종전~개정,e:none`),
+    `HistoryView`, `OldNewDiff`(줄=항·호·목 맞춤 → 줄 안 글자 diff, 안 바뀐 줄은 `1. ~ 18. (생 략)`으로 접되
+    바뀐 호의 윗 항은 남긴다). 판정(신설·삭제·변경)은 저장하지 않고 매번 문언에서 계산한다.
+  - 테이블이 없는 DB 면 '연혁 데이터 없음'. 로컬(오프라인)판은 탭을 숨기고(`lawFeatureStub`)
+    `scripts/export-local.py` 가 `db_hist_*` 를 뺀다.
 
 ### 타입 공유
 

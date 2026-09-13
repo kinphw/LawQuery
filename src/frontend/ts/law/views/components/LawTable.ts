@@ -306,8 +306,7 @@ export class LawTable {
                     joPrefix,
                     // 기준(base)보다 '위' 단계만 음영 — 기준 자신·하위는 전체표시
                     // (감독규정 기준으로 봤는데 정작 감독규정이 흐려지는 UX 방지)
-                    c < this.highlightCol ? this.computeFocus(node.id, pathJos) : new Set<number>(),
-                    node.revDirection ?? null
+                    c < this.highlightCol ? this.computeFocus(node.id, pathJos) : new Set<number>()
                 );
             }).join('');
             const cls = r === 0 && !root.id_aa ? 'title-row' : '';
@@ -316,7 +315,7 @@ export class LawTable {
     }
 
     // 헬퍼 함수들 // id를 <td>의 data-id 속성으로 추가
-    private td(className: string, text: string | null, scheduledText: string | null | undefined, scheduledDate: string | null | undefined, searchText: string, rowspan?: number, extraHtml: string = '', id?: string, isVirtual?: boolean, joPrefix: string = '', focus: Set<number> = new Set(), revDirection: 'future' | 'past' | null = null): string {
+    private td(className: string, text: string | null, scheduledText: string | null | undefined, scheduledDate: string | null | undefined, searchText: string, rowspan?: number, extraHtml: string = '', id?: string, isVirtual?: boolean, joPrefix: string = '', focus: Set<number> = new Set()): string {
         const rowAttr = rowspan && rowspan > 1 ? ` rowspan="${rowspan}"` : '';
         const idAttr = id ? ` data-id="${id}"` : ''; // id를 data-id로 추가
 
@@ -326,7 +325,7 @@ export class LawTable {
         // 분할 항/호의 소속 조 표시(검색·하위규정뷰에서 '몇조'를 잃지 않도록)
         const pfx = joPrefix ? `<div class="lq-jo-tag small fw-bold text-secondary">${joPrefix}</div>` : '';
 
-        return `<td class="${finalClass}"${rowAttr}${idAttr}>${pfx}${this.formatContent(text, scheduledText ?? null, scheduledDate ?? null, searchText, focus, revDirection)}${extraHtml}</td>`;
+        return `<td class="${finalClass}"${rowAttr}${idAttr}>${pfx}${this.formatContent(text, scheduledText ?? null, scheduledDate ?? null, searchText, focus)}${extraHtml}</td>`;
     }
     private emptyTd(className: string, rowspan?: number): string {
         const rowAttr = rowspan && rowspan > 1 ? ` rowspan="${rowspan}"` : '';
@@ -513,7 +512,7 @@ export class LawTable {
         return `${d.slice(0, 4)}. ${Number(d.slice(4, 6))}. ${Number(d.slice(6, 8))}.`;
     }
 
-    private formatContent(text: string | null, scheduledText: string | null, scheduledDate: string | null, searchText: string, focus: Set<number> = new Set(), revDirection: 'future' | 'past' | null = null): string {
+    private formatContent(text: string | null, scheduledText: string | null, scheduledDate: string | null, searchText: string, focus: Set<number> = new Set()): string {
         const highlight = (s: string): string => {
             if (!searchText) return s;
             return s.replace(new RegExp(searchText, 'gi'),
@@ -530,19 +529,13 @@ export class LawTable {
             parts.push(`<div class="box-item small p-2 m-0">${c}</div>`);
         }
 
-        // 빈 비교본('')은 무시하지 않는다 — past 방향에서 '직전본에 그 조가 없었다' = 신설을 뜻한다.
-        // (diff 는 '' → 현행이라 본문 전체가 <ins> 로 그려진다. future 쪽 빈 값은 종전대로 무시.)
-        const isNewArticle = revDirection === 'past' && scheduledText !== null && !scheduledText.trim() && !!text;
-        if ((scheduledText && scheduledText.trim()) || isNewArticle) {
-            const past = revDirection === 'past';
+        if (scheduledText && scheduledText.trim()) {
             let inner: string;
             if (text) {
-                // 비교 박스 안에 인라인 diff. 읽는 방향은 언제나 '옛것 → 새것'이라야 <del>이 사라진 문언,
-                // <ins>가 들어온 문언이 된다. 시행예정(future)은 (현행 → 예정), 과거 스냅샷(past)은
-                // 기준본이 오히려 새것이므로 (스냅샷 → 현행)으로 좌우를 뒤집는다.
+                // 시행예정 박스 안에 현행 → 시행예정 인라인 diff(<del>=사라진 문언, <ins>=들어온 문언).
                 const { diff_match_patch, DIFF_DELETE, DIFF_INSERT } = require('diff-match-patch');
                 const dmp = new diff_match_patch();
-                const diffs = past ? dmp.diff_main(scheduledText, text) : dmp.diff_main(text, scheduledText);
+                const diffs = dmp.diff_main(text, scheduledText);
                 dmp.diff_cleanupSemantic(diffs);
 
                 inner = '';
@@ -560,13 +553,8 @@ export class LawTable {
                 inner = highlight(scheduledText).replace(/\n/g, '<br>');
             }
             const when = scheduledDate ? LawTable.fmtEf(scheduledDate) : '';
-            const schedLabel = isNewArticle
-                ? (when ? `직전본(${when} 시행)에 없음 → 신설` : '직전본에 없음 → 신설')
-                : past
-                    ? (when ? `직전본 ${when} 시행 → 현행` : '직전본 → 현행')
-                    : (when ? `시행예정 ${when}` : '시행예정');
-            const cls = past ? 'box-item--scheduled box-item--past' : 'box-item--scheduled';
-            parts.push(`<div class="box-item small p-2 m-0 ${cls}" data-sched-label="${schedLabel}">${inner}</div>`);
+            const schedLabel = when ? `시행예정 ${when}` : '시행예정';
+            parts.push(`<div class="box-item small p-2 m-0 box-item--scheduled" data-sched-label="${schedLabel}">${inner}</div>`);
         }
 
         return parts.join('');

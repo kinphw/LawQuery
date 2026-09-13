@@ -3,6 +3,7 @@ import { LawController } from '../law/controllers/LawController';
 import { PenaltyController } from '../law/controllers/PenaltyController';
 import { ReferenceController } from '../law/controllers/ReferenceController';
 import { AnnexController } from '../law/controllers/AnnexController';
+import { LawHistoryController } from '../law/controllers/LawHistoryController';
 
 export class LawHandler {
   public router: Router;
@@ -10,6 +11,7 @@ export class LawHandler {
   private penaltyController: PenaltyController;
   private referenceController: ReferenceController;
   private annexController: AnnexController;
+  private historyController: LawHistoryController;
 
 
   constructor() {
@@ -18,6 +20,7 @@ export class LawHandler {
     this.penaltyController = new PenaltyController();
     this.referenceController = new ReferenceController();
     this.annexController = new AnnexController();
+    this.historyController = new LawHistoryController();
     this.initializeRoutes();
   }
 
@@ -42,5 +45,7 @@ export class LawHandler {
     this.router.get('/highlights', this.controller.getHighlights.bind(this.controller)); // 5단표 강조쌍(전체)
     this.router.get('/reference', this.referenceController.getReference.bind(this.referenceController));
     this.router.get('/annex', this.annexController.getAnnex.bind(this.annexController));
+    this.router.get('/history/versions', this.historyController.getVersions.bind(this.historyController)); // 연혁비교: 단별 버전 목록
+    this.router.get('/history/compare', this.historyController.getCompare.bind(this.historyController));   // 연혁비교: 두 버전의 달라진 조
   }
 }

@@ -11,8 +11,8 @@
  * 다른 이벤트매니저와 똑같이 배열에 담아 돌린다 — 컨트롤러는 손대지 않는다.
  */
 
-/** 로컬판에서 감출 버튼들. */
-const HIDDEN_BUTTON_IDS = ['lawExportBtn', 'lawRevisionBtn'];
+/** 로컬판에서 감출 버튼들. lawViewTabs = 기본조회|연혁비교 탭(로컬판은 연혁 아카이브를 싣지 않는다). */
+const HIDDEN_BUTTON_IDS = ['lawExportBtn', 'lawRevisionBtn', 'lawViewTabs'];
 
 function removeHiddenButtons(): void {
   for (const id of HIDDEN_BUTTON_IDS) {
