@@ -76,6 +76,79 @@
     line-height: 1.5;
   }
 
+// ── 1단 문서 모드(상위·하위 단이 없는 단독 규정, step=1) ──
+// 연계표는 단을 나란히 대조하는 표라 셀=박스가 맞지만, 1단은 규정 한 편을 '읽는' 화면이다.
+// 폭을 읽기 좋은 너비로 좁히고, 박스 대신 조 머리글·여백·내어쓰기로 구조를 드러낸다.
+// ⚠ 본문 글자 크기는 em — 글자크기 버튼이 td.law-box 클래스(fs-5 / small)로 곱해 준다.
+.law-table-wrap--doc {
+  max-width: 54rem;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+// 위 검색·조문별 선택조회 카드도 같은 폭으로 — 컨트롤과 본문 좌우선이 어긋나지 않게.
+body.lq-doc-mode #lawSearchCard,
+body.lq-doc-mode #lawArticleCard {
+  max-width: 54rem;
+}
+
+.law-table.law-table--doc {
+  border: 0;
+
+  // table-bordered 가 행(tr)·tbody 에도 테두리를 걸어 제목 위에 선이 남는다 → 전부 걷고 필요한 선만 다시 긋는다.
+  > :not(caption),
+  > :not(caption) > * {
+    border-width: 0;
+  }
+
+  > :not(caption) > * > * {
+    border-width: 0;
+    background-color: transparent;
+    box-shadow: none;
+  }
+
+  th.lq-doc-title {
+    background-color: #fff;
+    color: #212529;
+    text-align: left;
+    padding: 1.5rem 0 .85rem;
+    border-bottom: 2px solid #212529;
+  }
+  .lq-doc-name { font-size: 1.3rem; font-weight: 700; letter-spacing: -.01em; }
+  .lq-doc-meta { margin-top: .2rem; font-size: .8125rem; font-weight: 400; color: #6c757d; }
+
+  td.lq-doc-cell {
+    padding: 1.1rem 0 1.15rem;
+    border-bottom: 1px solid #e9ecef;
+  }
+  tbody.lq-vblock:hover td.lq-doc-cell { background-color: #fafbfc; }
+
+  .lq-doc-art { font-size: .9375em; line-height: 1.8; color: #212529; }
+  .lq-doc-head { display: flex; align-items: center; gap: .5rem; margin-bottom: .3rem; }
+  .lq-doc-jo { font-weight: 700; color: #111827; }
+  .lq-doc-tools {
+    margin-left: auto;
+    display: flex;
+    gap: .25rem;
+    flex-shrink: 0;
+    .btn { margin: 0 !important; padding: .05rem .5rem; font-size: .75rem; line-height: 1.5; }
+  }
+
+  .lq-doc-ln { word-break: keep-all; overflow-wrap: anywhere; }
+  // 내어쓰기: 번호는 왼쪽에 걸고 둘째 줄부터 본문 시작점에 맞춘다.
+  .lq-doc-hang { padding-left: 1.35em; text-indent: -1.35em; }
+  .lq-doc-ho   { padding-left: 2.85em; text-indent: -1.5em; }
+  .lq-doc-mok  { padding-left: 4.1em;  text-indent: -1.25em; }
+  .no-hang .lq-doc-ho  { padding-left: 1.5em; }     // 항 없이 호가 조에 바로 달린 조
+  .no-hang .lq-doc-mok { padding-left: 2.75em; }
+  .lq-doc-hang:not(:first-child) { margin-top: .35rem; }
+
+  .lq-doc-amend { color: #9aa1a9; font-size: .85em; }
+  .is-deleted .lq-doc-jo,
+  .is-deleted .lq-doc-ln { color: #adb5bd; }
+  .lq-doc-chapter { font-weight: 700; font-size: 1.05em; padding-top: .5rem; }
+}
+
 // 벌칙 테이블 공통 스타일
 .penalty-table {
   border-collapse: collapse !important;

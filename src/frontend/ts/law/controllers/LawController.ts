@@ -250,7 +250,17 @@ export class LawController implements ILawController {
         this.view.setReferenceData(this.dataManager.getReferenceData());
 
         // 별표 id 세팅
-        this.view.setAnnexIds(await this.modelFetchAnnexIds.getAnnexIds());
+        const annexIds = await this.modelFetchAnnexIds.getAnnexIds();
+        this.view.setAnnexIds(annexIds);
+
+        // 이 법령에서 누를 거리가 없는 컨트롤은 치운다. 1단(단독 규정)은 정렬기준·개정비교가 뜻이 없고,
+        // 벌칙·별표는 데이터가 없으면 빈 모달만 여는 버튼이 된다.
+        if (this.getStep() === 1) {
+            ['lawBaseHost', 'lawRevisionBtn'].forEach(id => this.hideEl(id));
+            document.body.classList.add('lq-doc-mode');   // 검색·조문 카드를 본문 읽기 폭에 맞춤(_table.scss)
+        }
+        if (!this.dataManager.getPenaltyIds().length) this.hideEl('penaltyBtn');
+        if (!annexIds.size) this.hideEl('annexBtn');
 
         // 강조는 '하위 기준조회(피벗)'에서만 — 법(최상위) 기준에선 위에 상위가 없어 의미 없고
         // 본문을 흐리게만 만들어 방해됨. base='a'에서는 비활성(highlights 빈 채로 둠).

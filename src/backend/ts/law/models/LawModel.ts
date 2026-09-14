@@ -155,7 +155,9 @@ ${unionParts.join('\nUNION ALL\n')}
     const tf = this.trackClause(track);   // 멀티트랙 필터(단일트랙=빈문자열)
     let query: string = '';
 
-    if (step === 4) {
+    // 1~3단(상위법 없는 단독 고시 등)도 4단 쿼리로 — 로더가 빈 단 테이블(db_e/s/r)을 늘 만들어 두므로
+    // 없는 단은 NULL 로 나오고, 프론트가 step 만큼만 열을 그린다.
+    if (step <= 4) {
       query = `
       WITH RECURSIVE paths AS (
         SELECT
@@ -385,7 +387,7 @@ ${unionParts.join('\nUNION ALL\n')}
     const placeholders = new Array(lawIds.length).fill('?').join(',');
 
     let query = '';
-    if (step === 4) {
+    if (step <= 4) {                     // 1~3단도 4단 쿼리 재사용(getAllLaws 참고)
       query = `
       WITH RECURSIVE paths AS (
         SELECT

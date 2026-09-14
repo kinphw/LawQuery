@@ -27,4 +27,6 @@ INSERT IGNORE INTO law_registry (code, sort_order, kind) VALUES
   ('v', 80, 'law'),
   ('x', 90, 'law'),
   ('b', 100, 'law'),
-  ('p', 110, 'law');
+  ('p', 110, 'law'),
+  ('w', 120, 'law'),   -- 금융기관의 업무위탁 등에 관한 규정 (1단 단독 고시)
+  ('d', 130, 'law');   -- 금융회사의 정보처리 업무 위탁에 관한 규정 (1단 단독 고시)

@@ -21,6 +21,8 @@ export class LawTable {
     private step: number;
     // 현재 정렬기준(base)에 해당하는 컬럼 인덱스 → 해당 열을 강조 표시
     private highlightCol: number;
+    // 1단(상위·하위 단 없는 단독 규정) = 문서 모드: 대조표가 아니라 규정 한 편을 읽는 화면으로 그린다.
+    private doc = false;
 
     // 법령명 thead 설정을 위한 클래스변수 // 250623
     public names: string[] = [];
@@ -46,6 +48,7 @@ export class LawTable {
         const law = urlParams.get('law') || 'j';
         this.names = getLawConfig(law).names;
         this.step = parseInt(urlParams.get('step') || '4', 10);
+        this.doc = this.step === 1;
 
         // 정렬기준(base) → 컬럼 인덱스(a=0,e=1,s=2,r=3,b=4). 없으면 법(0).
         const base = (urlParams.get('base') || 'a').toLowerCase();
@@ -104,7 +107,8 @@ export class LawTable {
 
         // --lq-step: 단(段) 수를 CSS 로 넘긴다. step 은 URL 파라미터라 CSS 가 알 수 없는데,
         // 모바일 세로에서 최소폭을 '단 수 × 열폭'으로 잡아야 4단·5단의 열 폭이 같아진다(_responsive.scss).
-        let html = `<div class="table-responsive law-table-wrap"><table class="table table-bordered law-table" style="--lq-step:${this.step}">`;
+        let html = `<div class="table-responsive law-table-wrap${this.doc ? ' law-table-wrap--doc' : ''}">`
+            + `<table class="table table-bordered law-table${this.doc ? ' law-table--doc' : ''}" style="--lq-step:${this.step}">`;
         // 윈도잉 시 placeholder(colspan 행)가 열폭을 깨지 않도록 colgroup으로 폭 고정(table-layout:fixed)
         if (windowed) {
             const w = (100 / this.step).toFixed(4);
@@ -115,6 +119,7 @@ export class LawTable {
                 <tr>
                     ${this.names.slice(0, this.step).map((name, i) => {
             const parts = name.split('\n');
+            if (this.doc) return this.docTitle(parts);
             const hl = i === this.highlightCol ? ' lq-base-col' : '';
             return `<th class="text-center py-1${hl}">
                             <div class="small">${parts[0]}</div>
@@ -325,6 +330,14 @@ export class LawTable {
         // 분할 항/호의 소속 조 표시(검색·하위규정뷰에서 '몇조'를 잃지 않도록)
         const pfx = joPrefix ? `<div class="lq-jo-tag small fw-bold text-secondary">${joPrefix}</div>` : '';
 
+        // 문서 모드: 조 머리글 + 줄 단위 본문. 시행예정 diff 는 기존 박스 렌더가 이미 잘 보여 주므로 그대로 둔다.
+        if (this.doc && !(scheduledText && scheduledText.trim())) {
+            const inner = id
+                ? this.docContent(text, searchText, extraHtml)
+                : `<div class="lq-doc-chapter">${this.docEsc(text || '')}</div>`;   // 장·절 제목행
+            return `<td class="${finalClass} lq-doc-cell"${rowAttr}${idAttr}>${pfx}${inner}</td>`;
+        }
+
         return `<td class="${finalClass}"${rowAttr}${idAttr}>${pfx}${this.formatContent(text, scheduledText ?? null, scheduledDate ?? null, searchText, focus)}${extraHtml}</td>`;
     }
     private emptyTd(className: string, rowspan?: number): string {
@@ -510,6 +523,54 @@ export class LawTable {
         const d = raw.replace(/\D/g, '');
         if (d.length !== 8) return raw;
         return `${d.slice(0, 4)}. ${Number(d.slice(4, 6))}. ${Number(d.slice(6, 8))}.`;
+    }
+
+    private docEsc(s: string): string {
+        return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    /** 문서 모드 머리글 — 규정명 + '시행 2019. 4. 1.'(연계표의 검은 단 머리 대신). */
+    private docTitle(parts: string[]): string {
+        const meta = parts.slice(1)
+            .map(p => p.replace(/\[시행\s*(\d{8})\]/, (_m, d) => `시행 ${LawTable.fmtEf(d)}`).replace(/^\[|\]$/g, ''))
+            .filter(Boolean).join(' · ');
+        return `<th class="lq-doc-title"><div class="lq-doc-name">${parts[0]}</div>`
+            + (meta ? `<div class="lq-doc-meta">${meta}</div>` : '') + `</th>`;
+    }
+
+    /**
+     * 문서 모드 본문 — 조 제목('제2조(정의)')을 머리글로 떼어 참조·별표 버튼과 한 줄에 두고,
+     * 본문은 줄마다 항(①)·호(1.)·목(가.)으로 갈라 내어쓰기한다. 개정 표기(<개정 …>)는 한 톤 낮춘다.
+     */
+    private docContent(text: string | null, searchText: string, tools: string): string {
+        if (!text) return '';
+        const hl = (s: string) => searchText
+            ? s.replace(new RegExp(searchText, 'gi'), m => `<span class="text-danger fw-bold">${m}</span>`)
+            : s;
+        const amend = (s: string) => s.replace(
+            /(&lt;(?:개정|신설|삭제|본조신설|본항신설|본호신설|본호 삭제|본조삭제|전문개정|종전)[^&]*?&gt;|\[(?:본조|본항|본호|전문|종전)[^\]]*\])/g,
+            '<span class="lq-doc-amend">$1</span>');
+
+        const lines = text.split('\n');
+        const m = lines[0].match(/^(제\d+(?:-\d+)?조(?:의\d+)?(?:\s*\([^)]*\))?)\s*(.*)$/);
+        const head = m ? m[1] : '';
+        const body = [m ? m[2] : lines[0], ...lines.slice(1)].map(l => l.trim()).filter(Boolean);
+        const deleted = !!m && /^<?\s*삭\s*제/.test(m[2].trim());
+
+        const HANG = /^[①-⑮]/;
+        const hasHang = body.some(t => HANG.test(t));
+        const kind = (t: string) => HANG.test(t) ? 'hang'
+            : /^\d+(?:의\d+)*\.(?!\d)/.test(t) ? 'ho'
+            : /^[가-힣]\./.test(t) ? 'mok'
+            : 'p';
+        const rows = body.map(t => `<div class="lq-doc-ln lq-doc-${kind(t)}">${amend(hl(this.docEsc(t)))}</div>`).join('');
+
+        const headHtml = (head || tools)
+            ? `<div class="lq-doc-head"><span class="lq-doc-jo">${hl(this.docEsc(head))}</span>`
+              + (tools ? `<span class="lq-doc-tools">${tools}</span>` : '') + `</div>`
+            : '';
+        return `<div class="lq-doc-art${deleted ? ' is-deleted' : ''}${hasHang ? '' : ' no-hang'}">`
+            + `${headHtml}<div class="lq-doc-body">${rows}</div></div>`;
     }
 
     private formatContent(text: string | null, scheduledText: string | null, scheduledDate: string | null, searchText: string, focus: Set<number> = new Set()): string {
