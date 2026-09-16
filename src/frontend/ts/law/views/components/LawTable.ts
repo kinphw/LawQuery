@@ -319,6 +319,21 @@ export class LawTable {
         }).join('');
     }
 
+    /**
+     * 실제 단수로 맞춘다. 생성자는 URL 의 step 을 읽는데 그 값은 낡을 수 있다 —
+     * 5단으로 적재했던 법령을 4단으로 다시 적재하면 예전 링크·뒤로가기에 `step=5` 가 남고,
+     * 그러면 thead(names 기준)는 4칸인데 tbody 는 5칸이 되어 오른쪽에 빈 칸이 생긴다.
+     * db_meta 가 준 단 수(트랙 반영)가 참이므로 렌더 전에 그것으로 덮는다.
+     */
+    setStep(step: number): void {
+        if (!step || step === this.step) return;
+        this.step = step;
+        this.doc = step === 1;
+        const base = (new URLSearchParams(window.location.search).get('base') || 'a').toLowerCase();
+        const bi = ['a', 'e', 's', 'r', 'b'].indexOf(base);
+        this.highlightCol = bi >= 0 ? Math.min(bi, step - 1) : 0;
+    }
+
     // 헬퍼 함수들 // id를 <td>의 data-id 속성으로 추가
     private td(className: string, text: string | null, scheduledText: string | null | undefined, scheduledDate: string | null | undefined, searchText: string, rowspan?: number, extraHtml: string = '', id?: string, isVirtual?: boolean, joPrefix: string = '', focus: Set<number> = new Set()): string {
         const rowAttr = rowspan && rowspan > 1 ? ` rowspan="${rowspan}"` : '';

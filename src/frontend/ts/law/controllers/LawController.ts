@@ -172,6 +172,9 @@ export class LawController implements ILawController {
         // 공통: 법령명/현재법령 박스/별표 원규정 표시명
         if (meta.length > 0) {
             this.view.setLawNames(meta.map(m => m.full_name));
+            // 단수는 URL(step)이 아니라 meta 가 정한다. 적재 구조가 바뀌면(5단→4단) 옛 링크의 step 이
+            // 남아 tbody 만 한 칸 더 그려지므로, 트랙까지 반영된 실제 단 수로 덮는다.
+            this.view.setStep(meta.filter(m => ['a', 'e', 's', 'r', 'b'].includes(m.origin)).length);
             const label = meta.find(m => m.origin === 'a')?.full_name.split('\n')[0] ?? '';
             CurrentLawBox.updateWithLabel(label);
             const originMap: Record<string, string> = {};

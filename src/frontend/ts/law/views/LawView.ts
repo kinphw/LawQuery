@@ -86,6 +86,11 @@ export class LawView {
         this.lawTable.names = names;
     }
 
+    /** 표 단수를 실제 단수(db_meta)로 맞춘다 — URL 의 step 은 낡을 수 있다. */
+    setStep(step: number): void {
+        this.lawTable.setStep(step);
+    }
+
     getLawNames(): string[] {
         return this.lawTable.names;
     }
