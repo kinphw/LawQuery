@@ -636,7 +636,7 @@ ${unionParts.join('\nUNION ALL\n')}
    * 새 법령 = ldb_<code> 적재 + law_registry 에 1행 INSERT. (db/law_registry.sql 참고)
    * law_registry 테이블이 없으면 [] 반환 → 프론트가 하드코딩 드롭다운으로 폴백.
    */
-  async getLawRegistry(): Promise<Array<{ code: string; label: string; step: number; names: string[]; originMap: Record<string, string>; kind: string; tracks?: Array<{ code: string; label: string; rName: string; bName: string; rShort: string; bShort: string }> }>> {
+  async getLawRegistry(): Promise<Array<{ code: string; label: string; step: number; names: string[]; originMap: Record<string, string>; kind: string; tracks?: Array<{ code: string; label: string; origins: Array<{ origin: string; name: string; short: string }> }> }>> {
     const LEVELS = ['a', 'e', 's', 'r', 'b'];
     const authDb = process.env.AUTH_DB || 'ldb_auth';
 
@@ -650,7 +650,7 @@ ${unionParts.join('\nUNION ALL\n')}
       return []; // law_registry 미설치 → 폴백
     }
 
-    const out: Array<{ code: string; label: string; step: number; names: string[]; originMap: Record<string, string>; kind: string; tracks?: Array<{ code: string; label: string; rName: string; bName: string; rShort: string; bShort: string }> }> = [];
+    const out: Array<{ code: string; label: string; step: number; names: string[]; originMap: Record<string, string>; kind: string; tracks?: Array<{ code: string; label: string; origins: Array<{ origin: string; name: string; short: string }> }> }> = [];
     for (const reg of regs) {
       try {
         const ctx = DbContext.getInstance(`ldb_${reg.code}`);
@@ -678,12 +678,14 @@ ${unionParts.join('\nUNION ALL\n')}
         const originMap: Record<string, string> = {};
         presentOrigins.forEach(o => { originMap[o] = pick(o)?.short_name || o; });
 
+        // 트랙에 걸린 단은 법령마다 다르다(z=r·b / p=s·r) → meta 에 그 트랙으로 들어온 단을 그대로 싣는다.
         const trackList = tracks.map(t => ({
           code: t.track_code, label: t.label,
-          rName: byOT['r']?.[t.track_code]?.full_name || '',
-          bName: byOT['b']?.[t.track_code]?.full_name || '',
-          rShort: byOT['r']?.[t.track_code]?.short_name || '',
-          bShort: byOT['b']?.[t.track_code]?.short_name || '',
+          origins: LEVELS.filter(o => byOT[o]?.[t.track_code]).map(o => ({
+            origin: o,
+            name: byOT[o][t.track_code].full_name,
+            short: byOT[o][t.track_code].short_name,
+          })),
         }));
 
         out.push({

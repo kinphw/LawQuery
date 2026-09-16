@@ -2,10 +2,9 @@
 export interface LawTrackEntry {
     code: string;                       // 'fi', 'sd' (트랙 코드)
     label: string;                      // 토글 표시명(예: 금융투자업)
-    rName: string;                      // 그 트랙 감독규정(r) 전체명(표 헤더)
-    bName: string;                      // 그 트랙 세칙(b) 전체명
-    rShort: string;
-    bShort: string;
+    // 그 트랙에 실제로 걸린 단들. 트랙단은 법령마다 다르다 — z(자본시장법)는 r·b,
+    // p(통신사기피해환급법)는 s·r. 그래서 단 letter 를 필드명에 박지 않는다.
+    origins: Array<{ origin: string; name: string; short: string }>;
 }
 
 export interface LawListEntry {
