@@ -1,7 +1,7 @@
 .floating-controls {
     position: fixed;
-    /* top: 50px; */
-    top : 0px;
+    /* 회원바(auth-gate.js 가 높이를 --lq-userbar-h 로 알려 줌) 바로 아래 — top:0 이면 회원바(z 1030)에 깔려 안 보였다 */
+    top: var(--lq-userbar-h, 0px);
     left: 300px;
     z-index: 1000;
     background-color: white;

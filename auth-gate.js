@@ -27,7 +27,7 @@
       'position:sticky;top:0;z-index:1030}' +
     '.lq-userbar__who{margin-right:auto}' +
     '.lq-userbar__badge{background:#0d6efd;color:#fff;border-radius:.25rem;' +
-      'padding:.05rem .4rem;font-size:.7rem;margin-left:.25rem}' +
+      'padding:.05rem .4rem;font-size:.7rem;margin-left:.25rem;white-space:nowrap}' +
     '.lq-userbar__actions{display:flex;align-items:center;gap:.75rem;flex-wrap:wrap}' +
     '.lq-userbar__remember{display:flex;align-items:center;gap:.2rem;color:#cfe2ff;' +
       'font-size:.8rem;cursor:pointer;user-select:none}' +
@@ -37,7 +37,16 @@
     '.lq-userbar__link:hover{color:#fff;text-decoration:underline}' +
     '.lq-userbar__cta{color:#fff;background:#0d6efd;border-radius:.25rem;' +
       'padding:.15rem .6rem;text-decoration:none;font-size:.8rem}' +
-    '.lq-userbar__cta:hover{background:#0b5ed7;color:#fff}';
+    '.lq-userbar__cta:hover{background:#0b5ed7;color:#fff}' +
+    // 폰 폭: 한 줄에 들어가게 줄인다(두 줄로 감기면 배지가 '관/리자'로 쪼개지고 첫 화면을 더 먹는다).
+    // 관리자 배지는 바로 옆 '관리자' 링크와 같은 말이라 빼고, '로그인 유지'는 '유지'로.
+    '@media (max-width:575.98px){' +
+      '.lq-userbar{gap:.5rem;padding:.35rem .75rem;font-size:.8rem}' +
+      '.lq-userbar__who{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}' +
+      '.lq-userbar__badge,.lq-userbar__rm-long{display:none}' +
+      '.lq-userbar__actions{gap:.6rem;flex-wrap:nowrap;white-space:nowrap}' +
+      '.lq-userbar__link{font-size:.8rem}' +
+    '}';
   (document.head || docEl).appendChild(style);
 
   function reveal() { docEl.classList.remove('lq-auth-checking'); }
@@ -91,7 +100,7 @@
         '</span>' +
         '<span class="lq-userbar__actions">' +
           '<label class="lq-userbar__remember" title="체크하면 30일간 로그인 유지">' +
-            '<input type="checkbox" id="lqRemember"' + (me.remember ? ' checked' : '') + '> 로그인 유지' +
+            '<input type="checkbox" id="lqRemember"' + (me.remember ? ' checked' : '') + '> <span class="lq-userbar__rm-long">로그인 </span>유지' +
           '</label>' +
           adminLink +
           '<a href="board.html" class="lq-userbar__link">건의사항</a>' +

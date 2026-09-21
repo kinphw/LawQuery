@@ -9,23 +9,30 @@
     padding-left: 1rem !important;
     padding-right: 1rem !important;
   }
-}
 
-// ── 모바일 (≤767.98px) ─────────────────────────────────────
-@media (max-width: 767.98px) {
-
-  // 글자크기 조절 컨트롤: 데스크탑은 left:300px 고정 → 모바일에선 우상단으로
-  // 회원바(--lq-userbar-h, 동적) 높이만큼 내려 가려지지 않게
+  // 글자크기 조절 컨트롤: 넓은 화면은 left:300px 위쪽 고정 → 태블릿·폰에선 우하단으로.
+  // 이 폭에서 위쪽에 두면 헤더 제목·도움말(?) 버튼을 덮고, 스크롤 중엔 표 맨 윗줄 글자를 가린다.
   .floating-controls {
     left: auto !important;
-    right: 0.5rem;
-    top: calc(var(--lq-userbar-h, 0px) + 0.5rem);
+    top: auto;
+    right: 0.75rem;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 0.75rem);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
 
     .btn {
       padding: 0.2rem 0.5rem;
       font-size: 0.8rem;
     }
   }
+
+  // 조문별 선택조회의 '검색' 버튼(우하단 고정)이 떠 있으면 그 위로 비켜 선다
+  body:has(.floating-search-btn:not(.d-none)) .floating-controls {
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 5.25rem);
+  }
+}
+
+// ── 모바일 (≤767.98px) ─────────────────────────────────────
+@media (max-width: 767.98px) {
 
   // 텍스트 검색바: 입력창은 한 줄 전체, 벌칙/별표 버튼은 아래로 줄바꿈
   .law-search-input {
@@ -91,6 +98,16 @@
   // 오히려 나머지 단을 읽기 어렵다. 모든 열을 자유롭게 횡스크롤로 이동한다.
 }
 
+// ── 태블릿 분할 화면·작은 태블릿 세로(576~767px) ──
+// 열당 180px 이면 4단(720px)이 600px 남짓한 화면을 한 끗 차이로 넘어 마지막 단만 잘린다.
+// 이 폭에선 열을 140px 까지 줄여 화면에 맞춘다(4단 560px 은 딱 들어오고, 5단 700px 은 조금만 스크롤).
+@media (min-width: 576px) and (max-width: 767.98px) and (orientation: portrait) {
+  .law-table {
+    width: 100%;
+    min-width: calc(var(--lq-step, 4) * 140px);
+  }
+}
+
 // ── 모바일 가로(landscape): 4~5단을 한눈에 비교하는 표 유지 ──
 // 폰을 눕혀 "여러 단을 동시에 비교"하는 상황에 최적화.
 // 좁은 가로폭에 단을 욱여넣어도 읽히도록 글자/여백을 압축한다.
@@ -129,10 +146,11 @@
     font-size: 0.65rem;
   }
 
-  // 글자크기 컨트롤은 가로에서도 우상단 유지(회원바 높이 반영)
+  // 글자크기 컨트롤은 가로에서도 우하단(세로와 같은 자리)
   .floating-controls {
     left: auto !important;
-    right: 0.5rem;
-    top: calc(var(--lq-userbar-h, 0px) + 0.5rem);
+    top: auto;
+    right: 0.75rem;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 0.5rem);
   }
 }

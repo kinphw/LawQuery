@@ -23,13 +23,29 @@
   }
 }
 
-// 모바일: 검색폼(구분/일련번호/검색항목/내용/날짜)을 세로 스택으로
+// 모바일: 검색폼을 두 칸씩 — 한 칸씩 세로로 쌓으면(7줄) 결과표가 첫 화면 밖으로 밀린다.
+//   [구분 | 일련번호] [검색항목 | 내용] [시작 날짜 | 종료 날짜] [검색 | 전체 복사]
 @media (max-width: 767.98px) {
   #searchForm {
-    // col-auto 항목들이 한 줄에 끼지 않고 적절히 넓어지도록
+    --bs-gutter-x: 0.75rem;
+    --bs-gutter-y: 0.5rem;
+
     .col-auto {
-      flex: 1 1 100%;
+      flex: 0 0 50%;
+      max-width: 50%;
       text-align: left !important;
+    }
+
+    // 검색어가 주 입력이라 검색항목(짧은 선택지)보다 넓게
+    > .col-auto:has(#fieldSelect) { flex-basis: 40%; max-width: 40%; }
+    > .col-auto:has(#keywordInput) { flex-basis: 60%; max-width: 60%; }
+
+    // 날짜·버튼 줄은 폼 안의 중첩 .row — 바깥과 같은 간격을 줘야 칸 가장자리가 맞는다
+    > .row {
+      --bs-gutter-x: 0.75rem;
+      --bs-gutter-y: 0.5rem;
+      margin: 0;
+      padding: 0;
     }
 
     .form-select,
@@ -37,7 +53,6 @@
       width: 100%;
     }
 
-    // 시작/종료 날짜는 좁은 화면에서 2열 유지
     #startDateInput,
     #endDateInput {
       min-width: 0;
@@ -50,11 +65,14 @@
     }
   }
 
-  // 글자크기 조절 컨트롤(유권해석에도 존재): 우상단으로(회원바 높이 반영)
+  // 글자크기 조절 컨트롤(유권해석에도 존재): 법령 화면과 같이 우하단으로 —
+  // 우상단이면 헤더 도움말(?) 버튼과 결과표의 고정 머리줄을 덮는다.
   .floating-controls {
     left: auto !important;
-    right: 0.5rem;
-    top: calc(var(--lq-userbar-h, 0px) + 0.5rem);
+    top: auto;
+    right: 0.75rem;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 0.75rem);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
 
     .btn {
       padding: 0.2rem 0.5rem;
