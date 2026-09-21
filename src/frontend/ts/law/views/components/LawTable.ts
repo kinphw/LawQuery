@@ -1,6 +1,6 @@
 // import { LawResult } from '../../types/LawResult';
 import { LawTitle } from '../../types/LawTitle';
-import { LawTreeNode } from '../../types/LawTreeNode';
+import { LawCmp, LawTreeNode } from '../../types/LawTreeNode';
 import { LawView } from '../LawView';
 import { getLawConfig } from '../../config/LawConfig';
 
@@ -311,7 +311,8 @@ export class LawTable {
                     joPrefix,
                     // 기준(base)보다 '위' 단계만 음영 — 기준 자신·하위는 전체표시
                     // (감독규정 기준으로 봤는데 정작 감독규정이 흐려지는 UX 방지)
-                    c < this.highlightCol ? this.computeFocus(node.id, pathJos) : new Set<number>()
+                    c < this.highlightCol ? this.computeFocus(node.id, pathJos) : new Set<number>(),
+                    node.cmp ?? null
                 );
             }).join('');
             const cls = r === 0 && !root.id_aa ? 'title-row' : '';
@@ -335,7 +336,7 @@ export class LawTable {
     }
 
     // 헬퍼 함수들 // id를 <td>의 data-id 속성으로 추가
-    private td(className: string, text: string | null, scheduledText: string | null | undefined, scheduledDate: string | null | undefined, searchText: string, rowspan?: number, extraHtml: string = '', id?: string, isVirtual?: boolean, joPrefix: string = '', focus: Set<number> = new Set()): string {
+    private td(className: string, text: string | null, scheduledText: string | null | undefined, scheduledDate: string | null | undefined, searchText: string, rowspan?: number, extraHtml: string = '', id?: string, isVirtual?: boolean, joPrefix: string = '', focus: Set<number> = new Set(), cmp: LawCmp | null = null): string {
         const rowAttr = rowspan && rowspan > 1 ? ` rowspan="${rowspan}"` : '';
         const idAttr = id ? ` data-id="${id}"` : ''; // id를 data-id로 추가
 
@@ -344,6 +345,11 @@ export class LawTable {
 
         // 분할 항/호의 소속 조 표시(검색·하위규정뷰에서 '몇조'를 잃지 않도록)
         const pfx = joPrefix ? `<div class="lq-jo-tag small fw-bold text-secondary">${joPrefix}</div>` : '';
+
+        // 날짜 대비: 달라진 칸·없던 칸은 대비 박스로(같은 칸은 아래 평소 경로 — title 이 이미 그날 문언이다)
+        if (cmp && cmp.state !== 'same') {
+            return `<td class="${finalClass}"${rowAttr}${idAttr}>${pfx}${this.formatCmp(cmp, id, searchText)}${extraHtml}</td>`;
+        }
 
         // 문서 모드: 조 머리글 + 줄 단위 본문. 시행예정 diff 는 기존 박스 렌더가 이미 잘 보여 주므로 그대로 둔다.
         if (this.doc && !(scheduledText && scheduledText.trim())) {
@@ -586,6 +592,39 @@ export class LawTable {
             : '';
         return `<div class="lq-doc-art${deleted ? ' is-deleted' : ''}${hasHang ? '' : ' no-hang'}">`
             + `${headHtml}<div class="lq-doc-body">${rows}</div></div>`;
+    }
+
+    /**
+     * 날짜 대비 박스 — 옛 날짜 → 새 날짜 문언을 한 칸 안에 겹쳐 쓴다(시행예정 겹쳐 보기와 같은 약속:
+     * <del class="law-del"> 사라진 문언, <ins class="law-ins"> 들어온 문언). 변경 칸엔 '크게 보기'(신구 2단 창).
+     */
+    private formatCmp(cmp: LawCmp, id: string | undefined, searchText: string): string {
+        const hl = (s: string): string => searchText
+            ? s.replace(new RegExp(searchText, 'gi'), m => `<span class="text-danger fw-bold">${m}</span>`)
+            : s;
+        const show = (s: string): string => hl(this.docEsc(s)).replace(/\n/g, '<br>');
+        if (cmp.state === 'absent') {
+            return '<div class="box-item small p-2 m-0 lq-cmp-absent">이 시점엔 없던 조문</div>';
+        }
+        let inner = '';
+        if (cmp.state === 'added') inner = `<ins class="law-ins">${show(cmp.newer ?? '')}</ins>`;
+        else if (cmp.state === 'removed') inner = `<del class="law-del">${show(cmp.older ?? '')}</del>`;
+        else {
+            const { diff_match_patch, DIFF_DELETE, DIFF_INSERT } = require('diff-match-patch');
+            const dmp = new diff_match_patch();
+            const diffs = dmp.diff_main(cmp.older ?? '', cmp.newer ?? '');
+            dmp.diff_cleanupSemantic(diffs);
+            for (const [op, data] of diffs as [number, string][]) {
+                const seg = show(data);
+                inner += op === DIFF_DELETE ? `<del class="law-del">${seg}</del>`
+                    : op === DIFF_INSERT ? `<ins class="law-ins">${seg}</ins>` : seg;
+            }
+        }
+        const label = cmp.state === 'added' ? '신설' : cmp.state === 'removed' ? '삭제' : '변경';
+        const zoom = id && cmp.state === 'changed'
+            ? `<button type="button" class="lq-cmp-zoom" data-id="${id}">크게 보기</button>` : '';
+        return `<div class="box-item small p-2 m-0 box-item--cmp lq-cmp-${cmp.state}">`
+            + `<div class="lq-cmp-tag"><span class="lq-cmp-chip">${label}</span>${zoom}</div>${inner}</div>`;
     }
 
     private formatContent(text: string | null, scheduledText: string | null, scheduledDate: string | null, searchText: string, focus: Set<number> = new Set()): string {

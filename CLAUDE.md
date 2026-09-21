@@ -190,24 +190,26 @@ interpretation/
 **ApiUrlBuilder**: 모든 API fetch 호출 시 현재 URL의 `law`, `step` 파라미터를 자동으로 붙여 보냄.
 **이벤트매니저 패턴**: `bindEvents()` (초기화 시 1회) + `bindArticleEvents()` / `bindPostRenderEvents()` (동적 렌더링 후)
 
-### 기본조회와 연혁비교 — 서로 다른 두 비교 (2026-09-13)
+### 날짜 대비 — 연계표를 그대로 두고 두 시점을 견준다 (2026-09-17)
 
-법령 화면 상단 탭 **기본조회 | 연혁비교**(`?view=hist`)로 갈린다. 둘은 데이터도 화면도 따로다 —
-섞지 말 것(2026-09-02 에 시행예정 에셋을 재활용해 '버전 바'로 한데 얹었다가 UX 가 흐려져 걷어냈다).
+앱의 강점은 4·5단 연계표다. 법제처식 좌우 대비 탭(2026-09-13 '연혁비교')은 '법제처를 보는 게 낫다'는
+판단으로 걷어내고, **연계표 위 '시점' 바**(`#lawAsofHost` → `LawAsOfBar`)로 합쳤다.
 
-- **기본조회** = 연계표(법→시행령→감독규정→세칙) + **시행예정은 늘 겹쳐 표시**(적재 시 박은
-  `content_*_sched` → `LawTable` 인라인 diff). '개정비교' 버튼은 시행예정이 걸린 조만 남기는 필터
-  (`LawRevisionEventManager`). 비교 시점을 고르는 UI 는 없다(버전 바의 뒷단 `db_version`·`applyCompare`·`?cmp=` 도 2026-09-14 제거).
-- **연혁비교** = 규정마다 **두 시점을 골라** 법제처 신구법비교 모양(좌 종전 | 우 개정)으로 견준다.
-  - 데이터: `db_hist_version` · `db_hist_article` · `db_hist_text`(조 본문, 해시로 중복 제거).
-    적재는 LawQuery-law `python -m pipeline.history <code> --apply` — **법·시행령·행정규칙 전 단의 law.go.kr 연혁**.
-  - API: `GET /api/law/history/versions`(단별 버전 목록) · `GET /api/law/history/compare?origin=&old=&new=`
-    (`LawHistoryController` — `<개정 …>`·`[본조신설 …]` 같은 개정 표기를 걷어낸 뒤 달라진 조만 돌려준다).
-  - 프론트 `src/frontend/ts/law/history/`: `HistoryController`(선택 · URL `?h=a:종전~개정,e:none`),
-    `HistoryView`, `OldNewDiff`(줄=항·호·목 맞춤 → 줄 안 글자 diff, 안 바뀐 줄은 `1. ~ 18. (생 략)`으로 접되
-    바뀐 호의 윗 항은 남긴다). 판정(신설·삭제·변경)은 저장하지 않고 매번 문언에서 계산한다.
-  - 테이블이 없는 DB 면 '연혁 데이터 없음'. 로컬(오프라인)판은 탭을 숨기고(`lawFeatureStub`)
-    `scripts/export-local.py` 가 `db_hist_*` 를 뺀다.
+- **날짜 하나**(`?at=YYYYMMDD`) → 칸마다 그날 시행 중이던 법·시행령·감독규정·세칙 문언(그때 없던 조는 '없던 조문').
+- **날짜 둘**(`&vs=`) → 옛 날짜 → 새 날짜 문언을 한 칸 안에 겹쳐 씀(`law-del`/`law-ins`, 시행예정 겹쳐 보기와 같은 약속).
+  변경 칸의 '크게 보기'는 신구 2단 창(`LawCmpEventManager` → `history/OldNewDiff`). '개정비교' 버튼은 '달라진 줄만' 필터가 된다.
+  이 버튼은 바가 그려지면 검색 카드에서 바의 요약줄 끝으로 옮겨진다(`LawAsOfBar.adoptFilterButton` — 노드 이동이라 id·리스너 유지).
+  ≤767px 에선 입력부를 '날짜' 버튼으로 접고 요약줄만 남긴다(태블릿 분할 화면 포함).
+- 날짜 칸은 글자로 넣는다 — `LawAsOfBar.parseLooseDate`(2024.9.15·20240915·24.9.15·2024년 9월·오늘·시행예정). 달력은 버튼으로만, 개정 시행일은 자동완성 후보, '변경 후'엔 오늘·시행예정 빠른 채우기.
+- **'개정 하나 골라 보기'** = 그 개정 시행일 전날 ↔ 시행일 바로가기. 날짜가 없으면 평소 기본조회(시행예정 겹쳐 보기) 그대로.
+- URL 이 단일 출처 — `ApiUrlBuilder` 가 at·vs 를 모든 조회에 붙이고, 백엔드 `/all`·`/get`·`/pivot` 이
+  트리 조립 뒤 `services/SnapshotOverlay` 로 노드에 `cmp`(older·newer·state)를 얹는다. 표 머리도 두 시행본으로 바뀐다.
+- 문언 = 연혁 아카이브 `db_hist_*`(LawQuery-law `python -m pipeline.history <code> --apply`, 법·시행령·행정규칙 전 단).
+  **연계는 현행 한 벌**이라 조번호로 짝짓는다 — 전부개정·조 이동이 큰 규정은 번호가 같아도 다른 내용일 수 있다.
+- 항·호 행 짝짓기는 `utils/ArticleText`(적재기 `splitter._split_article`·`article_split` 과 같은 규칙: 첫 줄=조 머리,
+  항 있으면 항 기준·없으면 호 기준, 행 ID 번호=항·호 번호). 오늘 날짜로 대조하면 DB 칸과 j 382/387·y 322/322·z.fi 1869/1875 일치.
+- 두 날짜에 있었지만 지금 표에 자리가 없는 조(삭제·번호 이동)는 표 아래 `#lawGoneHost` 에 모은다.
+- 연혁 미적재 DB·로컬(오프라인)판은 바가 뜨지 않는다(`lawFeatureStub` 이 `lawAsofHost` 를 숨기고 `export-local.py` 가 `db_hist_*` 를 뺀다).
 
 ### 타입 공유
 

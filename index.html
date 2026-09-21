@@ -39,9 +39,6 @@
         </div>
       </div>
 
-      <!-- 1a) 보기 전환(기본조회 | 연혁비교). 컨트롤러가 채움 -->
-      <div id="lawViewTabs" class="d-flex justify-content-center"></div>
-
       <!-- 1b) 행정규칙 트랙 토글(멀티트랙 법령만). 컨트롤러가 채움 -->
       <div id="lawTrackHost" class="d-flex justify-content-center mb-1"></div>
 
@@ -49,6 +46,9 @@
       <div id="lawBaseHost" class="d-flex justify-content-center"></div>
     </div>
   </div>
+
+  <!-- 시점 바: 날짜를 찍으면 그날 시행본 연계표, 비교 날짜를 더 찍으면 칸마다 대비(?at=&vs=). 컨트롤러가 채움 -->
+  <div id="lawAsofHost" class="container mb-3"></div>
 
   <!-- 텍스트 검색 영역 -->
   <div class="container mb-3" id="lawSearchCard">
@@ -134,8 +134,8 @@
 
   <div id="results"></div>
 
-  <!-- 연혁비교(?view=hist) — 규정별 신구대비표. HistoryController 가 채움 -->
-  <div id="lawHistHost" class="container mb-5" hidden></div>
+  <!-- 날짜 대비에서 지금 연계표에 자리가 없는 조(삭제·번호 이동). LawAsOfBar 가 채움 -->
+  <div id="lawGoneHost"></div>
 
   <!-- 기본 라이브러리 -->
   <script src="assets/vendor/bootstrap.bundle.min.js"></script>

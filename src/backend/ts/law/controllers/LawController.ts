@@ -5,13 +5,29 @@ import { BaseLawController } from './BaseLawController';
 import { LawModel } from '../models/LawModel';
 import { LawTreeNode } from '../types/LawTreeNode';
 import DbContext from '../../common/DbContext';
+import { SnapshotMeta, SnapshotOverlay, readDates } from '../services/SnapshotOverlay';
 
 export class LawController extends BaseLawController<LawModel> {
   // private service: LawService;
   // private model: LawModel;
 
+  private overlay = new SnapshotOverlay();
+
   constructor() {
     super(new LawModel());
+  }
+
+  /** ?at=&vs= 이 있으면 트리에 그날 시행본 문언을 얹는다. 날짜가 없거나 연혁 미적재·오류면 null — 평소 응답 그대로. */
+  private async snapshotFor(req: Request, nodes: LawTreeNode[], withGone: boolean): Promise<SnapshotMeta | null> {
+    const dates = readDates(req.query as Record<string, unknown>);
+    if (!dates) return null;
+    try {
+      return await this.overlay.apply(this.getDbContext(req.query.law as string), nodes, dates,
+        (req.query.track as string) || undefined, withGone);
+    } catch (e) {
+      console.error('[snapshot]', e);
+      return null;
+    }
   }
 
   // /all — 연계표(전체).
@@ -25,8 +41,9 @@ export class LawController extends BaseLawController<LawModel> {
 
     const dataTemp = await this.model.getAllLaws(dbContext, step, track);
     const data = this.model.toLawTree(dataTemp);
+    const snapshot = await this.snapshotFor(req, data, true);
 
-    res.status(200).json({ success: true, data });
+    res.status(200).json({ success: true, data, ...(snapshot ? { snapshot } : {}) });
   }
 
   // async getByIds(req: IncomingMessage, res: ServerResponse, lawIds: string[] | null) {
@@ -56,10 +73,8 @@ export class LawController extends BaseLawController<LawModel> {
     // const data = await this.service.getLawById(id);
     const dataTemp = await this.model.getLawByIds(dbContext, step, lawIds, track);
     const data = this.model.toLawTree(dataTemp);
-    // res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-    // res.end(JSON.stringify(data));
-    // res.status(200).json(data);
-    res.status(200).json({ success: true, data });
+    const snapshot = await this.snapshotFor(req, data, false);
+    res.status(200).json({ success: true, data, ...(snapshot ? { snapshot } : {}) });
   }
 
   // 법령 제목만 긁어오는 메서드
@@ -207,6 +222,7 @@ export class LawController extends BaseLawController<LawModel> {
       }
     }
 
-    res.status(200).json({ success: true, data: roots, base });
+    const snapshot = await this.snapshotFor(req, roots, true);
+    res.status(200).json({ success: true, data: roots, base, ...(snapshot ? { snapshot } : {}) });
   }
 }

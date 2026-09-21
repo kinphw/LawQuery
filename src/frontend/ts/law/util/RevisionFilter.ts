@@ -12,8 +12,9 @@ import { LawTreeNode } from '../types/LawTreeNode';
  * '개정비교' 모드가 된다(국가법령정보센터 신구법비교의 '(생 략)' 압축과 같은 효과).
  */
 
-/** 이 노드 자체에 시행예정 본문이 붙어 있는가. */
+/** 이 노드가 달라졌는가 — 날짜 대비면 두 날짜 사이 변경·신설·삭제, 평소엔 시행예정 본문이 붙었는가. */
 export function isRevised(n: LawTreeNode): boolean {
+    if (n.cmp) return n.cmp.state === 'changed' || n.cmp.state === 'added' || n.cmp.state === 'removed';
     return !!n.scheduledTitle && !!n.scheduledTitle.trim();
 }
 

@@ -8,6 +8,10 @@ export default class ApiUrlBuilder {
         // 매개변수를 붙여서 반환
         let url = `${baseUrl}?law=${law}&step=${step}`;
         if (track) url += `&track=${encodeURIComponent(track)}`;
+        const at = urlParams.get('at');       // 날짜 대비: 그날 시행본
+        const vs = urlParams.get('vs');       // 날짜 대비: 견줄 날짜
+        if (at) url += `&at=${encodeURIComponent(at)}`;
+        if (vs) url += `&vs=${encodeURIComponent(vs)}`;
         return url;
     }
 

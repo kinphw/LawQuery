@@ -46,6 +46,5 @@ export class LawHandler {
     this.router.get('/reference', this.referenceController.getReference.bind(this.referenceController));
     this.router.get('/annex', this.annexController.getAnnex.bind(this.annexController));
     this.router.get('/history/versions', this.historyController.getVersions.bind(this.historyController)); // 연혁비교: 단별 버전 목록
-    this.router.get('/history/compare', this.historyController.getCompare.bind(this.historyController));   // 연혁비교: 두 버전의 달라진 조
   }
 }

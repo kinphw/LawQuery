@@ -1,107 +1,257 @@
-// 연혁비교(?view=hist) — 규정별 신구대비표. 법제처 신구법비교와 같은 좌우 2단.
-// 색의 약속: 종전 쪽에서 사라진 문언 = 빨강, 개정 쪽에서 들어온 문언 = 파랑(법제처와 같다).
-// 색만으로 구분하지 않도록 옅은 바탕을 함께 깐다.
+// 날짜 대비(?at=&vs=) — 연계표 위 '시점' 바, 칸 안 대비 박스, 크게 보기 창(신구 2단), 자리 없는 조 목록.
+// 칸 안 대비는 시행예정 겹쳐 보기와 같은 약속을 쓴다: 사라진 문언 = law-del(회색 취소선), 들어온 문언 = law-ins(빨간 밑줄).
 
-#lawViewTabs .btn {
-  min-width: 5.5rem;
-}
-
-.lq-hist-ctl {
+// ── 시점 바 ─────────────────────────────
+// 입력칸 아래 끝에 맞춘다 — 날짜 칸은 '이름·빠른 버튼' 줄이 위에 얹혀 있어서, 가운데 맞춤이면 버튼이 어긋난다.
+.lq-asof {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.5rem 0.75rem;
+  padding: 0.5rem 0.75rem 0.6rem;
+  border: 1px solid #dee2e6;
+  border-radius: 0.375rem;
+  background: #f8f9fa;
   font-size: 0.875rem;
-
-  .lq-hist-legend .lq-h-del,
-  .lq-hist-legend .lq-h-ins {
-    padding: 0 0.25rem;
-    border-radius: 0.2rem;
-  }
 }
 
-.lq-hist-rows {
-  display: grid;
-  row-gap: 0.35rem;
+.lq-asof-lbl {
+  padding-bottom: 0.3rem;
+  font-weight: 700;
+  color: #343a40;
+  white-space: nowrap;
 }
 
-.lq-hist-row {
+.lq-asof-date {
   display: grid;
-  grid-template-columns: 5.5rem auto minmax(0, 1fr) auto auto minmax(0, 1fr) 7rem;
-  align-items: center;
-  column-gap: 0.5rem;
+  gap: 0.2rem;
+}
 
-  .lq-hist-tier {
+.lq-asof-dhead {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+
+  label {
+    margin: 0;
+    font-size: 0.75rem;
     font-weight: 700;
-    white-space: nowrap;
-  }
-
-  .lq-hist-lbl {
-    color: #6c757d;
-    font-size: 0.8125rem;
-  }
-
-  .lq-hist-arrow {
-    color: #adb5bd;
-  }
-
-  .form-select {
-    font-size: 0.8125rem;
-  }
-
-  .lq-hist-count {
-    text-align: right;
-    white-space: nowrap;
-    text-decoration: none;
+    color: #495057;
   }
 }
 
-.lq-hist-sec {
-  margin-bottom: 2rem;
-  scroll-margin-top: 1rem;
+.lq-asof-quick {
+  display: inline-flex;
+  gap: 0.45rem;
+
+  button {
+    padding: 0;
+    border: 0;
+    background: none;
+    font-size: 0.75rem;
+    color: #0a58ca;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    cursor: pointer;
+  }
 }
 
-.lq-hist-title {
+.lq-asof-input {
+  position: relative;
+  display: flex;
+
+  input[type="text"] {
+    width: 9.5rem;
+    padding: 0.2rem 0.5rem;
+    border: 1px solid #ced4da;
+    border-right: 0;
+    border-radius: 0.25rem 0 0 0.25rem;
+    background: #fff;
+    font-size: 0.875rem;
+    font-variant-numeric: tabular-nums;
+
+    &:focus {
+      outline: none;
+      border-color: #86b7fe;
+      box-shadow: 0 0 0 0.15rem rgba(13, 110, 253, 0.2);
+    }
+
+    &.is-invalid {
+      border-color: #dc3545;
+      background: #fff5f5;
+    }
+  }
+}
+
+.lq-asof-calbtn {
+  padding: 0 0.5rem;
+  border: 1px solid #ced4da;
+  border-radius: 0 0.25rem 0.25rem 0;
+  background: #fff;
+  color: #495057;
+  cursor: pointer;
+
+  &:hover { background: #e9ecef; }
+}
+
+// 달력 피커만 빌려 쓰는 숨은 date 입력 — display:none 이면 피커가 열리지 않아 크기만 없앤다.
+.lq-asof-cal {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.lq-asof-arrow {
+  padding-bottom: 0.3rem;
+  color: #adb5bd;
+}
+
+.lq-asof-actions {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.lq-asof-msg {
+  padding: 0.35rem 0.25rem 0;
+  font-size: 0.8125rem;
+  color: #b02a37;
+}
+
+.lq-asof-rev {
+  width: auto;
+  max-width: 26rem;
+  margin-left: auto;
+}
+
+.lq-asof--warn {
+  color: #842029;
+  background: #f8d7da;
+  border-color: #f5c2c7;
+}
+
+// 요약줄: [무엇을 무엇과 견주는지 ⓘ · 단별 칩] ……… [날짜(좁은 화면만)] [개정비교/달라진 줄만]
+.lq-asof-foot {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 0.35rem;
-  font-size: 1rem;
-  font-weight: 700;
-  margin: 0 0 0.5rem;
+  gap: 0.4rem 0.75rem;
+  padding: 0.45rem 0.25rem 0;
+}
 
-  .lq-hist-top {
-    font-weight: 400;
-    text-decoration: none;
+.lq-asof-sum {
+  display: flex;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem 0.5rem;
+  min-width: 0;
+  font-size: 0.8125rem;
+  color: #495057;
+}
+
+.lq-asof-info {
+  margin-left: 0.25rem;
+  padding: 0 0.15rem;
+  border: 0;
+  background: none;
+  color: #868e96;
+  font-size: 0.8125rem;
+  line-height: 1;
+  cursor: pointer;
+
+  &:hover,
+  &[aria-expanded="true"] { color: #0a58ca; }
+}
+
+.lq-asof-help {
+  padding: 0.3rem 0.25rem 0;
+  font-size: 0.8125rem;
+  color: #6c757d;
+}
+
+.lq-asof-toggle { display: none; }   // 넓은 화면은 입력부가 늘 펼쳐져 있다
+
+.lq-asof-slot {
+  display: flex;
+  flex: 0 0 auto;
+  margin-left: auto;
+}
+
+.lq-asof-chip {
+  padding: 0.05rem 0.5rem;
+  border: 1px solid #ced4da;
+  border-radius: 999px;
+  background: #fff;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+
+  &.same {
+    color: #868e96;
+    border-style: dashed;
   }
 }
 
+// ── 칸 안 대비 박스 ─────────────────────
+.law-table .box-item--cmp {
+  border-color: #adb5bd;
+  background: #fff;
+}
+
+.lq-cmp-tag {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-bottom: 0.25rem;
+}
+
+.lq-cmp-chip {
+  display: inline-block;
+  padding: 0 0.35rem;
+  border-radius: 0.2rem;
+  font-size: 0.75em;
+  font-weight: 700;
+  line-height: 1.6;
+}
+
+.lq-cmp-changed .lq-cmp-chip { color: #0a58ca; background: #e7f1ff; }
+.lq-cmp-added .lq-cmp-chip { color: #146c43; background: #e6f4ea; }
+.lq-cmp-removed .lq-cmp-chip { color: #b02a37; background: #f8e6e8; }
+
+.lq-cmp-zoom {
+  border: 0;
+  background: none;
+  padding: 0;
+  font-size: 0.75em;
+  color: #0a58ca;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.law-table .lq-cmp-absent {
+  color: #868e96;
+  font-style: italic;
+  border-style: dashed;
+  background: transparent;
+}
+
+// ── 크게 보기 창(신구 2단, OldNewDiff 행) ─────
 .lq-hist-table {
   table-layout: fixed;
   min-width: 40rem;
-  font-size: 0.875rem;
+  font-size: 0.9rem;
   background: #fff;
 
   thead th {
     width: 50%;
-    background: #eef3f9;
+    background: #f1f3f5;
     text-align: center;
     vertical-align: middle;
     font-weight: 600;
-
-    small {
-      display: block;
-      margin-top: 0.15rem;
-      font-weight: 400;
-      color: #495057;
-    }
-  }
-
-  .lq-hist-side {
-    display: inline-block;
-    margin-right: 0.35rem;
-    padding: 0 0.35rem;
-    border-radius: 0.25rem;
-    background: #495057;
-    color: #fff;
-    font-size: 0.75rem;
-    vertical-align: 0.1em;
   }
 
   td {
@@ -110,21 +260,13 @@
     overflow-wrap: anywhere;
   }
 
-  // 조가 바뀌는 경계를 굵게 — 한 조가 여러 행(머리·접힌 줄·바뀐 줄)으로 나뉘기 때문
-  tr.lq-hist-art-start td {
-    border-top: 2px solid #adb5bd;
-  }
-
   tr.lq-h-same td {
     padding-top: 0.1rem;
     padding-bottom: 0.1rem;
   }
 }
 
-.lq-h-line {
-  line-height: 1.65;
-}
-
+.lq-h-line { line-height: 1.65; }
 .lq-h-ind-1 { padding-left: 1em; }
 .lq-h-ind-2 { padding-left: 2em; }
 .lq-h-ind-3 { padding-left: 3em; }
@@ -135,28 +277,94 @@
 }
 
 .lq-h-del {
-  color: #c62828;
-  background: #fdecea;
+  color: #868e96;
+  text-decoration: line-through;
 }
 
 .lq-h-ins {
-  color: #1565c0;
-  background: #e8f0fe;
+  color: #c62828;
+  text-decoration: underline;
 }
 
-@media (max-width: 767.98px) {
-  .lq-hist-row {
-    grid-template-columns: auto minmax(0, 1fr);
-    row-gap: 0.25rem;
+// ── 지금 연계표에 자리가 없는 조 ─────────
+.lq-gone {
+  margin-top: 1rem;
+  margin-bottom: 2rem;
+  font-size: 0.875rem;
+}
 
-    .lq-hist-tier,
-    .lq-hist-count {
-      grid-column: 1 / -1;
-      text-align: left;
-    }
+.lq-gone-head {
+  margin-bottom: 0.4rem;
+  font-weight: 700;
 
-    .lq-hist-arrow {
-      display: none;
-    }
+  span {
+    font-weight: 400;
+    color: #6c757d;
   }
+}
+
+.lq-gone-item {
+  border-top: 1px solid #dee2e6;
+  padding: 0.35rem 0;
+
+  summary { cursor: pointer; }
+}
+
+.lq-gone-tier {
+  display: inline-block;
+  min-width: 4.5rem;
+  font-weight: 600;
+}
+
+.lq-gone-where {
+  margin-left: 0.4rem;
+  color: #868e96;
+  font-size: 0.8125rem;
+}
+
+.lq-gone-body {
+  padding: 0.4rem 0 0.4rem 4.9rem;
+  color: #495057;
+  line-height: 1.7;
+}
+
+// 좁은 화면(폰·태블릿 분할): 입력부는 '날짜' 버튼으로 접고 요약줄 하나만 남긴다.
+// 단별 칩은 표 머리의 '[시행 A → B]'와 같은 말이라 뺀다.
+@media (max-width: 767.98px) {
+  #lawAsofHost:not(.is-open) .lq-asof { display: none; }
+  #lawAsofHost.is-open .lq-asof-toggle .fa-chevron-down { transform: rotate(180deg); }
+
+  .lq-asof-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    white-space: nowrap;
+  }
+
+  // 요약줄(과 '날짜' 버튼)을 위로 — 펼치면 입력부가 버튼 아래로 열린다
+  #lawAsofHost {
+    display: flex;
+    flex-direction: column;
+  }
+
+  // 문구와 버튼을 한 줄에 두면 문구가 좁은 틈에서 네 줄로 감긴다 → 문구 한 줄, 버튼 한 줄
+  .lq-asof-foot {
+    order: -1;
+    flex-wrap: wrap;
+    padding-top: 0;
+    padding-bottom: 0.4rem;
+  }
+
+  .lq-asof-sum { flex-basis: 100%; }
+
+  .lq-asof-help {
+    order: -1;
+    padding-top: 0;
+    padding-bottom: 0.4rem;
+  }
+
+  .lq-asof-slot { margin-left: 0; }
+  .lq-asof-chip { display: none; }
+  .lq-asof-rev { margin-left: 0; max-width: 100%; }
+  .lq-asof-arrow { display: none; }   // 두 날짜 칸이 줄을 나눠 쌓이면 화살표만 첫 줄 끝에 남는다
 }

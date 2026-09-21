@@ -7,7 +7,7 @@ import { countRevised, filterRevised, formatSchedDate, revisionDates } from '../
  * LawRevisionEventManager
  * ------------------------------------------------------------------
  * '개정비교' 모드 — 시행예정 개정이 걸린 조문만 남긴 연계표.
- * (두 시점을 골라 견주는 신구대비표는 별개 기능인 '연혁비교' 탭 — law/history/)
+ * 날짜 대비(?at=&vs=) 중이면 '두 날짜 사이에 달라진 조문만' 필터가 된다(시점 바 — LawAsOfBar).
  *
  * 표를 새로 그리는 게 아니라 데이터만 걸러 기존 렌더 경로(view.render → LawTable)로
  * 되돌려 보낸다. 현행↔시행예정 인라인 diff(<del>/<ins>)는 LawTable 이 이미 그리므로
@@ -47,7 +47,7 @@ export class LawRevisionEventManager implements ILawEventManager {
         const n = countRevised(all);
 
         if (!n || !filtered.length) {
-            this.controller.view.showToast('시행예정 개정이 걸린 조문이 없습니다');
+            this.controller.view.showToast(this.dateRange() ? '두 날짜 사이에 달라진 조문이 없습니다' : '시행예정 개정이 걸린 조문이 없습니다');
             return;
         }
 
@@ -102,6 +102,15 @@ export class LawRevisionEventManager implements ILawEventManager {
 
     // ── 안내 배너 ──────────────────────────────────────────────────
 
+    /** 날짜 대비 중이면 '2024. 9. 15. → 2026. 8. 3. 시행본'. 평소(시행예정)면 null. */
+    private dateRange(): string | null {
+        const p = new URLSearchParams(window.location.search);
+        const at = p.get('at'), vs = p.get('vs');
+        if (!at || !vs) return null;
+        const [o, n] = [at, vs].sort();
+        return `${formatSchedDate(o)} → ${formatSchedDate(n)} 시행본`;
+    }
+
     private renderBanner(n: number, dates: string[]): void {
         const host = document.getElementById('results');
         if (!host || !host.parentNode) return;
@@ -112,7 +121,7 @@ export class LawRevisionEventManager implements ILawEventManager {
         el.innerHTML = `
             <div class="alert alert-warning d-flex align-items-center flex-wrap gap-2 py-2 mb-2">
                 <span class="fw-bold"><i class="fas fa-code-compare"></i> 개정비교</span>
-                <span class="small">시행예정 개정 ${n}건만 표시 중${when ? ` · 시행 ${when}` : ''}</span>
+                <span class="small">${this.dateRange() ? `달라진 조문 ${n}건만 표시 중 · ${this.dateRange()}` : `시행예정 개정 ${n}건만 표시 중${when ? ` · 시행 ${when}` : ''}`}</span>
                 <span class="small text-muted lq-rev-legend">
                     <del class="law-del">삭제</del> <ins class="law-ins">신설·변경</ins>
                 </span>

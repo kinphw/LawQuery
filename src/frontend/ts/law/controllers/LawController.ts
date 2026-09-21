@@ -38,7 +38,10 @@ import { LawAnnexView } from "../views/components/LawAnnexView";
 // import { LawResult } from "../types/LawResult";
 
 import { CurrentLawBox } from "../views/components/CurrentLawBox";
-import { HistoryController } from "../history/HistoryController";
+import { HistoryModel } from "../history/HistoryModel";
+import { LawAsOfBar } from "../views/components/LawAsOfBar";
+import { LawCmpEventManager } from "./event/LawCmpEventManager";
+import { LawSnapshot } from "../types/LawSnapshot";
 
 
 export interface ILawController extends IController {
@@ -142,6 +145,7 @@ export class LawController implements ILawController {
             new LawSearchEventManager(this),
             new LawTextSearchEventManager(this),
             new LawRevisionEventManager(this), // 개정 조문만 보기(개정비교)
+            new LawCmpEventManager(this),      // 날짜 대비 칸의 '크게 보기'
             // new LawExportEventManager(this), // 선택한 조만 정적 HTML로 저장 — 사용 안 해 숨김(2026-09-13)
             // new LawPenaltyEventManager(this) // ← 추가
             this.penaltyEventManager, // ← 바로 등록
@@ -160,6 +164,8 @@ export class LawController implements ILawController {
 
 
     }
+
+    private asOf: LawAsOfBar | null = null;   // 시점(날짜 대비) 바
 
     async initialize(): Promise<void> {
 
@@ -187,50 +193,41 @@ export class LawController implements ILawController {
         // 헤더는 1회만 (정렬기준 셀렉터가 그 아래 위치)
         this.view.renderHeaderOnly();
 
-        // 보기 전환(기본조회 | 연혁비교). 연혁비교는 연계표와 데이터·화면이 따로라 여기서 갈라진다.
-        this.renderViewTabs();
-        if (this.isHistoryView()) {
-            this.showHistoryMode();
-            await new HistoryController().initialize();
-            this.bindAllEvents();
-            return;
-        }
+        // 시점 바 — 날짜를 찍으면 그날 시행본 연계표, 비교 날짜를 더 찍으면 칸마다 대비(?at=&vs=).
+        const shortNames: Record<string, string> = {};
+        meta.forEach(m => { shortNames[m.origin] = m.short_name; });
+        this.asOf = new LawAsOfBar(await new HistoryModel().getTiers(), shortNames);
+        this.asOf.render();
 
         // 연계표 단일 진입.
         await this.showLinkedMode(meta);
     }
 
-    // ── 보기 전환(기본조회 | 연혁비교) ─────────────────────────────
-
-    private isHistoryView(): boolean {
-        return new URLSearchParams(window.location.search).get('view') === 'hist';
+    /** 날짜 대비 중엔 표 머리의 '[시행 …]'을 견주는 시행본으로 바꾼다 — 현행 시행일이 남아 있으면 칸 내용과 어긋난다. */
+    private snapshotNames(meta: import("../models/LawFetchMetaModel").LawMeta[], snap: LawSnapshot | null): void {
+        if (!snap || !meta.length) return;
+        const f = (d?: string | null) => d ? `${d.slice(0, 4)}. ${Number(d.slice(4, 6))}. ${Number(d.slice(6, 8))}.` : '없음';
+        this.view.setLawNames(meta.map(m => {
+            const t = snap.tiers[m.origin];
+            if (!t) return m.full_name;
+            const when = snap.vs ? `${f(t.older?.ef_date)} → ${f(t.newer?.ef_date)}` : f(t.newer?.ef_date);
+            return `${m.full_name.split('\n')[0]}\n[시행 ${when}]`;
+        }));
     }
 
-    /** 보기 전환 탭. 클릭 시 ?view= 갱신 후 리로드(정렬기준·트랙 전환과 같은 방식). */
-    private renderViewTabs(): void {
-        const host = document.getElementById('lawViewTabs');
-        if (!host) return;
-        const hist = this.isHistoryView();
-        host.innerHTML = `
-            <div class="btn-group btn-group-sm" role="group" aria-label="보기 전환">
-                <button type="button" class="btn ${hist ? 'btn-outline-dark' : 'btn-dark'}" data-view="" aria-pressed="${!hist}">기본조회</button>
-                <button type="button" class="btn ${hist ? 'btn-dark' : 'btn-outline-dark'}" data-view="hist" aria-pressed="${hist}">연혁비교</button>
-            </div>`;
-        host.querySelectorAll<HTMLElement>('[data-view]').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const next = btn.dataset.view || '';
-                if ((next === 'hist') === hist) return;
-                const p = new URLSearchParams(window.location.search);
-                if (next) p.set('view', next); else { p.delete('view'); p.delete('h'); }
-                window.location.search = p.toString();
-            });
-        });
-    }
-
-    /** 연혁비교에서는 연계표 전용 컨트롤을 치운다(정렬기준·검색·조문별 선택조회·표·글자크기). */
-    private showHistoryMode(): void {
-        ['lawBaseHost', 'lawSearchCard', 'lawArticleCard', 'results'].forEach(id => this.hideEl(id));
-        document.querySelector('.floating-controls')?.classList.add('d-none');
+    /** 데이터를 받은 뒤 시점 바 요약·자리 없는 조 목록을 채우고, 날짜 모드에 맞게 '개정비교' 버튼을 바꾼다. */
+    private applySnapshotUi(snap: LawSnapshot | null): void {
+        this.asOf?.renderSummary(snap);
+        this.asOf?.renderGone(snap);
+        const { at, vs } = LawAsOfBar.dates();
+        const btn = document.getElementById('lawRevisionBtn');
+        if (!at || !btn) return;
+        if (vs && snap) {
+            btn.innerHTML = '<i class="fas fa-filter"></i> 달라진 줄만';
+            btn.title = '두 날짜 사이에 달라진 조문이 있는 줄만 봅니다';
+        } else {
+            btn.classList.add('d-none');   // 한 날짜만 보는 중엔 견줄 것이 없다
+        }
     }
 
     /** 연계표 모드. 기준=법(a)이면 기존 5단 연계, 그 외(e/s/r/b)면 피벗 연계표. */
@@ -272,7 +269,9 @@ export class LawController implements ILawController {
         // 초기 데이터 로드 및 렌더링(전체)
         const all = await this.modelFetchAll.getAllLaws();
         this.dataManager.setCurrentResults(all.data);
+        this.snapshotNames(meta, all.snapshot);
         this.view.render(this.dataManager.getCurrentResults());
+        this.applySnapshotUi(all.snapshot);
 
         // 체크박스 렌더링
         this.dataManager.setLawTitles(await this.modelFetchTitle.getLawTitles());
@@ -353,7 +352,8 @@ export class LawController implements ILawController {
         if (!ul) return;
         const esc = (s: string) => s
             .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-        const keep = this.isHistoryView() ? '&view=hist' : '';   // 연혁비교에서 법령을 바꾸면 연혁비교에 머문다
+        const { at, vs } = LawAsOfBar.dates();                    // 법령을 바꿔도 같은 날짜로 본다
+        const keep = (at ? `&at=${at}` : '') + (at && vs ? `&vs=${vs}` : '');
         ul.innerHTML = list.map(e =>
             `<li><a class="dropdown-item${e.code === current ? ' active' : ''}" href="?law=${encodeURIComponent(e.code)}&step=${e.step}${keep}">${esc(e.label)}</a></li>`,
         ).join('');
@@ -418,9 +418,11 @@ export class LawController implements ILawController {
         this.view.setHighlights(await this.modelFetchArticle.getHighlights());
 
         // 기준 재배치 트리 → 5단표와 동일하게 view.render
-        const tree = await this.modelFetchPivot.getPivot(base);
-        this.dataManager.setCurrentResults(tree);
+        const pivot = await this.modelFetchPivot.getPivot(base);
+        this.dataManager.setCurrentResults(pivot.data);
+        this.snapshotNames(_meta, pivot.snapshot);
         this.view.render(this.dataManager.getCurrentResults());
+        this.applySnapshotUi(pivot.snapshot);
 
         // 이벤트 바인딩(5단과 동일 매니저 — 벌칙/참조/별표 버튼 포함)
         this.bindAllEvents();

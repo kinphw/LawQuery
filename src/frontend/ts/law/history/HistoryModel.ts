@@ -23,24 +23,9 @@ export interface HistTier {
     versions: HistVersion[];
 }
 
-/** 달라진 조 하나. 그 버전에 조가 없으면 null. 문언은 개정 표기(<개정 …>)를 걷어낸 것. */
-export interface HistChange {
-    key: string;
-    title: string;
-    old: string | null;
-    new: string | null;
-}
-
-export interface HistCompare {
-    origin: string;
-    old: HistVersion;
-    new: HistVersion;
-    changes: HistChange[];
-    total: { old: number; new: number };
-}
-
 export class HistoryModel {
 
+    /** 단별 연혁 버전. 연혁 미적재 DB·로컬판이면 빈 배열 → 시점 바를 그리지 않는다. */
     async getTiers(): Promise<HistTier[]> {
         try {
             const res = await fetch(ApiUrlBuilder.build('/api/law/history/versions'));
@@ -48,18 +33,6 @@ export class HistoryModel {
             return data ?? [];
         } catch {
             return [];
-        }
-    }
-
-    async compare(origin: string, oldRef: string, newRef: string): Promise<HistCompare | null> {
-        const url = ApiUrlBuilder.build('/api/law/history/compare')
-            + `&origin=${encodeURIComponent(origin)}&old=${encodeURIComponent(oldRef)}&new=${encodeURIComponent(newRef)}`;
-        try {
-            const res = await fetch(url);
-            const body = await res.json() as { success: boolean; data?: HistCompare };
-            return body.success && body.data ? body.data : null;
-        } catch {
-            return null;
         }
     }
 }
