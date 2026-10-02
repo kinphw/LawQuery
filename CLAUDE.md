@@ -211,6 +211,33 @@ interpretation/
 - 두 날짜에 있었지만 지금 표에 자리가 없는 조(삭제·번호 이동)는 표 아래 `#lawGoneHost` 에 모은다.
 - 연혁 미적재 DB·로컬(오프라인)판은 바가 뜨지 않는다(`lawFeatureStub` 이 `lawAsofHost` 를 숨기고 `export-local.py` 가 `db_hist_*` 를 뺀다).
 
+### 기관 보도자료 — 4대 기관 통합검색 + 원문 보기 (2026-10-02)
+
+`press.html`(`press.bundle.js`) ↔ `/api/press/*` ↔ **`stn_press_db.press_document`**(읽기 전용) + raw 파일
+`C:\projects\stn-crawler\data\<source>\<folder>\<file_name>`. 기관 = 금융위 `fsc`·금감원 `fss`·기재부 `moef`·한은 `bok`.
+
+- **DB·raw 의 주인은 `C:\projects\stn-crawler`** (형제 가족 밖의 별도 저장소). 웹앱은 SELECT 만 — 인덱스 추가·보정도 그쪽 일.
+  계정은 소비자용 읽기 계정을 따로 쓴다: `.env` 의 `PRESS_DB_USER`/`PRESS_DB_PASSWORD` (웹앱 계정 `ldbuser` 는 권한 없음).
+  그래서 `DbContext` 가 아니라 `press/PressDb.ts` 의 전용 풀을 쓴다. 경로·캐시는 `PRESS_FILES_DIR`·`PRESS_PDF_CACHE_DIR`·`PYTHON_BIN`.
+- **1파일 = 1행**, 게시물의 본문·별첨은 `(source, source_seq)` 로 묶인다. 목록은 파일 행을 최신순으로 받아 화면에서 이웃한 같은 게시물을 한 묶음으로 그린다.
+- **검색은 LIKE**(FULLTEXT 없음). 목록(`/search`, size+1 로 '더 보기'만 판단)과 건수(`/count`, 기관별)를 따로 불러 목록이 먼저 뜬다.
+  미리보기는 SQL 에서 검색어 둘레만 잘라 온다(docmine `PressCorpusService` 방식) — 본문 전체를 싣지 않는다.
+- **원문 보기 = AcctQuery 방식 그대로**: PDF 는 그대로, HWP·HWPX 는 한/글 COM 으로 PDF 변환(`scripts/to_pdf.py`, AQ 와 같은 파일)해
+  `cache/press-pdf/<key>.pdf` 에 두고 화면은 pdf.js 하나로 그린다(`press/PdfView.ts`). 첫 변환 15~35초, 이후 즉시.
+  같은 폴더에 같은 이름의 PDF 가 있으면 변환 없이 그걸 쓴다. 변환은 한 번에 하나, 실패는 `.fail.json` 으로 하루 차단(`?retry=1`).
+  - 파일은 **문서 id 로만** 가리킨다(경로를 받지 않는다 — 폴더·파일명에 ★「」.. 가 섞여 있다). 루트 밖이면 열지 않는다.
+  - 원본 경로가 260자를 넘는 것이 있어 변환 땐 캐시 폴더의 짧은 이름으로 복사해 넘긴다.
+  - ⚠️ COM 은 사용자 세션에서만 된다 — pm2 를 Windows 서비스(Session 0)로 옮기면 변환이 깨진다.
+- pdf.js 워커는 webpack 이 `dist/pdf.worker.min.js` 로 내보낸다(`.mjs` MIME 회피). 주소는 `press/publicPath.ts` 가 못박으므로
+  `entry/press.ts` 의 첫 import 여야 한다. cMap·표준글꼴·wasm 은 `assets/vendor/pdfjs/`(pdfjs-dist 를 올리면 다시 복사).
+  pdf.js 는 압축본(`pdf.min.mjs`)을 alias 로 쓴다 — 비압축본은 eval devtool 과 이름이 겹쳐 로드 시점에 죽는다.
+- **화면 폭**(`assets/scss/press/_base.scss`): ≥992 목록|문서 두 칸 각자 스크롤 · <992 문서를 열면 목록을 접음(닫으면 보던 자리로) ·
+  <576 폰용 검색줄(grid). 992 는 `PressController` 의 `NARROW` 와 같은 값이어야 한다. 원문은 칸 폭에 맞추고 −/+ 로 확대
+  (칸 안에서만 가로로 민다), 칸 폭이 바뀌면 다시 맞춘다. 회원바는 페이지와 함께 올라가므로 sticky 기준은 0.
+- 로컬(오프라인)판에는 넣지 않는다(`auth-gate.local.js` 가 헤더 단추를 숨긴다).
+- 로그인 벽 때문에 브라우저 도구로 실서버 화면을 못 본다 — 검증은 `PressHandler` + 정적 파일을 인증 없이 127.0.0.1 에
+  잠깐 띄운 임시 서버로 했다(끝나면 지운다).
+
 ### 타입 공유
 
 백엔드와 프론트엔드에 동일한 타입 파일이 각각 존재:

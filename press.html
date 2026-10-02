@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#212529" />
+  <title>기관 보도자료 - LawQuery</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="apple-touch-icon" href="assets/icons/icon-192.png" />
+  <link rel="stylesheet" href="assets/vendor/bootstrap.min.css" />
+  <link rel="stylesheet" href="assets/vendor/fontawesome/css/fontawesome.min.css" />
+  <link rel="stylesheet" href="assets/vendor/fontawesome/css/all.min.css" />
+  <link rel="stylesheet" href="assets/css/style.css" />
+  <!-- 인증 게이트: 콘텐츠 paint 전에 인증을 먼저 확인(깜빡임 방지)하려고 head에서 동기 로드 -->
+  <script src="auth-gate.js"></script>
+</head>
+<body>
+  <div id="header"></div>
+
+  <div class="pr-wrap">
+    <!-- 검색: 기관 단추 + 검색어·찾을 곳·기간 -->
+    <form id="prForm" class="pr-search" autocomplete="off">
+      <div id="prSources" class="pr-sources" aria-label="기관"></div>
+      <div class="pr-search__row">
+        <input type="search" id="prQ" class="form-control pr-search__q" placeholder="검색어 — 띄어 쓰면 모두 들어간 자료" aria-label="검색어" />
+        <select id="prIn" class="form-select pr-search__in" aria-label="찾을 곳">
+          <option value="all">제목+본문</option>
+          <option value="title">제목·파일명</option>
+          <option value="body">본문</option>
+        </select>
+        <div class="pr-search__dates">
+          <input type="date" id="prFrom" class="form-control" aria-label="시작 날짜" />
+          <span>~</span>
+          <input type="date" id="prTo" class="form-control" aria-label="종료 날짜" />
+        </div>
+        <button type="submit" class="btn btn-primary pr-search__go">검색</button>
+      </div>
+    </form>
+
+    <div id="prStatus" class="pr-status"></div>
+
+    <!-- 목록 | 문서(원문·텍스트) -->
+    <div id="prBody" class="pr-body">
+      <div id="prList" class="pr-listcol"></div>
+      <div id="prViewer" class="pr-viewer" hidden></div>
+    </div>
+  </div>
+
+  <script src="assets/vendor/bootstrap.bundle.min.js"></script>
+  <script src="dist/press.bundle.js" type="module"></script>
+
+  <!-- PWA: Service Worker 등록 -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function () {
+        navigator.serviceWorker.register('service-worker.js').catch(function (e) {
+          console.error('SW 등록 실패:', e);
+        });
+      });
+    }
+  </script>
+
+  <!-- 공통 모달 (Header 정보 버튼 등) -->
+  <div class="modal fade" id="commonModal" tabindex="-1" aria-labelledby="commonModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="commonModalLabel">알림</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="닫기"></button>
+        </div>
+        <div class="modal-body"></div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

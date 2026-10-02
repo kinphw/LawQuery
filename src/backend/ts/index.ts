@@ -10,6 +10,7 @@ import { FavoriteHandler } from './handlers/FavoriteHandler';
 import { AuthHandler } from './handlers/AuthHandler';
 import { BoardHandler } from './handlers/BoardHandler';
 import { PsdTransitionHandler } from './handlers/PsdTransitionHandler';
+import { PressHandler } from './handlers/PressHandler';
 import { authGuard } from './auth/middleware/authGuard';
 
 const app = express();
@@ -68,6 +69,7 @@ app.use('/api/foreign', new ForeignHandler().router); // 해외법령(원문·�
 app.use('/api/foreign-transition', new PsdTransitionHandler().router); // PSD2/EMD2 → PSD3/PSR 이행분석
 app.use('/api/favorite', new FavoriteHandler().router); // 즐겨찾기(회원별 북마크, 해외·국내 공용)
 app.use('/api/board', new BoardHandler().router); // 건의사항 게시판
+app.use('/api/press', new PressHandler().router); // 기관 보도자료(stn_press_db 읽기 전용) 검색·원문 보기
 
 // 404 처리
 app.use((req, res) => {

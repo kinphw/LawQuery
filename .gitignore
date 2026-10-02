@@ -16,6 +16,8 @@ proto/
 # 데이터 및 로그
 data/*
 logs/*
+# 기관 보도자료 원문 보기 — HWP→PDF 변환 캐시
+cache/
 file_structure.txt
 
 # 에디터 백업

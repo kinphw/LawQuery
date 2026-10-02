@@ -12,7 +12,7 @@ import { appInfoHtml } from './appInfo';
 
 export class Header {
 
-    render(currentPage: 'law' | 'interpretation' | 'foreign'): string {
+    render(currentPage: 'law' | 'interpretation' | 'foreign' | 'press'): string {
 
         const html = `
         <header class="text-center p-3 border bg-light">
@@ -27,13 +27,15 @@ export class Header {
 
                 </div>
             </div>    
-            <div>
-                <button class="btn ${currentPage === 'law' ? 'btn-primary' : 'btn-secondary'} me-2"
+            <div class="d-flex flex-wrap justify-content-center gap-2">
+                <button class="btn ${currentPage === 'law' ? 'btn-primary' : 'btn-secondary'}"
                     onclick="location.href='index.html'">법률조회</button>
-                <button class="btn ${currentPage === 'interpretation' ? 'btn-primary' : 'btn-secondary'} me-2"
+                <button class="btn ${currentPage === 'interpretation' ? 'btn-primary' : 'btn-secondary'}"
                     onclick="location.href='interpretation.html'">유권해석조회</button>
                 <button class="btn ${currentPage === 'foreign' ? 'btn-primary' : 'btn-secondary'}"
                     onclick="location.href='foreign.html'">해외법령</button>
+                <button class="btn ${currentPage === 'press' ? 'btn-primary' : 'btn-secondary'}"
+                    onclick="location.href='press.html'">기관 보도자료</button>
             </div>
         </header>`;
 

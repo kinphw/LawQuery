@@ -6,7 +6,8 @@ module.exports = {
     law: './src/frontend/ts/entry/law.ts',
     interpretation: './src/frontend/ts/entry/interpretation.ts',
     foreign: './src/frontend/ts/entry/foreign.ts',
-    'foreign-transition': './src/frontend/ts/entry/foreignTransition.ts'
+    'foreign-transition': './src/frontend/ts/entry/foreignTransition.ts',
+    press: './src/frontend/ts/entry/press.ts'
   },
   output: {
     filename: '[name].bundle.js', // dist/law.bundle.js 등으로 저장
@@ -15,6 +16,9 @@ module.exports = {
   },
   resolve: {
     extensions: ['.ts', '.js'],
+    // pdf.js 는 압축본을 쓴다 — 비압축본(pdf.mjs)은 안에 `__webpack_exports__` 변수가 있어
+    // eval 계열 devtool 로 묶으면 이름이 겹쳐 로드 시점에 죽는다("defineProperty called on non-object").
+    alias: { 'pdfjs-dist$': 'pdfjs-dist/build/pdf.min.mjs' },
     fullySpecified: false  // 핵심 옵션!
   },
   module: {
@@ -27,6 +31,13 @@ module.exports = {
         },
         exclude: /node_modules/,
         type: 'javascript/auto' // ← 중요!
+      },
+      {
+        // pdf.js 워커(기관 보도자료 원문 보기) — 번들에 넣지 않고 dist/pdf.worker.min.js 로 내보낸다.
+        // 확장자를 .js 로 바꾸는 이유: 모듈 워커는 MIME 이 자바스크립트가 아니면 안 뜨는데 .mjs 는 서버 설정을 탄다.
+        test: /pdf\.worker\.min\.mjs$/,
+        type: 'asset/resource',
+        generator: { filename: 'pdf.worker.min.js' }
       }
     ]
   },
