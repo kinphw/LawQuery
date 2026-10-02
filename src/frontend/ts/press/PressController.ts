@@ -1,6 +1,6 @@
 import { Header } from '../common/components/Header';
 import { pressApi, PressDoc, PressFile, PressItem, PressQuery, PressSource } from './PressApi';
-import { mountPdf } from './PdfView';
+import { mountPdf, PdfHandle, PdfHits } from './PdfView';
 
 const SHORT: Record<string, string> = { fsc: '금융위', fss: '금감원', moef: '기재부', bok: '한은' };
 const MODE_KEY = 'lq:press:mode';
@@ -32,7 +32,7 @@ function hl(text: string, tokens: string[]): string {
  * 화면 상태(검색 조건·연 문서)는 URL 쿼리에 둔다: q, in, src, from, to, open.
  */
 export class PressController {
-  private query: PressQuery = { q: '', in: 'all', source: [], from: '', to: '' };
+  private query: PressQuery = { q: '', in: 'all', phrase: false, source: [], from: '', to: '' };
   private tokens: string[] = [];
   private items: PressItem[] = [];
   private page = 1;
@@ -42,7 +42,14 @@ export class PressController {
   private openId: number | null = null;
   private seq = 0;
   private docSeq = 0;
-  private unmountPdf: (() => void) | null = null;
+  private pdf: PdfHandle | null = null;
+  /** 문서 창의 찾기 칸에 직접 넣은 말(null 이면 검색어를 그대로 쓴다). 문서 창을 닫거나 새로 검색하면 지운다. */
+  private findQ: string | null = null;
+
+  /** 문서 안에서 표시·이동할 말 */
+  private docTokens(): string[] {
+    return this.findQ == null ? this.tokens : this.findQ ? [this.findQ] : [];
+  }
   private mode: Mode = 'original';
 
   private $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -68,6 +75,7 @@ export class PressController {
     this.query = {
       q: (sp.get('q') || '').trim(),
       in: w === 'title' || w === 'body' ? w : 'all',
+      phrase: sp.get('ph') === '1',
       source: (sp.get('src') || '').split(',').filter((s) => s in SHORT),
       from: sp.get('from') || '',
       to: sp.get('to') || '',
@@ -76,6 +84,7 @@ export class PressController {
     this.openId = Number.isFinite(open) ? open : null;
     this.$<HTMLInputElement>('prQ').value = this.query.q;
     this.$<HTMLSelectElement>('prIn').value = this.query.in;
+    this.$<HTMLInputElement>('prPhrase').checked = this.query.phrase;
     this.$<HTMLInputElement>('prFrom').value = this.query.from;
     this.$<HTMLInputElement>('prTo').value = this.query.to;
   }
@@ -85,6 +94,7 @@ export class PressController {
     const q = this.query;
     if (q.q) sp.set('q', q.q);
     if (q.in !== 'all') sp.set('in', q.in);
+    if (q.phrase) sp.set('ph', '1');
     if (q.source.length) sp.set('src', q.source.join(','));
     if (q.from) sp.set('from', q.from);
     if (q.to) sp.set('to', q.to);
@@ -99,6 +109,7 @@ export class PressController {
       e.preventDefault();
       this.query.q = this.$<HTMLInputElement>('prQ').value.trim();
       this.query.in = this.$<HTMLSelectElement>('prIn').value as PressQuery['in'];
+      this.query.phrase = this.$<HTMLInputElement>('prPhrase').checked;
       this.query.from = this.$<HTMLInputElement>('prFrom').value;
       this.query.to = this.$<HTMLInputElement>('prTo').value;
       void this.search();
@@ -123,6 +134,15 @@ export class PressController {
       if (f) void this.open(Number(f.dataset.id));
     });
 
+    // 문서 안 찾기 — 원문(PDF)·텍스트 양쪽에 같은 칸
+    this.$('prViewer').addEventListener('submit', (e) => {
+      if (!(e.target as HTMLElement).closest('#prFind')) return;
+      e.preventDefault();
+      this.findQ = (document.getElementById('prFindQ') as HTMLInputElement).value.trim();
+      if (this.pdf) this.pdf.find(this.docTokens());
+      else this.renderContent();
+    });
+
     this.$('prViewer').addEventListener('click', (e) => {
       const t = e.target as HTMLElement;
       if (t.closest('[data-act="close"]')) { this.close(); return; }
@@ -131,7 +151,7 @@ export class PressController {
       const f = t.closest<HTMLElement>('[data-file]');
       if (f) { void this.open(Number(f.dataset.file)); return; }
       const j = t.closest<HTMLElement>('[data-jump]');
-      if (j) this.jump(Number(j.dataset.jump));
+      if (j) { if (this.pdf) this.pdf.go(Number(j.dataset.jump)); else this.jump(Number(j.dataset.jump)); }
     });
 
     document.addEventListener('keydown', (e) => {
@@ -144,22 +164,24 @@ export class PressController {
     const sel = this.query.source;
     const n = (code: string): string => {
       const v = this.counts ? this.counts.bySource[code] : this.sources.find((s) => s.code === code)?.docs;
-      return v == null ? '' : `<span class="pr-chip__n">${num(v)}</span>`;
+      return v == null ? '' : ` <small>${num(v)}</small>`;
     };
+    const btn = (code: string, label: string, on: boolean) =>
+      `<button type="button" class="btn btn-sm btn-outline-dark${on ? ' active' : ''}" data-src="${code}" aria-pressed="${on}">${label}</button>`;
     const all = this.counts
       ? Object.values(this.counts.bySource).reduce((a, b) => a + b, 0)
       : this.sources.length ? this.sources.reduce((a, s) => a + s.docs, 0) : null;
     this.$('prSources').innerHTML =
-      `<button type="button" class="pr-chip${sel.length ? '' : ' is-on'}" data-src="">전체${all == null ? '' : `<span class="pr-chip__n">${num(all)}</span>`}</button>` +
-      Object.keys(SHORT).map((code) =>
-        `<button type="button" class="pr-chip pr-chip--${code}${sel.includes(code) ? ' is-on' : ''}" data-src="${code}">${SHORT[code]}${n(code)}</button>`,
-      ).join('');
+      btn('', `전체${all == null ? '' : ` <small>${num(all)}</small>`}`, !sel.length) +
+      Object.keys(SHORT).map((code) => btn(code, `${SHORT[code]}${n(code)}`, sel.includes(code))).join('');
   }
 
   // ── 검색 ─────────────────────────────────────────────────────
   private async search(recount = true): Promise<void> {
     const seq = ++this.seq;
     this.page = 1;
+    this.findQ = null;
+    this.expanded.clear();
     this.writeUrl();
     const list = this.$('prList');
     list.innerHTML = '<div class="pr-empty">찾는 중…</div>';
@@ -225,6 +247,7 @@ export class PressController {
     }
     if (this.items.length) parts.push(`${num(this.items.length)}건 표시`);
     parts.push('최신순');
+    if (q.q && q.phrase) parts.push('문구 그대로');
     if (q.q) parts.push(q.in === 'title' ? '제목·파일명에서' : q.in === 'body' ? '본문에서' : '제목·본문에서');
     this.$('prStatus').innerHTML = parts.join(' · ');
   }
@@ -243,34 +266,70 @@ export class PressController {
       if (g && g[0].postKey === it.postKey) g.push(it);
       else groups.push([it]);
     }
+    // 한 줄 = 게시물(게시일·기관·제목). 제목을 누르면 본문 파일이 열린다.
+    // 파일 줄: 훑어볼 땐 파일명만(본문·별첨이 여럿일 때), 검색 중엔 본문에 걸린 파일만 미리보기와 함께.
     const searching = this.tokens.length > 0;
-    list.innerHTML = groups.map((g) => {
-      const h = g[0];
-      const files = g.map((it) => {
-        let snip: string;
-        if (!it.snippet) snip = '<span class="pr-file__snip pr-file__snip--none">추출된 본문이 없습니다(스캔본 등) — 원문으로 보세요</span>';
-        else if (searching && it.hit) snip = `<span class="pr-file__snip">${it.cut ? '…' : ''}${hl(it.snippet, this.tokens)}…</span>`;
-        else snip = `<span class="pr-file__snip pr-file__snip--plain">${searching ? '<em>제목 일치</em> ' : ''}${esc(it.snippet)}…</span>`;
-        return `<button type="button" class="pr-file${it.id === this.openId ? ' is-selected' : ''}" data-id="${it.id}">
-            <span class="pr-file__name"><span class="pr-ext pr-ext--${esc(it.ext)}">${esc(it.ext.toUpperCase() || '?')}</span>${hl(it.fileName, this.tokens)}</span>
-            ${snip}
+    const isAnnex = (n: string) => /별첨|붙임|참고자료|첨부/.test(n);
+    // 생김새는 유권해석 결과표와 같은 Bootstrap 표(table-bordered·table-light 머리줄) — LQ 의 톤을 따른다.
+    list.innerHTML = `<table class="table table-bordered table-hover pr-table">
+        <thead class="table-light"><tr>
+          <th class="text-center text-nowrap pr-table__src">기관</th>
+          <th class="text-center">제목</th>
+          <th class="text-center text-nowrap pr-table__date">게시일</th>
+        </tr></thead><tbody>` + groups.map((g) => {
+      const files = [...g].sort((a, b) => Number(isAnnex(a.fileName)) - Number(isAnnex(b.fileName)));
+      const h = files[0];
+      // 게시물을 한 번 열면 그 게시물의 파일 전부(걸리지 않은 별첨 포함)가 펼쳐진다 — open() 이 채운다.
+      const all = this.expanded.get(h.postKey);
+      const shown: { id: number; name: string; item?: PressItem }[] = all
+        ? all.map((f) => ({ id: f.id, name: f.name, item: files.find((it) => it.id === f.id) }))
+        : (searching ? files.filter((it) => it.hit && it.snippet) : files).map((it) => ({ id: it.id, name: it.fileName, item: it }));
+      // 훑어볼 땐 파일명만(미리보기 없이). 파일이 하나뿐이면 제목과 같은 말이라 줄을 달지 않는다.
+      const lines = (shown.length < 2 && !searching ? [] : shown).map((f) => {
+        const it = f.item;
+        const snip = searching && it && it.hit && it.snippet
+          ? `<span class="pr-file__snip">${it.cut ? '…' : ''}${hl(it.snippet, this.tokens)}…</span>` : '';
+        return `<button type="button" class="pr-file${f.id === this.openId ? ' is-selected' : ''}" data-id="${f.id}">
+            <span class="pr-file__name"><i class="fas fa-paperclip"></i>${hl(f.name, this.tokens)}</span>${snip}
           </button>`;
       }).join('');
-      return `<article class="pr-post">
-          <header class="pr-post__head">
-            <span class="pr-src pr-src--${esc(h.source)}">${esc(SHORT[h.source] || h.source)}</span>
-            <span class="pr-date">${esc(h.date || '')}</span>
-            <span class="pr-post__title">${hl(h.title, this.tokens)}</span>
-          </header>
-          ${files}
-        </article>`;
-    }).join('') + (this.more ? '<button type="button" id="prMore" class="btn btn-outline-secondary btn-sm pr-more">더 보기</button>' : '');
+      const hasOwnLine = lines && shown.some((f) => f.id === h.id);
+      return `<tr class="pr-row${h.id === this.openId && !hasOwnLine ? ' table-active' : ''}" data-id="${h.id}">
+          <td class="text-center text-nowrap pr-src pr-src--${esc(h.source)}">${esc(SHORT[h.source] || h.source)}</td>
+          <td class="pr-row__main">
+            <div class="pr-row__title">${hl(h.title, this.tokens)}</div>
+            ${lines}
+          </td>
+          <td class="text-center text-nowrap pr-date">${esc(h.date || '')}</td>
+        </tr>`;
+    }).join('') + '</tbody></table>'
+      + (this.more ? '<button type="button" id="prMore" class="btn btn-outline-secondary btn-sm pr-more">더 보기</button>' : '');
   }
 
   private markSelected(): void {
-    this.$('prList').querySelectorAll<HTMLElement>('.pr-file').forEach((el) => {
-      el.classList.toggle('is-selected', Number(el.dataset.id) === this.openId);
+    this.$('prList').querySelectorAll<HTMLElement>('[data-id]').forEach((el) => {
+      const on = Number(el.dataset.id) === this.openId;
+      if (el.classList.contains('pr-row')) {
+        // 게시물 줄은 그 파일의 줄이 따로 펼쳐져 있으면 칠하지 않는다(같은 파일을 두 번 칠하지 않게)
+        el.classList.toggle('table-active', on && !el.querySelector(`.pr-file[data-id="${el.dataset.id}"]`));
+      } else {
+        el.classList.toggle('is-selected', on);
+      }
     });
+  }
+
+  /** 연 게시물의 파일 전부 — 목록에서 그 게시물 아래에 펼쳐 보인다(검색에 걸리지 않은 별첨까지). */
+  private expanded = new Map<string, PressFile[]>();
+
+  private expandPost(files: PressFile[]): void {
+    const ids = new Set(files.map((f) => f.id));
+    const key = this.items.find((it) => ids.has(it.id))?.postKey;
+    if (!key) return;
+    this.expanded.set(key, files);
+    const list = this.$('prList');
+    const top = list.scrollTop;
+    this.renderList();
+    list.scrollTop = top;
   }
 
   // ── 문서 보기 ────────────────────────────────────────────────
@@ -285,14 +344,17 @@ export class PressController {
     // 좁은 화면에선 문서를 열면 목록이 접힌다 — 닫을 때 보던 자리로 돌아가게 기억해 둔다.
     if (!wasOpen) this.listScrollY = window.scrollY;
     body.classList.add('is-open');
+    // 넓은 화면에선 문서를 여는 동안 페이지 스크롤을 없앤다(목록·문서 두 칸만 스크롤) — SCSS 의 body.pr-reading
+    document.body.classList.add('pr-reading');
     viewer.hidden = false;
-    this.unmountPdf?.();
-    this.unmountPdf = null;
+    this.pdf?.destroy();
+    this.pdf = null;
     viewer.innerHTML = '<div class="pr-empty">여는 중…</div>';
-    if (scroll && !wasOpen) body.scrollIntoView({ block: 'start' });
+    if (scroll && !wasOpen && window.matchMedia(NARROW).matches) body.scrollIntoView({ block: 'start' });
     try {
       const r = await pressApi.doc(id);
       if (seq !== this.docSeq) return;
+      this.expandPost(r.files);
       this.renderViewer(r.doc, r.files);
     } catch (e) {
       if (seq !== this.docSeq) return;
@@ -304,12 +366,14 @@ export class PressController {
 
   private close(): void {
     this.docSeq++;
-    this.unmountPdf?.();
-    this.unmountPdf = null;
+    this.pdf?.destroy();
+    this.pdf = null;
     this.openId = null;
+    this.findQ = null;
     this.writeUrl();
     this.markSelected();
     this.$('prBody').classList.remove('is-open');
+    document.body.classList.remove('pr-reading');
     const viewer = this.$('prViewer');
     viewer.hidden = true;
     viewer.innerHTML = '';
@@ -328,15 +392,14 @@ export class PressController {
     const canOriginal = !!file && file.how !== 'none';
     const tabs = files.length > 1
       ? `<div class="pr-viewer__files">${files.map((f) =>
-          `<button type="button" class="pr-tab${f.id === doc.id ? ' is-on' : ''}" data-file="${f.id}" title="${esc(f.name)}">
-             <span class="pr-ext pr-ext--${esc(f.ext)}">${esc(f.ext.toUpperCase() || '?')}</span>${esc(f.name)}</button>`).join('')}</div>`
+          `<button type="button" class="btn btn-sm btn-outline-secondary pr-tab${f.id === doc.id ? ' active' : ''}" data-file="${f.id}" title="${esc(f.name)}">
+             ${esc(f.name)}</button>`).join('')}</div>`
       : '';
     viewer.innerHTML = `
       <div class="pr-viewer__bar">
         <button type="button" class="btn btn-sm btn-outline-secondary pr-viewer__back" data-act="close">← 목록</button>
         <div class="pr-viewer__title" title="${esc(doc.title)}">
-          <span class="pr-src pr-src--${esc(doc.source)}">${esc(SHORT[doc.source] || doc.sourceName)}</span>
-          <span class="pr-date">${esc(doc.date || '')}</span>
+          <span class="pr-viewer__meta">${esc(SHORT[doc.source] || doc.sourceName)} · ${esc(doc.date || '')}</span>
           ${esc(doc.title)}
         </div>
         <div class="pr-viewer__tools">
@@ -344,8 +407,15 @@ export class PressController {
             <button type="button" class="btn btn-outline-primary" data-mode="original"${canOriginal ? '' : ' disabled'}>원문</button>
             <button type="button" class="btn btn-outline-primary" data-mode="text">텍스트</button>
           </div>
-          <span class="pr-find" id="prFind" hidden></span>
+          <form class="pr-find" id="prFind" role="search">
+            <input type="search" id="prFindQ" class="form-control form-control-sm" placeholder="문서 안 찾기" aria-label="문서 안 찾기"
+              value="${esc(this.findQ ?? (this.query.phrase ? this.query.q : this.tokens[0] ?? ''))}" />
+            <span class="pr-find__pos" id="prFindPos"></span>
+            <button type="button" data-jump="-1" aria-label="이전 일치">▲</button>
+            <button type="button" data-jump="1" aria-label="다음 일치">▼</button>
+          </form>
           ${file && file.size ? `<a class="btn btn-sm btn-outline-secondary" href="${pressApi.rawUrl(doc.id)}" title="${esc(doc.fileName)} 내려받기"><span class="pr-long">원본 </span>받기</a>` : ''}
+          ${file && !file.size && doc.fileUrl ? `<a class="btn btn-sm btn-outline-secondary" href="${esc(doc.fileUrl)}" target="_blank" rel="noopener noreferrer" title="이 PC 에 원문 파일이 없어 기관 사이트에서 받습니다">기관<span class="pr-long">에서</span> 받기 ↗</a>` : ''}
           ${doc.postUrl ? `<a class="btn btn-sm btn-outline-secondary" href="${esc(doc.postUrl)}" target="_blank" rel="noopener noreferrer">기관<span class="pr-long"> 게시물</span> ↗</a>` : ''}
           <button type="button" class="btn btn-sm btn-outline-secondary pr-viewer__close" data-act="close" aria-label="닫기">✕</button>
         </div>
@@ -373,34 +443,36 @@ export class PressController {
     const viewer = this.$('prViewer');
     viewer.querySelectorAll<HTMLElement>('[data-mode]').forEach((b) => b.classList.toggle('active', b.dataset.mode === mode));
     const content = this.$('prContent');
-    const find = this.$('prFind');
-    this.unmountPdf?.();
-    this.unmountPdf = null;
+    const pos = this.$('prFindPos');
+    const tokens = this.docTokens();
+    this.pdf?.destroy();
+    this.pdf = null;
     this.marks = [];
     this.markIdx = -1;
-    find.hidden = true;
+    pos.textContent = '';
 
     if (mode === 'original') {
       content.className = 'pr-viewer__content pr-pdf';
-      this.unmountPdf = mountPdf(content, pressApi.originalUrl(doc.id), file!.how === 'convert' && !file!.ready);
+      this.pdf = mountPdf(content, pressApi.originalUrl(doc.id), file!.how === 'convert' && !file!.ready, tokens,
+        (h: PdfHits) => {
+          pos.textContent = !h.active ? '' : h.total ? `${h.idx + 1}/${h.total}쪽${h.scanned ? '' : '…'}` : h.scanned ? '없음' : '찾는 중…';
+        });
       return;
     }
     content.className = 'pr-viewer__content pr-text';
+    // 원문 파일이 이 PC 에 없는 수집분(행만 넘어온 경우) — 왜 '원문'이 꺼져 있는지 알린다
+    const missing = file && !file.size
+      ? '<div class="alert alert-warning py-2 small mb-3" style="white-space:normal">이 자료는 원문 파일이 이 PC 에 없어 텍스트로만 볼 수 있습니다.</div>' : '';
     if (!doc.content.trim()) {
       content.innerHTML = `<div class="pr-empty">추출된 본문이 없습니다(스캔본이거나 추출에 실패한 파일).${canOriginal ? ' ‘원문’으로 보세요.' : ''}</div>`;
       return;
     }
     // 추출 본문엔 쪽 여백이 빈 줄 수십 개로 남아 있다 — 문단 사이 한 줄만 남긴다.
-    content.innerHTML = hl(doc.content.replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n'), this.tokens);
+    content.innerHTML = missing + hl(doc.content.replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n'), tokens);
     this.marks = Array.from(content.querySelectorAll<HTMLElement>('mark'));
-    if (this.tokens.length) {
-      find.hidden = false;
-      find.innerHTML = this.marks.length
-        ? `<span class="pr-long">검색어 </span><span id="prFindPos"></span>
-           <button type="button" data-jump="-1" aria-label="이전 일치">▲</button>
-           <button type="button" data-jump="1" aria-label="다음 일치">▼</button>`
-        : '<span title="제목·파일명만 일치">본문 일치 없음</span>';
+    if (tokens.length) {
       if (this.marks.length) this.jump(1);
+      else pos.textContent = '없음';
     }
   }
 
@@ -412,7 +484,6 @@ export class PressController {
     const m = this.marks[this.markIdx];
     m.classList.add('is-cur');
     m.scrollIntoView({ block: 'center' });
-    const pos = document.getElementById('prFindPos');
-    if (pos) pos.textContent = `${this.markIdx + 1}/${this.marks.length}`;
+    this.$('prFindPos').textContent = `${this.markIdx + 1}/${this.marks.length}`;
   }
 }

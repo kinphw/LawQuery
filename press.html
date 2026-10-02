@@ -22,12 +22,19 @@
     <form id="prForm" class="pr-search" autocomplete="off">
       <div id="prSources" class="pr-sources" aria-label="기관"></div>
       <div class="pr-search__row">
-        <input type="search" id="prQ" class="form-control pr-search__q" placeholder="검색어 — 띄어 쓰면 모두 들어간 자료" aria-label="검색어" />
-        <select id="prIn" class="form-select pr-search__in" aria-label="찾을 곳">
-          <option value="all">제목+본문</option>
-          <option value="title">제목·파일명</option>
-          <option value="body">본문</option>
-        </select>
+        <input type="search" id="prQ" class="form-control pr-search__q" placeholder="검색어" aria-label="검색어" />
+        <div class="pr-search__opts">
+          <select id="prIn" class="form-select" aria-label="찾을 곳">
+            <option value="all">제목+본문</option>
+            <option value="title">제목·파일명</option>
+            <option value="body">본문</option>
+          </select>
+          <!-- 끄면 띄어 쓴 낱말이 모두 들어간 자료, 켜면 입력한 문구(띄어쓰기 포함) 그대로 -->
+          <div class="form-check mb-0">
+            <input class="form-check-input" type="checkbox" id="prPhrase" />
+            <label class="form-check-label text-nowrap" for="prPhrase" title="띄어쓰기를 포함해 입력한 문구 그대로 찾습니다">문구 그대로</label>
+          </div>
+        </div>
         <div class="pr-search__dates">
           <input type="date" id="prFrom" class="form-control" aria-label="시작 날짜" />
           <span>~</span>

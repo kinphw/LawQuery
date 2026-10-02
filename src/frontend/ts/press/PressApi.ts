@@ -42,12 +42,16 @@ export interface PressDoc {
   title: string;
   fileName: string;
   postUrl: string | null;
+  /** 기관 사이트의 첨부 내려받기 주소 */
+  fileUrl: string | null;
   content: string;
 }
 
 export interface PressQuery {
   q: string;
   in: 'all' | 'title' | 'body';
+  /** 띄어쓰기를 포함한 문구 그대로 찾기 */
+  phrase: boolean;
   source: string[];
   from: string;
   to: string;
@@ -65,6 +69,7 @@ function qs(p: PressQuery, extra: Record<string, string> = {}): string {
   const sp = new URLSearchParams();
   if (p.q) sp.set('q', p.q);
   if (p.in !== 'all') sp.set('in', p.in);
+  if (p.phrase) sp.set('phrase', '1');
   if (p.source.length) sp.set('source', p.source.join(','));
   if (p.from) sp.set('from', p.from);
   if (p.to) sp.set('to', p.to);

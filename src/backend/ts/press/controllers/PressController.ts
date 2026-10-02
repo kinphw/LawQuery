@@ -19,7 +19,11 @@ export class PressController {
 
   private criteria(req: Request): PressCriteria {
     const q = String(req.query.q ?? '').trim();
-    const tokens = q ? q.split(/\s+/).filter((t) => t.length >= 2).slice(0, MAX_TOKENS) : [];
+    // phrase=1 이면 띄어쓰기를 포함한 문구 통째로, 아니면 띄어 쓴 낱말이 모두 들어간 것(AND)
+    const phrase = req.query.phrase === '1';
+    const tokens = !q ? [] : phrase
+      ? [q.replace(/\s+/g, ' ')].filter((t) => t.length >= 2)
+      : q.split(/\s+/).filter((t) => t.length >= 2).slice(0, MAX_TOKENS);
     if (q && !tokens.length) throw new OriginalError(400, '검색어는 두 글자 이상으로 입력하세요.');
     const w = String(req.query.in ?? 'all');
     const where: PressIn = w === 'title' || w === 'body' ? w : 'all';
@@ -77,6 +81,8 @@ export class PressController {
           title: row.post_title || row.file_name,
           fileName: row.file_name,
           postUrl: postUrl(row.source, row.source_seq),
+          // 기관 사이트의 첨부 내려받기 주소 — raw 파일이 이 PC 에 없을 때(행만 넘어온 수집분) 화면이 대신 안내한다
+          fileUrl: /^https?:\/\//.test(row.file_url || '') ? row.file_url : null,
           content,
         },
         files: siblings.map((s) => ({

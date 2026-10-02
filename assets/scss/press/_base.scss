@@ -24,7 +24,14 @@
     align-items: center;
   }
   &__q { flex: 1 1 260px; min-width: 0; }
-  &__in { flex: 0 0 auto; width: auto; }
+  // 찾을 곳 + '문구 그대로'
+  &__opts {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    .form-select { width: auto; }
+  }
   &__dates {
     display: flex;
     align-items: center;
@@ -34,28 +41,13 @@
   &__go { flex: 0 0 auto; }
 }
 
+// 기관 단추 — LQ 의 다른 화면처럼 Bootstrap 단추(btn-outline-dark, 켜지면 active)를 그대로 쓴다
 .pr-sources {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.4rem;
-}
-
-.pr-chip {
-  display: inline-flex;
-  align-items: baseline;
   gap: 0.35rem;
-  padding: 0.25rem 0.8rem;
-  border: 1px solid #ced4da;
-  border-radius: 999px;
-  background: #fff;
-  color: #495057;
-  font-size: 0.9rem;
-  white-space: nowrap;
-  cursor: pointer;
 
-  &:hover { border-color: #495057; }
-  &.is-on { background: #343a40; border-color: #343a40; color: #fff; font-weight: 600; }
-  &__n { font-size: 0.75rem; opacity: 0.7; font-variant-numeric: tabular-nums; }
+  small { opacity: 0.7; font-variant-numeric: tabular-nums; }
 }
 
 .pr-status {
@@ -64,129 +56,104 @@
   color: #6c757d;
 }
 
-// ── 기관·확장자 표시 ──
-.pr-src {
-  display: inline-block;
-  padding: 0 0.4rem;
-  border-radius: 0.25rem;
-  font-size: 0.72rem;
-  font-weight: 700;
-  line-height: 1.5;
-  color: #fff;
-  background: #6c757d;
-  white-space: nowrap;
-
-  &--fsc { background: #1c5fb0; }
-  &--fss { background: #0a7d6b; }
-  &--moef { background: #8a5a12; }
-  &--bok { background: #6f42c1; }
-}
-
-.pr-ext {
-  display: inline-block;
-  min-width: 2.4rem;
-  margin-right: 0.4rem;
-  padding: 0 0.3rem;
-  border: 1px solid #ced4da;
-  border-radius: 0.2rem;
-  font-size: 0.66rem;
-  font-weight: 700;
-  line-height: 1.45;
-  text-align: center;
-  color: #495057;
-  background: #f8f9fa;
-  vertical-align: 0.05rem;
-
-  &--pdf { color: #b02a37; border-color: #f1aeb5; background: #fdf1f2; }
-  &--hwp, &--hwpx { color: #0b5ed7; border-color: #a9c7f7; background: #eef4ff; }
-}
-
-.pr-date {
-  font-size: 0.8rem;
-  color: #6c757d;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
 // ── 목록 ──
+// 생김새는 유권해석 결과표와 같은 Bootstrap 표(table-bordered · table-light 머리줄 · table-hover).
+// 한 줄 = 게시물(기관 | 제목 | 게시일). 훑어보는 화면이라 글자는 작게 둔다.
+// 칸이 좁으면(분할 목록 칸·폰) 머리줄을 접고 기관·게시일 아래 제목으로 — 화면 폭이 아니라 목록 칸 폭을 따른다
+// (문서를 열면 같은 화면에서도 목록 칸이 좁아진다).
 .pr-body { display: block; }
-.pr-listcol { min-width: 0; }
+.pr-listcol { min-width: 0; container-type: inline-size; }
 
 .pr-empty {
   padding: 2rem 1rem;
   text-align: center;
-  color: #868e96;
+  color: #6c757d;
 }
 
-.pr-post {
-  border: 1px solid #e3e6ea;
-  border-radius: 0.45rem;
-  background: #fff;
-  margin-bottom: 0.5rem;
-  overflow: hidden;
+.pr-table {
+  margin-bottom: 0;
+  font-size: 0.875rem;
 
-  &__head {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    gap: 0.4rem;
-    padding: 0.45rem 0.7rem 0.3rem;
-  }
-  &__title {
-    flex: 1 1 100%;
-    font-weight: 600;
-    font-size: 0.95rem;
-    line-height: 1.4;
-    word-break: break-word;
-  }
+  thead th { font-weight: 600; }
+  &__src { width: 4.5rem; }
+  &__date { width: 7rem; }
+  td { vertical-align: top; }
 }
 
+.pr-row {
+  cursor: pointer;
+
+  &__title { line-height: 1.45; word-break: break-word; }
+  .pr-date { color: #495057; font-variant-numeric: tabular-nums; }
+  // 기관은 채운 배지 대신 색 글자로 — Bootstrap 팔레트(파랑·초록·주황·보라)에서 고른 네 색
+  .pr-src { font-weight: 600; color: #495057; }
+  .pr-src--fsc { color: #0d6efd; }
+  .pr-src--fss { color: #198754; }
+  .pr-src--moef { color: #ca6510; }
+  .pr-src--bok { color: #6f42c1; }
+}
+
+// 파일 줄 — 훑어볼 땐 파일명만(여럿일 때), 검색 중엔 본문에 걸린 파일만 미리보기와 함께
 .pr-file {
   display: block;
   width: 100%;
-  padding: 0.4rem 0.7rem 0.5rem;
+  margin-top: 0.15rem;
+  padding: 0.1rem 0.35rem;
   border: 0;
-  border-top: 1px solid #f1f3f5;
+  border-radius: 0.25rem;
   background: transparent;
   color: inherit;
   text-align: left;
   cursor: pointer;
 
-  &:hover { background: #f4f8ff; }
-  &.is-selected { background: #e7f1ff; box-shadow: inset 3px 0 0 #0d6efd; }
+  &:hover { background: rgba(13, 110, 253, 0.08); }
+  &.is-selected { background: rgba(13, 110, 253, 0.14); }
 
   &__name {
     display: block;
-    font-size: 0.82rem;
-    color: #343a40;
+    font-size: 0.8rem;
+    color: #6c757d;
     word-break: break-all;
+
+    i { margin-right: 0.35rem; font-size: 0.7rem; opacity: 0.7; }
   }
+  &:hover &__name, &.is-selected &__name { color: #0d6efd; }
+
   &__snip {
-    display: block;
-    margin-top: 0.2rem;
-    font-size: 0.82rem;
+    // 좁은 목록 칸에서 미리보기가 길게 늘어지지 않게 세 줄까지(검색어는 앞쪽 70자 안에 온다)
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    margin: 0.1rem 0 0.15rem 1.05rem;
+    font-size: 0.8rem;
     line-height: 1.5;
     color: #495057;
     word-break: break-word;
-
-    &--plain {
-      color: #868e96;
-      display: -webkit-box;
-      -webkit-line-clamp: 2;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
-      em { font-style: normal; font-size: 0.72rem; color: #0a7d6b; border: 1px solid #b6e0d6; border-radius: 0.2rem; padding: 0 0.25rem; }
-    }
-    &--none { color: #adb5bd; font-style: italic; }
   }
 }
 
-.pr-post mark,
-.pr-text mark {
-  padding: 0 0.05em;
-  background: #ffe58a;
-  color: inherit;
+@container (max-width: 639.98px) {
+  .pr-table {
+    thead { display: none; }
+    tr.pr-row {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      gap: 0 0.5rem;
+      padding: 0.4rem 0.6rem;
+      border-width: 0 0 1px;
+    }
+    tr.pr-row > td { padding: 0; border: 0; box-shadow: none; text-align: left !important; }
+    tr.pr-row.table-active { background: var(--bs-table-active-bg); }
+    tr.pr-row:hover { background: var(--bs-table-hover-bg); }
+    .pr-src { grid-area: 1 / 1; font-size: 0.78rem; font-weight: 600; }
+    .pr-date { grid-area: 1 / 2; font-size: 0.78rem; color: #6c757d; }
+    .pr-row__main { grid-area: 2 / 1 / auto / 3; }
+  }
+  .pr-table { border: 1px solid var(--bs-border-color); }
 }
+
+.pr-text mark.is-cur { background: #ffc107; outline: 2px solid #fd7e14; }
 
 .pr-more {
   display: block;
@@ -198,7 +165,7 @@
 .pr-viewer {
   min-width: 0;
   border: 1px solid #dee2e6;
-  border-radius: 0.45rem;
+  border-radius: var(--bs-border-radius);
   background: #fff;
 
   // 제목 + 도구 — 스크롤해도 붙어 있다(보기 전환·검색어 이동·목록으로가 늘 손에 닿게)
@@ -213,7 +180,7 @@
     padding: 0.45rem 0.6rem;
     background: #f8f9fa;
     border-bottom: 1px solid #dee2e6;
-    border-radius: 0.45rem 0.45rem 0 0;
+    border-radius: var(--bs-border-radius) var(--bs-border-radius) 0 0;
   }
   &__back { display: none; flex: 0 0 auto; }
   &__title {
@@ -225,6 +192,8 @@
     text-overflow: ellipsis;
     white-space: nowrap;
   }
+  // 기관 · 게시일 — 제목 앞에 작게
+  &__meta { margin-right: 0.4rem; font-weight: 400; font-size: 0.8rem; color: #6c757d; }
   &__tools {
     display: flex;
     flex-wrap: wrap;
@@ -244,52 +213,44 @@
   }
 }
 
-// 텍스트 보기의 검색어 이동(1/3 ▲▼) — 도구줄 안에 둔다
+// 문서 안 찾기 — 찾을 말 + 일치 수 + ▲▼ (원문·텍스트 공용)
 .pr-find {
   display: inline-flex;
   align-items: center;
-  gap: 0.2rem;
-  padding: 0.1rem 0.25rem 0.1rem 0.5rem;
-  border: 1px solid #f1e3a0;
-  border-radius: 0.3rem;
-  background: #fff9db;
-  font-size: 0.8rem;
-  color: #495057;
-  white-space: nowrap;
-  font-variant-numeric: tabular-nums;
+  gap: 0.15rem;
+  margin: 0;
 
-  &[hidden] { display: none; }
-
+  .form-control { width: 9.5rem; }
+  &__pos {
+    min-width: 2.6rem;
+    padding: 0 0.25rem;
+    font-size: 0.78rem;
+    color: #6c757d;
+    text-align: center;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
   button {
-    width: 1.9rem;
-    height: 1.7rem;
+    width: 1.8rem;
+    height: 1.9rem;
     padding: 0;
-    border: 0;
-    border-radius: 0.25rem;
-    background: transparent;
+    border: 1px solid var(--bs-border-color);
+    border-radius: var(--bs-border-radius-sm);
+    background: #fff;
     font-size: 0.7rem;
     color: #495057;
     cursor: pointer;
-    &:hover { background: #f5e9a8; }
+    &:hover { background: #e9ecef; }
   }
 }
 
+// 파일 탭 — Bootstrap 단추(btn-outline-secondary, 고른 것은 active)
 .pr-tab {
   flex: 0 0 auto;
   max-width: 22rem;
-  padding: 0.2rem 0.55rem;
-  border: 1px solid #dee2e6;
-  border-radius: 0.3rem;
-  background: #fff;
-  font-size: 0.78rem;
-  color: #495057;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  cursor: pointer;
-
-  &:hover { border-color: #0d6efd; }
-  &.is-on { border-color: #0d6efd; background: #e7f1ff; color: #0a3d8f; font-weight: 600; }
 }
 
 // 텍스트 보기
@@ -301,7 +262,6 @@
   line-height: 1.7;
 
   mark { scroll-margin-top: 7rem; }
-  mark.is-cur { background: #ff9f43; outline: 2px solid #e8590c; }
 }
 
 // 원문 보기(pdf.js) — 회색 바탕에 흰 쪽을 세로로
@@ -309,7 +269,7 @@
   background: #525659;
   min-height: 60vh;
   padding: 0 0 1.5rem;
-  border-radius: 0 0 0.45rem 0.45rem;
+  border-radius: 0 0 var(--bs-border-radius) var(--bs-border-radius);
 
   &__msg {
     padding: 0.6rem 1rem;
@@ -356,7 +316,26 @@
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
   }
+  // 두 쪽 보기: 둘씩 좌우로. 확대해 칸보다 넓어지면 왼쪽이 잘리지 않게 safe center
+  &__pages.is-spread {
+    display: grid;
+    grid-template-columns: repeat(2, max-content);
+    justify-content: safe center;
+    column-gap: 10px;
+  }
+  &__spread {
+    height: 1.8rem;
+    padding: 0 0.6rem;
+    border: 1px solid #868e96;
+    border-radius: 0.3rem;
+    background: #3b3f42;
+    color: #fff;
+    font-size: 0.78rem;
+    cursor: pointer;
+    &.is-on { background: #f8f9fa; border-color: #f8f9fa; color: #212529; }
+  }
   &__page {
+    scroll-margin-top: 6.5rem;
     position: relative;
     margin: 0 auto 0.6rem;
     background: #fff;
@@ -381,22 +360,37 @@
       transform-origin: 0 0;
     }
     ::selection { background: rgba(80, 150, 255, 0.45); }
+    span.pr-hit { background: rgba(255, 214, 0, 0.4); border-radius: 2px; }
   }
 }
 
-// ── 넓은 화면: 목록 | 문서 두 칸이 각자 스크롤 ──
+// ── 넓은 화면: 문서를 여는 동안은 '읽기 모드' ──
+// 스크롤이 페이지·목록·문서 셋으로 겹치면 어지럽다. 문서를 열면 사이트 머리(로고·화면 단추)를 접고
+// 화면 높이에 꼭 맞춰, 페이지 자체는 스크롤하지 않게 한다 — 남는 스크롤은 목록 칸과 문서 칸 둘뿐.
+// 검색줄은 그대로 위에 남는다. 문서를 닫으면 원래대로.
 @media (min-width: 992px) {
+  body.pr-reading {
+    overflow: hidden;
+
+    #header { display: none; }
+    .pr-wrap {
+      display: flex;
+      flex-direction: column;
+      height: calc(100vh - var(--lq-userbar-h, 0px));
+      height: calc(100dvh - var(--lq-userbar-h, 0px));
+      padding-bottom: 0.5rem;
+    }
+    .pr-status { margin: 0.4rem 0 0.3rem; }
+  }
   .pr-body.is-open {
+    flex: 1 1 0;
+    min-height: 0;
     display: flex;
     gap: 0.75rem;
-    align-items: flex-start;
+    align-items: stretch;
 
     .pr-listcol,
     .pr-viewer {
-      position: sticky;
-      top: 4px;
-      height: calc(100vh - 8px);
-      height: calc(100dvh - 8px);
       overflow-y: auto;
       // 원문 쪽 너비는 스크롤바가 생기기 전에 잰다 — 자리를 미리 잡아 두지 않으면 쪽이 넘쳐 가로 스크롤이 생긴다.
       scrollbar-gutter: stable;
@@ -414,7 +408,7 @@
   // 검색줄: [검색어][검색] / [찾을 곳][기간]
   .pr-search__q { order: 1; flex: 1 1 calc(100% - 5rem); }
   .pr-search__go { order: 2; }
-  .pr-search__in { order: 3; }
+  .pr-search__opts { order: 3; }
   .pr-search__dates {
     order: 4;
     flex: 1 1 16rem;
@@ -431,24 +425,26 @@
   .pr-viewer__tools { flex: 1 1 100%; }
   .pr-text { padding: 0.8rem 0.8rem 2rem; }
   .pr-text mark { scroll-margin-top: 9rem; }
+  .pr-find { flex: 1 1 100%; }
+  .pr-find .form-control { flex: 1 1 0; width: auto; min-width: 0; }
   .pr-tab { max-width: 16rem; }
 }
 
 // ── 폰 ──
 @media (max-width: 575.98px) {
   .pr-wrap { padding: 0.5rem 0.5rem 1rem; }
-  .pr-chip { padding: 0.25rem 0.6rem; font-size: 0.85rem; }
 
-  // 폰 검색줄: [찾을 곳][검색어] / [기간][검색] — 날짜 칸 둘이 나란히 들어갈 폭을 남긴다
-  .pr-search__row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; }
-  .pr-search__in { grid-area: 1 / 1; padding-left: 0.5rem; }
-  .pr-search__q { grid-area: 1 / 2 / auto / 4; }
-  .pr-search__dates { grid-area: 2 / 1 / auto / 3; gap: 0.2rem; }
+  // 폰 검색줄: [검색어][검색] / [찾을 곳][문구 그대로] / [기간]
+  .pr-search__row { display: grid; grid-template-columns: minmax(0, 1fr) auto; }
+  .pr-search__q { grid-area: 1 / 1; }
+  .pr-search__opts { grid-area: 2 / 1 / auto / 3; }
+  .pr-search__dates { grid-area: 3 / 1 / auto / 3; gap: 0.2rem; }
   .pr-search__dates .form-control { padding-left: 0.4rem; padding-right: 0.25rem; font-size: 0.9rem; }
-  .pr-search__go { grid-area: 2 / 3; }
+  .pr-search__go { grid-area: 1 / 2; }
 
-  .pr-post__head { padding: 0.45rem 0.6rem 0.3rem; }
-  .pr-file { padding: 0.45rem 0.6rem 0.55rem; }
+  // 손가락으로 누르기 좋게 줄을 조금 높인다
+  .pr-table tr.pr-row { padding: 0.5rem 0.6rem; }
+  .pr-file { padding: 0.25rem 0.35rem; }
 
   // 문서 칸은 화면 끝까지(테두리·여백에 폭을 쓰지 않는다)
   .pr-body.is-open { margin: 0 -0.5rem; }
