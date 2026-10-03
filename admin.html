@@ -19,7 +19,17 @@
       .nav-tabs .nav-link { padding: .4rem .6rem; font-size: .9rem; }
       .navbar-brand { font-size: 1rem; }
     }
-    .ip-list { word-break: break-all; }
+    /* 회원·상세 로그 표 — 칸을 줄바꿈하지 않는다(이름이 한 글자씩 세로로 쪼개지던 것). 넘치면 table-responsive 가 가로로 민다 */
+    .nowrap-table th, .nowrap-table td { white-space: nowrap; }
+    /* 아이디별 접속 IP — 이름·수치 칸은 줄바꿈하지 않고(이름이 한 글자씩 세로로 쪼개지던 것), IP 는 고정폭 글자 조각으로 */
+    .ip-table th, .ip-table td { white-space: nowrap; }
+    .ip-table td.ip-list { white-space: normal; width: 100%; line-height: 1.9; }
+    .ip-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+    .ip-chip { display: inline-block; margin: 0 .2rem .1rem 0; padding: 0 .35rem; border: 1px solid #dee2e6; border-radius: .25rem;
+      background: #f8f9fa; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: .72rem; line-height: 1.5; color: #495057; }
+    .ip-more > summary { display: inline-block; cursor: pointer; font-size: .75rem; color: #0d6efd; list-style: none; }
+    .ip-more > summary::-webkit-details-marker { display: none; }
+    .ip-more[open] > summary { display: none; }
     .multi-ip { color: #c62828; font-weight: 600; } /* IP 여러 개면 강조(공유 의심) */
   </style>
 </head>
@@ -57,15 +67,15 @@
           <button class="btn btn-outline-secondary ms-auto" id="refreshBtn">새로고침</button>
         </div>
         <div class="table-responsive">
-          <table class="table table-bordered table-hover align-middle admin-table">
+          <table class="table table-bordered table-hover table-sm align-middle admin-table nowrap-table">
             <thead class="table-dark">
               <tr>
                 <th>ID</th><th>아이디</th><th>이름</th><th>경로</th>
-                <th>상태</th><th>권한</th><th>가입일</th><th>최근로그인</th><th>처리</th>
+                <th>상태</th><th>권한</th><th>가입일</th><th>LQ 접속</th><th>AQ 접속</th><th>처리</th>
               </tr>
             </thead>
             <tbody id="memberTbody">
-              <tr><td colspan="9" class="text-center text-muted">불러오는 중...</td></tr>
+              <tr><td colspan="10" class="text-center text-muted">불러오는 중...</td></tr>
             </tbody>
           </table>
         </div>
@@ -79,13 +89,23 @@
           <div id="failWarnList" class="small mt-1"></div>
         </div>
 
+        <!-- 서비스 고르기 — 회원·접근 기록은 LawQuery 와 AcctQuery 가 함께 쓴다(ldb_auth). 관리 화면은 여기 하나 -->
+        <div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
+          <span class="small text-muted">서비스</span>
+          <div class="btn-group btn-group-sm svc-group" role="group" aria-label="서비스">
+            <button class="btn btn-outline-dark svc-btn active" data-svc="lq">LawQuery</button>
+            <button class="btn btn-outline-dark svc-btn" data-svc="aq">AcctQuery</button>
+            <button class="btn btn-outline-dark svc-btn" data-svc="all">전체</button>
+          </div>
+        </div>
+
         <!-- ① ID별 IP 요약 -->
         <h6 class="mb-2">아이디별 접속 IP</h6>
         <p class="text-muted small mb-2">아이디마다 접속한 IP를 모아 봅니다. IP가 여러 개면 <span class="multi-ip">빨강</span>으로 표시(계정 공유 의심).</p>
         <div class="table-responsive mb-4">
-          <table class="table table-bordered table-sm align-middle admin-table">
+          <table class="table table-bordered table-sm align-middle admin-table ip-table">
             <thead class="table-dark">
-              <tr><th>아이디</th><th>이름</th><th>IP(고유)</th><th>접속 IP 목록</th><th>총</th><th>최근</th></tr>
+              <tr><th>아이디</th><th>이름</th><th class="num">IP 수</th><th>접속 IP</th><th class="num">접속</th><th>최근</th></tr>
             </thead>
             <tbody id="ipTbody">
               <tr><td colspan="6" class="text-center text-muted">불러오는 중...</td></tr>
@@ -114,12 +134,12 @@
           <button class="btn btn-outline-secondary btn-sm" id="clearDate">기간 해제</button>
         </div>
         <div class="table-responsive">
-          <table class="table table-bordered table-hover table-sm align-middle admin-table">
+          <table class="table table-bordered table-hover table-sm align-middle admin-table nowrap-table">
             <thead class="table-dark">
-              <tr><th>일시</th><th>아이디</th><th>이름</th><th>이벤트</th><th>경로</th><th>IP</th></tr>
+              <tr><th>일시</th><th>서비스</th><th>아이디</th><th>이름</th><th>이벤트</th><th>경로</th><th>IP</th></tr>
             </thead>
             <tbody id="logTbody">
-              <tr><td colspan="6" class="text-center text-muted">불러오는 중...</td></tr>
+              <tr><td colspan="7" class="text-center text-muted">불러오는 중...</td></tr>
             </tbody>
           </table>
         </div>
@@ -128,7 +148,12 @@
       <!-- ===== 통계 ===== -->
       <section id="sectionStats" class="d-none">
         <div class="d-flex align-items-center mb-3">
-          <h6 class="mb-0">최근 30일 통계</h6>
+          <h6 class="mb-0 me-3">최근 30일 통계</h6>
+          <div class="btn-group btn-group-sm svc-group" role="group" aria-label="서비스">
+            <button class="btn btn-outline-dark svc-btn active" data-svc="lq">LawQuery</button>
+            <button class="btn btn-outline-dark svc-btn" data-svc="aq">AcctQuery</button>
+            <button class="btn btn-outline-dark svc-btn" data-svc="all">전체</button>
+          </div>
           <button class="btn btn-outline-secondary btn-sm ms-auto" id="refreshStatsBtn">새로고침</button>
         </div>
         <div id="statSummary" class="row g-2 mb-3"></div>
@@ -258,7 +283,8 @@
             <td>${STATUS_BADGE[m.status] || m.status}</td>
             <td>${m.role}</td>
             <td class="small">${(m.created_at || '').slice(0, 10)}</td>
-            <td class="small">${(m.last_login_at || '').slice(0, 10) || '-'}</td>
+            <td class="small">${(m.last_seen_at || '').replace('T', ' ').slice(0, 16) || '-'}</td>
+            <td class="small">${(m.last_seen_aq_at || '').replace('T', ' ').slice(0, 16) || '-'}</td>
             <td><div class="actions text-nowrap">${a.join(' ') || '-'}</div></td>
           </tr>`;
         }).join('');
@@ -302,21 +328,34 @@
       const EVENT_LABEL = { login: '로그인', login_fail: '로그인실패', app_enter: '앱진입', page_visit: '페이지접근' };
       const EVENT_COLOR = { login: 'success', login_fail: 'danger', app_enter: 'info', page_visit: 'secondary' };
       let accessLoaded = false, currentLogEvent = '';
+      // 서비스 고르기(lq / aq / all) — 접근 기록과 통계가 같은 선택을 쓴다
+      let currentSvc = 'lq';
+      const SVC_BADGE = (path) => /^\/aq/.test(path || '')
+        ? '<span class="badge bg-success">AQ</span>' : '<span class="badge bg-primary">LQ</span>';
       const actorName = (l) => l.display_name ? esc(l.display_name) : (l.login_id ? esc(l.login_id) : '<span class="text-muted">비회원</span>');
 
       async function loadIpSummary() {
         const tbody = $('ipTbody');
         tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">불러오는 중...</td></tr>';
-        const data = await (await fetch('/api/admin/ip-summary')).json();
+        const data = await (await fetch(`/api/admin/ip-summary?svc=${currentSvc}`)).json();
         if (!data.success) { tbody.innerHTML = `<tr><td colspan="6" class="text-danger text-center">${esc(data.error)}</td></tr>`; return; }
         if (!data.rows.length) { tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">없음</td></tr>'; return; }
+        // IP 는 조각으로. 많으면 앞의 몇 개만 보이고 나머지는 '외 N개'를 눌러 편다(55개가 한 칸을 다 차지하던 것)
+        const SHOW = 8;
+        const chips = (ips) => {
+          const list = String(ips || '').split(',').map((s) => s.trim()).filter(Boolean);
+          const chip = (ip) => `<span class="ip-chip">${esc(ip)}</span>`;
+          if (list.length <= SHOW) return list.map(chip).join('');
+          return list.slice(0, SHOW).map(chip).join('')
+            + `<details class="ip-more d-inline"><summary>외 ${list.length - SHOW}개</summary>${list.slice(SHOW).map(chip).join('')}</details>`;
+        };
         tbody.innerHTML = data.rows.map((r) => `<tr>
           <td class="small">${esc(r.login_id)}</td>
           <td class="small">${esc(r.display_name) || '-'}</td>
-          <td class="${r.ip_count > 1 ? 'multi-ip' : ''}">${r.ip_count}</td>
-          <td class="small ip-list">${esc(r.ips)}</td>
-          <td class="small">${r.total}</td>
-          <td class="small text-nowrap">${(r.last_at || '').replace('T', ' ').slice(0, 16)}</td>
+          <td class="num ${r.ip_count > 1 ? 'multi-ip' : ''}">${r.ip_count}</td>
+          <td class="ip-list">${chips(r.ips)}</td>
+          <td class="small num">${Number(r.total).toLocaleString('ko-KR')}</td>
+          <td class="small">${(r.last_at || '').replace('T', ' ').slice(0, 16)}</td>
         </tr>`).join('');
       }
 
@@ -325,14 +364,16 @@
         tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">불러오는 중...</td></tr>';
         const p = new URLSearchParams();
         if (currentLogEvent) p.set('event', currentLogEvent);
+        p.set('svc', currentSvc);
         if (logFrom) p.set('from', logFrom);
         if (logTo) p.set('to', logTo);
         const qs = p.toString() ? `?${p.toString()}` : '';
         const data = await (await fetch(`/api/admin/logs${qs}`)).json();
-        if (!data.success) { tbody.innerHTML = `<tr><td colspan="6" class="text-danger text-center">${esc(data.error)}</td></tr>`; return; }
-        if (!data.logs.length) { tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">없음</td></tr>'; return; }
+        if (!data.success) { tbody.innerHTML = `<tr><td colspan="7" class="text-danger text-center">${esc(data.error)}</td></tr>`; return; }
+        if (!data.logs.length) { tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">없음</td></tr>'; return; }
         tbody.innerHTML = data.logs.map((l) => `<tr>
           <td class="small text-nowrap">${(l.created_at || '').replace('T', ' ').slice(0, 19)}</td>
+          <td>${SVC_BADGE(l.path)}</td>
           <td class="small">${l.login_id ? esc(l.login_id) : '-'}</td>
           <td class="small">${actorName(l)}</td>
           <td><span class="badge bg-${EVENT_COLOR[l.event] || 'secondary'}">${EVENT_LABEL[l.event] || l.event}</span></td>
@@ -348,6 +389,13 @@
         b.classList.add('active'); currentLogEvent = b.dataset.event; loadLogs();
       }));
       $('refreshLogsBtn').addEventListener('click', loadAccess);
+      document.querySelectorAll('.svc-btn').forEach((b) => b.addEventListener('click', () => {
+        currentSvc = b.dataset.svc;
+        document.querySelectorAll('.svc-btn').forEach((x) => x.classList.toggle('active', x.dataset.svc === currentSvc));
+        // 보고 있는 탭만 바로 다시 읽고, 다른 탭은 다음에 열 때 읽게 한다
+        if (!$('sectionAccess').classList.contains('d-none')) { loadAccess(); statsLoaded = false; }
+        else { loadStats(); accessLoaded = false; }
+      }));
 
       // ── 기간 필터 ──
       let logFrom = '', logTo = '';
@@ -368,7 +416,7 @@
       // ── 통계 ──
       let statsLoaded = false;
       async function loadStats() {
-        const data = await (await fetch('/api/admin/stats?days=30')).json();
+        const data = await (await fetch(`/api/admin/stats?days=30&svc=${currentSvc}`)).json();
         if (!data.success) return;
         // 가입 추이를 날짜별 맵으로
         const signupMap = {};

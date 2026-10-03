@@ -178,13 +178,22 @@ export class MemberModel {
     await this.db.query('DELETE FROM member WHERE id = ?', [id]);
   }
 
-  async listByStatus(status?: MemberStatus): Promise<Member[]> {
+  /**
+   * 회원 목록. last_seen_at = LawQuery 를 마지막으로 연 때.
+   * member.last_login_at 은 AcctQuery(AQ) 로그인도 갱신하므로(회원 행을 함께 쓴다) 관리 화면의 '최근 접속'으로 쓰면
+   * AQ 접속이 LawQuery 접속처럼 보인다 → access_log 에서 AQ 기록(path '/aq…')을 뺀 최근 시각을 따로 구한다.
+   */
+  async listByStatus(status?: MemberStatus): Promise<Array<Member & { last_seen_at: string | null; last_seen_aq_at: string | null }>> {
+    const seen = `(SELECT MAX(l.created_at) FROM access_log l
+                   WHERE l.member_id = m.id AND (l.path IS NULL OR l.path NOT LIKE '/aq%')) AS last_seen_at,
+                  (SELECT MAX(l.created_at) FROM access_log l
+                   WHERE l.member_id = m.id AND l.path LIKE '/aq%') AS last_seen_aq_at`;
     if (status) {
-      return this.db.query<Member>(
-        'SELECT * FROM member WHERE status = ? ORDER BY created_at DESC',
+      return this.db.query(
+        `SELECT m.*, ${seen} FROM member m WHERE m.status = ? ORDER BY m.created_at DESC`,
         [status]
       );
     }
-    return this.db.query<Member>('SELECT * FROM member ORDER BY created_at DESC');
+    return this.db.query(`SELECT m.*, ${seen} FROM member m ORDER BY m.created_at DESC`);
   }
 }

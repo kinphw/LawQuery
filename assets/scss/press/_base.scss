@@ -5,11 +5,17 @@
 //   < 992px        문서를 열면 목록을 접고 문서만(페이지 전체가 스크롤). PressController 의 NARROW 와 같은 값.
 //   < 576px        폰 — 검색줄·단추를 더 줄인다
 // 상단 회원바(.lq-userbar)는 페이지와 함께 올라가므로 sticky 기준은 0 이다.
+// 폭: 한 목록으로 훑어볼 땐 유권해석 화면처럼 가운데 좁은 폭(제목과 게시일 사이가 텅 비지 않게).
+// 폭이 필요한 두 경우 — 기관별 보드, 문서를 연 읽기 모드 — 에만 화면을 넓게 쓴다.
 .pr-wrap {
-  max-width: 1760px;
+  max-width: 1200px;
   margin: 0 auto;
   padding: 0.75rem 1rem 1rem;
+
+  &.is-board { max-width: 1760px; }
 }
+
+body.pr-reading .pr-wrap { max-width: 1760px; }
 
 // ── 검색 ──
 .pr-search {
@@ -48,6 +54,43 @@
   gap: 0.35rem;
 
   small { opacity: 0.7; font-variant-numeric: tabular-nums; }
+}
+
+// 상태줄 + 보는 방식 단추(오른쪽)
+.pr-statusrow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+// 일괄 / 기관별 — 넓은 화면에서 검색어 없이 훑어볼 때만 나온다(.can-board 는 PressController 가 붙인다)
+.pr-view { display: none; flex: 0 0 auto; }
+
+@media (min-width: 1200px) {
+  .pr-wrap.can-board .pr-view { display: inline-flex; }
+  .pr-wrap.is-board .pr-sources { display: none; }
+  body.pr-reading .pr-wrap.can-board .pr-view { display: none; }
+}
+
+// 최근 게시물 — 3일 안은 빨간 점 + 진한 날짜, 1주일 안은 진한 날짜
+.pr-date--r7,
+.pr-row .pr-date--r7 { color: #212529; }
+.pr-date--r3,
+.pr-row .pr-date--r3 {
+  color: #212529;
+  font-weight: 600;
+
+  &:not(:empty)::before {
+    content: '';
+    display: inline-block;
+    width: 0.38rem;
+    height: 0.38rem;
+    margin-right: 0.3rem;
+    border-radius: 50%;
+    background: #dc3545;
+    vertical-align: 0.12rem;
+  }
 }
 
 .pr-status {
@@ -342,6 +385,7 @@
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
   }
   &__canvas { display: block; width: 100%; height: auto; }
+  &__fail { position: absolute; inset: 0; padding: 1rem; font-size: 0.8rem; color: #b02a37; background: #fff; word-break: break-all; }
 
   .textLayer {
     position: absolute;
@@ -363,6 +407,77 @@
     span.pr-hit { background: rgba(255, 214, 0, 0.4); border-radius: 2px; }
   }
 }
+
+// ── 보드: 기관별 최신 게시물을 나란히 ──
+// 검색어 없이 훑어볼 때의 첫 화면. 넓은 화면(≥1200)에서 문서를 열지 않았을 때만 보이고, 그때 한 줄 목록은 숨는다.
+// 좁은 화면이나 문서를 연 뒤에는 한 줄 목록이 그 자리를 맡는다(.has-board 는 PressController 가 붙인다).
+.pr-board { display: none; }
+
+@media (min-width: 1200px) {
+  .pr-body.has-board:not(.is-open) {
+    .pr-board { display: grid; gap: 0.75rem; align-items: start; }
+    .pr-listcol { display: none; }
+  }
+}
+
+.pr-col {
+  min-width: 0;
+  border: 1px solid var(--bs-border-color);
+  border-radius: var(--bs-border-radius);
+  background: #fff;
+  overflow: hidden;
+
+  &__head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.45rem 0.7rem;
+    border-bottom: 1px solid var(--bs-border-color);
+    background: var(--bs-light, #f8f9fa);
+
+    .pr-src { font-size: 0.9rem; font-weight: 700; }
+    .pr-src--fsc { color: #0d6efd; }
+    .pr-src--fss { color: #198754; }
+    .pr-src--moef { color: #ca6510; }
+    .pr-src--bok { color: #6f42c1; }
+  }
+  &__meta { font-size: 0.72rem; color: #868e96; white-space: nowrap; font-variant-numeric: tabular-nums; }
+
+  &__row {
+    display: grid;
+    grid-template-columns: 3.3rem minmax(0, 1fr);
+    gap: 0 0.4rem;
+    width: 100%;
+    padding: 0.32rem 0.7rem;
+    border: 0;
+    border-top: 1px solid #f1f3f5;
+    background: transparent;
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+
+    &:first-of-type { border-top: 0; }
+    &:hover { background: var(--bs-table-hover-bg, rgba(0, 0, 0, 0.075)); }
+    &.is-selected { background: rgba(13, 110, 253, 0.12); }
+  }
+  &__date { font-size: 0.75rem; color: #868e96; font-variant-numeric: tabular-nums; line-height: 1.6; white-space: nowrap; }
+  &__title {
+    font-size: 0.85rem;
+    line-height: 1.45;
+    word-break: break-word;
+    // 긴 제목은 두 줄까지(전체는 마우스를 올리면)
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  &__n { margin-left: 0.4rem; font-size: 0.7rem; color: #adb5bd; white-space: nowrap; i { margin-right: 0.15rem; } }
+  &__more { display: block; margin: 0.5rem auto 0.6rem; }
+}
+
+// 목록으로 돌아가는 떠 있는 단추 — 좁은 화면에서만(아래 미디어 쿼리가 켠다)
+.pr-fab { display: none; }
 
 // ── 넓은 화면: 문서를 여는 동안은 '읽기 모드' ──
 // 스크롤이 페이지·목록·문서 셋으로 겹치면 어지럽다. 문서를 열면 사이트 머리(로고·화면 단추)를 접고
@@ -419,6 +534,20 @@
   .pr-body.is-open .pr-listcol { display: none; }
 
   .pr-viewer__back { display: inline-block; }
+  // 오른손 엄지가 닿는 오른쪽 아래. 홈 표시줄(안전 영역) 위로 띄운다
+  .pr-fab {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    position: fixed;
+    right: calc(0.9rem + env(safe-area-inset-right, 0px));
+    bottom: calc(1.1rem + env(safe-area-inset-bottom, 0px));
+    z-index: 1020;
+    padding: 0.6rem 1rem;
+    border-radius: 999px;
+    box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.35);
+    opacity: 0.92;
+  }
   .pr-viewer__close { display: none; }
   // 제목은 '← 목록' 옆 한 줄, 도구는 그 아래 줄
   .pr-viewer__title { flex: 1 1 0; }

@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import { MemberModel, MemberStatus } from '../models/MemberModel';
-import { AccessLogModel, AccessEvent } from '../models/AccessLogModel';
+import { AccessLogModel, AccessEvent, parseService } from '../models/AccessLogModel';
 import { SettingModel } from '../models/SettingModel';
 
 /** 관리자용 회원 관리. 모든 라우트는 adminGuard로 보호된다. */
@@ -69,7 +69,7 @@ export class AdminController {
     try {
       const days = parseInt((req.query.days as string) || '30', 10);
       const [events, signups] = await Promise.all([
-        this.logModel.dailyStats(days),
+        this.logModel.dailyStats(days, parseService(req.query.svc)),
         this.model.dailySignups(days),
       ]);
       res.json({ success: true, events, signups });
@@ -80,9 +80,9 @@ export class AdminController {
   };
 
   /** ID별 IP 접근 요약 ("어떤 ID가 어떤 IP로"). */
-  ipSummary = async (_req: Request, res: Response): Promise<void> => {
+  ipSummary = async (req: Request, res: Response): Promise<void> => {
     try {
-      const rows = await this.logModel.ipSummaryByMember();
+      const rows = await this.logModel.ipSummaryByMember(200, parseService(req.query.svc));
       res.json({ success: true, rows });
     } catch (e) {
       console.error('ipSummary 오류:', e);
@@ -126,7 +126,7 @@ export class AdminController {
       const dateRe = /^\d{4}-\d{2}-\d{2}$/;
       const from = dateRe.test(req.query.from as string) ? (req.query.from as string) : undefined;
       const to = dateRe.test(req.query.to as string) ? (req.query.to as string) : undefined;
-      const logs = await this.logModel.list(event, limit, from, to);
+      const logs = await this.logModel.list(event, limit, from, to, parseService(req.query.svc));
       res.json({ success: true, logs });
     } catch (e) {
       console.error('listLogs 오류:', e);
@@ -150,6 +150,8 @@ export class AdminController {
         created_at: m.created_at,
         approved_at: m.approved_at,
         last_login_at: m.last_login_at,
+        last_seen_at: m.last_seen_at, // LawQuery 를 마지막으로 연 때
+        last_seen_aq_at: m.last_seen_aq_at, // AcctQuery 를 마지막으로 연 때
       }));
       res.json({ success: true, members: safe });
     } catch (e) {

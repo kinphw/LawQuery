@@ -27,6 +27,21 @@ export interface DailySummary {
 }
 
 /**
+ * access_log 는 AcctQuery(AQ)와 함께 쓴다 — AQ 가 남긴 기록은 path 가 '/aq' 로 시작한다.
+ * 회원·접속 관리는 이 관리자 화면 한 곳에서 본다: 서비스(lq / aq / all)를 골라 조회한다. 기본은 LawQuery 만.
+ * 단 로그인 실패 경고(failWarnings)는 계정이 공용이라 어느 쪽에서 났든 본다.
+ */
+export type Service = 'lq' | 'aq' | 'all';
+
+export const parseService = (v: unknown): Service => (v === 'aq' || v === 'all' ? v : 'lq');
+
+const notAq = (col = 'path') => `(${col} IS NULL OR ${col} NOT LIKE '/aq%')`;
+
+/** 서비스 조건. 값은 parseService 를 거친 세 가지뿐이라 SQL 에 그대로 넣어도 된다. */
+const svcCond = (svc: Service, col = 'path') =>
+  svc === 'all' ? '1 = 1' : svc === 'aq' ? `${col} LIKE '/aq%'` : notAq(col);
+
+/**
  * 통합 활동 로그. 로그인(성공/실패)·앱진입·페이지접근을 한 테이블로 관리.
  * 회원 이름은 member 테이블 조인으로 일관 표시.
  */
@@ -58,9 +73,9 @@ export class AccessLogModel {
    * 활동 로그 목록. event로 필터 가능(없으면 전체).
    * member.display_name을 조인해 이름을 함께 반환.
    */
-  async list(event?: AccessEvent, limit = 300, from?: string, to?: string): Promise<AccessLog[]> {
+  async list(event?: AccessEvent, limit = 300, from?: string, to?: string, svc: Service = 'lq'): Promise<AccessLog[]> {
     const n = Math.min(Math.max(1, limit), 2000);
-    const conds: string[] = [];
+    const conds: string[] = [svcCond(svc, 'a.path')];
     const params: any[] = [];
     if (event) { conds.push('a.event = ?'); params.push(event); }
     if (from) { conds.push('a.created_at >= ?'); params.push(from + ' 00:00:00'); }
@@ -78,7 +93,7 @@ export class AccessLogModel {
   }
 
   /** 일별 통계: 날짜별 이벤트 건수(피벗). 최근 days일. */
-  async dailyStats(days = 30): Promise<Array<{
+  async dailyStats(days = 30, svc: Service = 'lq'): Promise<Array<{
     d: string; login: number; login_fail: number; app_enter: number; page_visit: number; uniq_ip: number;
   }>> {
     const n = Math.min(Math.max(1, days), 180);
@@ -90,7 +105,7 @@ export class AccessLogModel {
               SUM(event='page_visit') AS page_visit,
               COUNT(DISTINCT ip)      AS uniq_ip
        FROM access_log
-       WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL ${n} DAY)
+       WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL ${n} DAY) AND ${svcCond(svc)}
        GROUP BY DATE(created_at)
        ORDER BY d DESC`
     );
@@ -121,7 +136,7 @@ export class AccessLogModel {
    * 로그인 빈도와 무관하게 실제 사용량/접속 IP가 온전히 잡힌다.
    * (login_id는 access_log가 아닌 member 테이블에서 가져온다.)
    */
-  async ipSummaryByMember(limit = 200): Promise<Array<{
+  async ipSummaryByMember(limit = 200, svc: Service = 'lq'): Promise<Array<{
     login_id: string | null;
     display_name: string | null;
     ips: string;          // 콤마로 묶인 IP 목록
@@ -139,6 +154,7 @@ export class AccessLogModel {
               MAX(a.created_at)    AS last_at
        FROM access_log a
        JOIN member m ON m.id = a.member_id
+       WHERE ${svcCond(svc, 'a.path')}
        GROUP BY a.member_id, m.login_id, m.display_name
        ORDER BY last_at DESC
        LIMIT ${n}`
@@ -153,7 +169,7 @@ export class AccessLogModel {
               COUNT(*)           AS total,
               COUNT(DISTINCT ip) AS unique_ips
        FROM access_log
-       WHERE event = 'page_visit' AND visit_date IS NOT NULL
+       WHERE event = 'page_visit' AND visit_date IS NOT NULL AND ${notAq()}
        GROUP BY visit_date
        ORDER BY visit_date DESC
        LIMIT ${n}`
@@ -167,7 +183,7 @@ export class AccessLogModel {
       `SELECT a.*, m.display_name
        FROM access_log a
        LEFT JOIN member m ON m.id = a.member_id
-       WHERE a.event = 'page_visit' AND a.visit_date = ?
+       WHERE a.event = 'page_visit' AND a.visit_date = ? AND ${notAq('a.path')}
        ORDER BY a.created_at DESC, a.id DESC
        LIMIT ${n}`,
       [date]

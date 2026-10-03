@@ -18,7 +18,9 @@ module.exports = {
     extensions: ['.ts', '.js'],
     // pdf.js 는 압축본을 쓴다 — 비압축본(pdf.mjs)은 안에 `__webpack_exports__` 변수가 있어
     // eval 계열 devtool 로 묶으면 이름이 겹쳐 로드 시점에 죽는다("defineProperty called on non-object").
-    alias: { 'pdfjs-dist$': 'pdfjs-dist/build/pdf.min.mjs' },
+    // 레거시 빌드를 쓴다 — 일반 빌드는 Math.sumPrecise·Map.getOrInsert·Uint8Array.toHex 같은 최신 기능을 그대로 써서
+    // 폰 브라우저(iOS Safari, 조금 지난 Android WebView)에선 문서는 열리는데 쪽이 하얗게만 나왔다(2026-10-02). 워커도 같은 빌드로.
+    alias: { 'pdfjs-dist$': 'pdfjs-dist/legacy/build/pdf.min.mjs' },
     fullySpecified: false  // 핵심 옵션!
   },
   module: {

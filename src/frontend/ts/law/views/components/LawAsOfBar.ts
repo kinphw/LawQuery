@@ -313,19 +313,22 @@ export class LawAsOfBar {
         }
         const title = (v: SnapVersion | null) => v ? `${esc(v.name)} ${esc(v.rev_kind)} ${v.prom_no ? `제${esc(v.prom_no)}호` : ''}` : '';
         const head = snap.vs
-            ? `<b>${fmt(snap.older)}</b> 시행본 → <b>${fmt(snap.newer)}</b> 시행본${snap.newer === today() ? '(오늘)' : ''}`
+            ? `<b>${fmt(snap.older)}</b><span class="lq-asof-arrow">→</span><b>${fmt(snap.newer)}</b>${snap.newer === today() ? '<span class="lq-asof-today">오늘</span>' : ''}`
             : `<b>${fmt(snap.at)}</b> 시행본`;
+        // 단별 시행본: 단 이름(작은 회색) + 시행일. '본'·테두리를 되풀이하지 않고 구분선으로만 나눈다.
+        const nmTag = (nm: string) => `<span class="lq-asof-chip__nm">${nm}</span>`;
+        const arrow = '<span class="lq-asof-arrow">→</span>';
         const chips = TIERS.filter(t => snap.tiers[t]).map(t => {
             const x = snap.tiers[t];
             const nm = esc(this.name(t));
             if (!snap.vs) {
-                return `<span class="lq-asof-chip" title="${title(x.newer)}">${nm} ${x.newer ? `${fmt(x.newer.ef_date)}본` : '그때 없음'}</span>`;
+                return `<span class="lq-asof-chip" title="${title(x.newer)}">${nmTag(nm)}${x.newer ? fmt(x.newer.ef_date) : '그때 없음'}</span>`;
             }
             const same = !!x.older && !!x.newer && x.older.ef_date === x.newer.ef_date && x.older.prom_no === x.newer.prom_no;
             const tip = `${title(x.older)} → ${title(x.newer)}`;
             return same
-                ? `<span class="lq-asof-chip same" title="${tip}">${nm} 그대로(${fmt(x.newer!.ef_date)}본)</span>`
-                : `<span class="lq-asof-chip" title="${tip}">${nm} ${x.older ? `${fmt(x.older.ef_date)}본` : '없음'} → ${x.newer ? `${fmt(x.newer.ef_date)}본` : '없음'}</span>`;
+                ? `<span class="lq-asof-chip same" title="${tip}">${nmTag(nm)}${fmt(x.newer!.ef_date)} 그대로</span>`
+                : `<span class="lq-asof-chip" title="${tip}">${nmTag(nm)}${x.older ? fmt(x.older.ef_date) : '없음'}${arrow}${x.newer ? fmt(x.newer.ef_date) : '없음'}</span>`;
         }).join('');
         sum.innerHTML = `<span class="lq-asof-head">${head}${this.infoButton()}</span>${chips}`;
     }

@@ -3,7 +3,18 @@ import { pressApi, PressDoc, PressFile, PressItem, PressQuery, PressSource } fro
 import { mountPdf, PdfHandle, PdfHits } from './PdfView';
 
 const SHORT: Record<string, string> = { fsc: '금융위', fss: '금감원', moef: '기재부', bok: '한은' };
+const PRESS_NAME: Record<string, string> = { fsc: '금융위원회', fss: '금융감독원', moef: '기획재정부', bok: '한국은행' };
 const MODE_KEY = 'lq:press:mode';
+const VIEW_KEY = 'lq:press:view';
+
+/** 최근 게시물 표시: 3일 안이면 'r3'(점 + 진한 날짜), 7일 안이면 'r7'(진한 날짜). 날짜 칸의 클래스 꼬리로 쓴다. */
+function recency(date: string | null): '' | 'r3' | 'r7' {
+  if (!date) return '';
+  const days = Math.floor((Date.now() - new Date(`${date}T00:00:00`).getTime()) / 86400000);
+  return days < 0 ? '' : days <= 3 ? 'r3' : days <= 7 ? 'r7' : '';
+}
+const dateClass = (date: string | null) => { const r = recency(date); return r ? ` pr-date--${r}` : ''; };
+const dateTip = (date: string | null) => { const r = recency(date); return r === 'r3' ? ' title="최근 3일"' : r === 'r7' ? ' title="최근 1주일"' : ''; };
 type Mode = 'original' | 'text';
 /** 문서를 열면 목록을 접는 폭 — assets/scss/press/_base.scss 의 미디어 쿼리와 같은 값이어야 한다. */
 const NARROW = '(max-width: 991.98px)';
@@ -59,11 +70,18 @@ export class PressController {
     this.$('header').innerHTML = header.render('press');
     header.setInfoButtonHandler();
 
-    try { if (localStorage.getItem(MODE_KEY) === 'text') this.mode = 'text'; } catch { /* 저장소를 못 써도 그만 */ }
+    try {
+      if (localStorage.getItem(MODE_KEY) === 'text') this.mode = 'text';
+      if (localStorage.getItem(VIEW_KEY) === 'board') this.view = 'board';
+    } catch { /* 저장소를 못 써도 그만 */ }
     this.readUrl();
     this.bind();
     this.renderSources();
-    void pressApi.sources().then((r) => { this.sources = r.sources; this.renderSources(); }).catch(() => undefined);
+    void pressApi.sources().then((r) => {
+      this.sources = r.sources;
+      this.renderSources();
+      Object.keys(this.board).forEach((code) => this.renderBoardCol(code)); // 칸 머리의 건수·수집일
+    }).catch(() => undefined);
     await this.search();
     if (this.openId) void this.open(this.openId);
   }
@@ -127,6 +145,28 @@ export class PressController {
       void this.search(false);
     });
 
+    this.$('prView').addEventListener('click', (e) => {
+      const b = (e.target as HTMLElement).closest<HTMLElement>('[data-view]');
+      if (!b || b.dataset.view === this.view) return;
+      this.view = b.dataset.view === 'board' ? 'board' : 'list';
+      // 기관별은 네 기관을 다 놓는다 — 기관 단추가 접히므로 골라 둔 기관은 푼다
+      if (this.view === 'board' && this.query.source.length) { this.query.source = []; this.renderSources(); }
+      try { localStorage.setItem(VIEW_KEY, this.view); } catch { /* 저장 못 해도 그만 */ }
+      void this.search(false);
+    });
+
+    this.$('prBoard').addEventListener('click', (e) => {
+      const t = e.target as HTMLElement;
+      const more = t.closest<HTMLElement>('[data-more]');
+      if (more) { void this.loadBoardMore(more.dataset.more!); return; }
+      const row = t.closest<HTMLElement>('[data-id]');
+      if (!row) return;
+      // 문서를 여는 동안 왼쪽 목록은 누른 기관의 목록으로
+      this.listOverride = row.closest<HTMLElement>('[data-col]')?.dataset.col ?? null;
+      this.renderList();
+      void this.open(Number(row.dataset.id));
+    });
+
     this.$('prList').addEventListener('click', (e) => {
       const t = e.target as HTMLElement;
       if (t.closest('#prMore')) { void this.loadMore(); return; }
@@ -159,6 +199,109 @@ export class PressController {
     });
   }
 
+  // ── 보드: 기관별 최신 게시물을 나란히 ─────────────────────────
+  // 검색어 없이 훑어볼 때의 첫 화면(넓은 화면). 네 기관을 한 줄 목록에 섞지 않고 칸으로 나눠, 기관마다 최근에
+  // 무엇을 냈는지 한눈에 보게 한다. 검색하면 한 줄 목록(미리보기 포함)으로 바뀐다. 좁은 화면은 늘 한 줄 목록.
+  private board: Record<string, { items: PressItem[]; page: number; more: boolean }> = {};
+  /** 보드에서 연 게시물의 기관 — 문서를 여는 동안 왼쪽 목록은 그 기관의 목록을 보인다 */
+  private listOverride: string | null = null;
+  /** 보는 방식 — 기본은 일괄(한 목록). 기관별(보드)은 고른 사람만 */
+  private view: 'list' | 'board' = 'list';
+
+  private boardSources(): string[] {
+    return this.query.source.length ? this.query.source : Object.keys(SHORT);
+  }
+
+  /** 기관별 보기를 고를 수 있는 조건: 검색어가 없고, 기관을 하나만 고른 게 아닐 때(하나면 그 기관의 한 줄 목록이 낫다). */
+  private canBoard(): boolean {
+    return !this.query.q && this.query.source.length !== 1;
+  }
+
+  private wantsBoard(): boolean {
+    return this.view === 'board' && this.canBoard();
+  }
+
+  private renderViewToggle(): void {
+    const wrap = document.querySelector('.pr-wrap');
+    wrap?.classList.toggle('can-board', this.canBoard());
+    // 기관별로 볼 땐 위쪽 기관 단추가 칸 머리와 같은 말이라 접는다(SCSS: 넓은 화면에서만)
+    wrap?.classList.toggle('is-board', this.wantsBoard());
+    this.$('prView').querySelectorAll<HTMLElement>('[data-view]').forEach((b) => {
+      b.classList.toggle('active', b.dataset.view === this.view);
+    });
+  }
+
+  /** 지금 왼쪽 목록에 깔린 항목들 */
+  private listItems(): PressItem[] {
+    return this.listOverride && this.board[this.listOverride] ? this.board[this.listOverride].items : this.items;
+  }
+
+  private async loadBoard(seq: number): Promise<void> {
+    const host = this.$('prBoard');
+    const codes = this.boardSources();
+    host.style.gridTemplateColumns = `repeat(${codes.length}, minmax(0, 1fr))`;
+    host.innerHTML = codes.map((c) => `<section class="pr-col" data-col="${c}"><div class="pr-empty">불러오는 중…</div></section>`).join('');
+    await Promise.all(codes.map(async (code) => {
+      try {
+        const r = await pressApi.search({ ...this.query, source: [code] }, 1);
+        if (seq !== this.seq) return;
+        this.board[code] = { items: r.items, page: 1, more: r.more };
+      } catch {
+        if (seq !== this.seq) return;
+        this.board[code] = { items: [], page: 1, more: false };
+      }
+      this.renderBoardCol(code);
+    }));
+  }
+
+  private renderBoardCol(code: string): void {
+    const col = this.$('prBoard').querySelector<HTMLElement>(`[data-col="${code}"]`);
+    const b = this.board[code];
+    if (!col || !b) return;
+    // 같은 게시물의 파일(본문·별첨)은 한 줄로 — 본문 파일이 열린다
+    const posts: PressItem[][] = [];
+    for (const it of b.items) {
+      const g = posts[posts.length - 1];
+      if (g && g[0].postKey === it.postKey) g.push(it);
+      else posts.push([it]);
+    }
+    const isAnnex = (n: string) => /별첨|붙임|참고자료|첨부/.test(n);
+    const stat = this.sources.find((x) => x.code === code);
+    let lastDate = '';
+    const rows = posts.map((g) => {
+      const h = [...g].sort((x, y) => Number(isAnnex(x.fileName)) - Number(isAnnex(y.fileName)))[0];
+      // 날짜는 바뀔 때만 적는다(같은 날 게시물이 여럿이면 되풀이하지 않는다)
+      const d = h.date || '';
+      const showDate = d !== lastDate;
+      lastDate = d;
+      return `<button type="button" class="pr-col__row${h.id === this.openId ? ' is-selected' : ''}" data-id="${h.id}" title="${esc(h.title)}">
+          <span class="pr-col__date${dateClass(h.date)}"${dateTip(h.date)}>${showDate ? esc(d.slice(5)) : ''}</span>
+          <span class="pr-col__title">${esc(h.title)}${g.length > 1 ? `<span class="pr-col__n"><i class="fas fa-paperclip"></i>${g.length}</span>` : ''}</span>
+        </button>`;
+    }).join('');
+    col.innerHTML = `
+      <header class="pr-col__head">
+        <span class="pr-src pr-src--${code}">${esc(PRESS_NAME[code] || code)}</span>
+        ${stat ? `<span class="pr-col__meta">${num(stat.posts)}건 · ${esc(stat.last || '')}까지</span>` : ''}
+      </header>
+      ${rows || '<div class="pr-empty">게시물이 없습니다.</div>'}
+      ${b.more ? `<button type="button" class="btn btn-sm btn-outline-secondary pr-col__more" data-more="${code}">더 보기</button>` : ''}`;
+  }
+
+  private async loadBoardMore(code: string): Promise<void> {
+    const b = this.board[code];
+    if (!b) return;
+    const seq = this.seq;
+    try {
+      const r = await pressApi.search({ ...this.query, source: [code] }, b.page + 1);
+      if (seq !== this.seq) return;
+      b.page += 1;
+      b.items = b.items.concat(r.items);
+      b.more = r.more;
+      this.renderBoardCol(code);
+    } catch { /* 그대로 둔다 — 다시 누르면 된다 */ }
+  }
+
   // ── 기관 단추 ────────────────────────────────────────────────
   private renderSources(): void {
     const sel = this.query.source;
@@ -187,6 +330,15 @@ export class PressController {
     list.innerHTML = '<div class="pr-empty">찾는 중…</div>';
     if (recount) { this.counts = null; this.renderSources(); }
     this.renderStatus();
+
+    // 검색어 없이 훑어볼 땐 보드(넓은 화면에서만 보인다 — SCSS 의 .has-board)
+    this.renderViewToggle();
+    const boardOn = this.wantsBoard();
+    this.board = {};
+    this.listOverride = null;
+    this.$('prBody').classList.toggle('has-board', boardOn);
+    if (boardOn) void this.loadBoard(seq);
+    else this.$('prBoard').innerHTML = '';
 
     const q = { ...this.query, source: [...this.query.source] };
     // 건수는 본문 전체를 훑어야 해 목록보다 느리다 — 따로 세고, 오면 채운다.
@@ -245,7 +397,8 @@ export class PressController {
       const last = picked.map((s) => s.last || '').sort().pop();
       if (last) parts.push(`수집 ${esc(last)}까지`);
     }
-    if (this.items.length) parts.push(`${num(this.items.length)}건 표시`);
+    // 보드로 볼 땐 칸마다 따로 내려오므로 '몇 건 표시'가 뜻이 없다
+    if (this.items.length && !this.wantsBoard()) parts.push(`${num(this.items.length)}건 표시`);
     parts.push('최신순');
     if (q.q && q.phrase) parts.push('문구 그대로');
     if (q.q) parts.push(q.in === 'title' ? '제목·파일명에서' : q.in === 'body' ? '본문에서' : '제목·본문에서');
@@ -255,13 +408,14 @@ export class PressController {
   // ── 목록 ─────────────────────────────────────────────────────
   private renderList(): void {
     const list = this.$('prList');
-    if (!this.items.length) {
+    const items = this.listItems();
+    if (!items.length) {
       list.innerHTML = '<div class="pr-empty">찾은 자료가 없습니다.</div>';
       return;
     }
     // 같은 게시물의 파일(본문·별첨)이 이어 나오면 한 묶음으로.
     const groups: PressItem[][] = [];
-    for (const it of this.items) {
+    for (const it of items) {
       const g = groups[groups.length - 1];
       if (g && g[0].postKey === it.postKey) g.push(it);
       else groups.push([it]);
@@ -300,13 +454,16 @@ export class PressController {
             <div class="pr-row__title">${hl(h.title, this.tokens)}</div>
             ${lines}
           </td>
-          <td class="text-center text-nowrap pr-date">${esc(h.date || '')}</td>
+          <td class="text-center text-nowrap pr-date${dateClass(h.date)}"${dateTip(h.date)}>${esc(h.date || '')}</td>
         </tr>`;
     }).join('') + '</tbody></table>'
-      + (this.more ? '<button type="button" id="prMore" class="btn btn-outline-secondary btn-sm pr-more">더 보기</button>' : '');
+      + (this.more && !this.listOverride ? '<button type="button" id="prMore" class="btn btn-outline-secondary btn-sm pr-more">더 보기</button>' : '');
   }
 
   private markSelected(): void {
+    this.$('prBoard').querySelectorAll<HTMLElement>('[data-id]').forEach((el) => {
+      el.classList.toggle('is-selected', Number(el.dataset.id) === this.openId);
+    });
     this.$('prList').querySelectorAll<HTMLElement>('[data-id]').forEach((el) => {
       const on = Number(el.dataset.id) === this.openId;
       if (el.classList.contains('pr-row')) {
@@ -323,7 +480,7 @@ export class PressController {
 
   private expandPost(files: PressFile[]): void {
     const ids = new Set(files.map((f) => f.id));
-    const key = this.items.find((it) => ids.has(it.id))?.postKey;
+    const key = this.listItems().find((it) => ids.has(it.id))?.postKey;
     if (!key) return;
     this.expanded.set(key, files);
     const list = this.$('prList');
@@ -371,6 +528,7 @@ export class PressController {
     this.openId = null;
     this.findQ = null;
     this.writeUrl();
+    if (this.listOverride) { this.listOverride = null; this.renderList(); }
     this.markSelected();
     this.$('prBody').classList.remove('is-open');
     document.body.classList.remove('pr-reading');
@@ -421,7 +579,9 @@ export class PressController {
         </div>
       </div>
       ${tabs}
-      <div class="pr-viewer__content" id="prContent"></div>`;
+      <div class="pr-viewer__content" id="prContent"></div>
+      <!-- 좁은 화면: 긴 문서를 읽다가도 엄지로 닿는 자리에서 목록으로 -->
+      <button type="button" class="btn btn-dark pr-fab" data-act="close"><i class="fas fa-list"></i> 목록</button>`;
     viewer.scrollTop = 0;
     this.renderContent();
   }

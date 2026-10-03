@@ -44,12 +44,21 @@
       </div>
     </form>
 
-    <div id="prStatus" class="pr-status"></div>
+    <div class="pr-statusrow">
+      <div id="prStatus" class="pr-status"></div>
+      <!-- 보는 방식: 일괄(네 기관을 한 목록에, 기본) / 기관별(칸으로 나란히). 넓은 화면에서 검색어 없이 훑어볼 때만 -->
+      <div id="prView" class="btn-group btn-group-sm pr-view" role="group" aria-label="보는 방식">
+        <button type="button" class="btn btn-outline-dark" data-view="list" title="네 기관을 한 목록에"><i class="fas fa-list"></i> 일괄</button>
+        <button type="button" class="btn btn-outline-dark" data-view="board" title="기관별로 나란히"><i class="fas fa-columns"></i> 기관별</button>
+      </div>
+    </div>
 
     <!-- 목록 | 문서(원문·텍스트) -->
     <div id="prBody" class="pr-body">
       <div id="prList" class="pr-listcol"></div>
       <div id="prViewer" class="pr-viewer" hidden></div>
+      <!-- 넓은 화면·검색어 없을 때: 기관별 최신 게시물을 나란히(보드). 검색하면 한 줄 목록으로 바뀐다 -->
+      <div id="prBoard" class="pr-board"></div>
     </div>
   </div>
 

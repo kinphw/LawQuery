@@ -1,5 +1,5 @@
 import * as pdfjs from 'pdfjs-dist';
-import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs';
+import workerUrl from 'pdfjs-dist/legacy/build/pdf.worker.min.mjs';
 
 pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
 
@@ -176,7 +176,14 @@ export function mountPdf(
         }
       } catch (e) {
         // 창을 닫는 중이거나 쪽 하나가 깨진 경우 — 나머지 쪽은 계속
-        if (alive && my === gen) console.warn(`[press] ${n}쪽을 그리지 못했습니다`, e);
+        if (alive && my === gen) {
+          console.warn(`[press] ${n}쪽을 그리지 못했습니다`, e);
+          // 하얀 쪽만 남기지 않는다 — 왜 못 그렸는지 그 자리에 적어 둔다(폰에선 콘솔을 볼 수 없다)
+          const note = document.createElement('div');
+          note.className = 'pr-pdf__fail';
+          note.textContent = `${n}쪽을 그리지 못했습니다 — ${e instanceof Error ? e.message : String(e)}`;
+          wraps[n - 1]?.appendChild(note);
+        }
       }
     };
     io = new IntersectionObserver(
