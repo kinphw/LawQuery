@@ -53,6 +53,7 @@ export class LawRevisionEventManager implements ILawEventManager {
 
         this.on = true;
         this.setTriggerActive(true);
+        this.setDimUnrevised(true);
         this.rerender(filtered);
         this.renderBanner(n, revisionDates(all));
         this.watchExternalRender();
@@ -67,6 +68,7 @@ export class LawRevisionEventManager implements ILawEventManager {
         if (!this.on) return;
         this.on = false;
         this.setTriggerActive(false);
+        this.setDimUnrevised(false);
         this.observer?.disconnect();
         this.observer = null;
         this.banner?.remove();
@@ -100,6 +102,14 @@ export class LawRevisionEventManager implements ILawEventManager {
         btn.setAttribute('aria-pressed', String(on));
     }
 
+    /**
+     * 달라진 조에 딸려 나온 칸(연계된 하위규정·맥락)을 흐린다. 모드 전용 표시라 표 대신 #results 에 건다 —
+     * LawTable 은 늘 lq-unrev 를 붙여 두고, 이 클래스가 있을 때만 CSS 가 먹는다(재렌더 없이 켜고 끔).
+     */
+    private setDimUnrevised(on: boolean): void {
+        document.getElementById('results')?.classList.toggle('lq-rev-on', on);
+    }
+
     // ── 안내 배너 ──────────────────────────────────────────────────
 
     /** 날짜 대비 중이면 '2024. 9. 15. → 2026. 8. 3. 시행본'. 평소(시행예정)면 null. */
@@ -124,6 +134,7 @@ export class LawRevisionEventManager implements ILawEventManager {
                 <span class="small">${this.dateRange() ? `달라진 조문 ${n}건만 표시 중 · ${this.dateRange()}` : `시행예정 개정 ${n}건만 표시 중${when ? ` · 시행 ${when}` : ''}`}</span>
                 <span class="small text-muted lq-rev-legend">
                     <del class="law-del">삭제</del> <ins class="law-ins">신설·변경</ins>
+                    <span class="lq-rev-legend-unrev">흐린 칸 = 변동 없음(연계된 조문)</span>
                 </span>
                 <button type="button" class="btn btn-sm btn-outline-dark ms-auto" data-act="rev-off">
                     전체 보기

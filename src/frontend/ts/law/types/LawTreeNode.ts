@@ -10,6 +10,8 @@ export interface LawTreeNode {
     children?: LawTreeNode[];
     isTitle?: boolean; // 타이틀 구분용
     isVirtual?: boolean; // 가상 노드 여부
+    // 개정비교 필터가 맥락으로 끼워 넣은 조 제목행 사본(RevisionFilter) — '변동 없음'으로 흐리지 않는다.
+    revContext?: boolean;
 }
 
 export interface LawCmp {

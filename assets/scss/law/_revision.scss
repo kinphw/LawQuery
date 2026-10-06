@@ -15,6 +15,40 @@
   }
 }
 
+// 모드 중 '변동 없음' 칸 — 달라진 조에 딸려 나온 연계 하위규정 등. 연결은 보이되 달라진 칸이 먼저 읽히도록
+// 흐리게 두고, 읽으려고 올리면 원래 진하기로 돌아온다. 클래스는 LawTable 이 늘 붙이고 여기서 모드로 거른다.
+#results.lq-rev-on td.lq-unrev {
+  > * {
+    opacity: 0.45;
+    transition: opacity 0.15s;
+  }
+
+  &:hover > * {
+    opacity: 1;
+  }
+
+  &::before {
+    content: '변동 없음';
+    display: inline-block;
+    margin-bottom: 0.2rem;
+    padding: 0 0.35rem;
+    border-radius: 0.2rem;
+    font-size: 0.7rem;
+    font-weight: 600;
+    line-height: 1.6;
+    color: #6c757d;
+    background: #f1f3f5;
+  }
+}
+
+.lq-rev-banner .lq-rev-legend-unrev {
+  margin-left: 0.35rem;
+  padding: 0 0.35rem;
+  border-radius: 0.2rem;
+  color: #6c757d;
+  background: #f1f3f5;
+}
+
 // 개정비교 진입 버튼 — 켜져 있는 동안 눌린 상태로 둔다(모드에 갇힌 느낌 방지).
 #lawRevisionBtn.active {
   background-color: #c62828;

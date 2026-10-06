@@ -41,6 +41,7 @@ import { CurrentLawBox } from "../views/components/CurrentLawBox";
 import { HistoryModel } from "../history/HistoryModel";
 import { LawAsOfBar } from "../views/components/LawAsOfBar";
 import { LawCmpEventManager } from "./event/LawCmpEventManager";
+import { LawDiffCopyEventManager } from "./event/LawDiffCopyEventManager";
 import { LawSnapshot } from "../types/LawSnapshot";
 
 
@@ -146,6 +147,7 @@ export class LawController implements ILawController {
             new LawTextSearchEventManager(this),
             new LawRevisionEventManager(this), // 개정 조문만 보기(개정비교)
             new LawCmpEventManager(this),      // 날짜 대비 칸의 '크게 보기'
+            new LawDiffCopyEventManager(this),     // 겹쳐 쓴 칸에서 취소선 빼고 '변경 후'만 복사
             // new LawExportEventManager(this), // 선택한 조만 정적 HTML로 저장 — 사용 안 해 숨김(2026-09-13)
             // new LawPenaltyEventManager(this) // ← 추가
             this.penaltyEventManager, // ← 바로 등록

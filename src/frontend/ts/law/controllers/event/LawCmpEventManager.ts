@@ -7,6 +7,16 @@ import { buildRows } from '../../history/OldNewDiff';
 const fmt = (d: string): string =>
     /^\d{8}$/.test(d) ? `${d.slice(0, 4)}. ${Number(d.slice(4, 6))}. ${Number(d.slice(6, 8))}.` : d;
 
+/** 조회 결과 트리에서 id 로 노드를 찾는다(칸의 data-id → 원 데이터). */
+export function findNode(list: LawTreeNode[], id: string): LawTreeNode | null {
+    for (const n of list) {
+        if (n.id === id) return n;
+        const hit = findNode(n.children ?? [], id);
+        if (hit) return hit;
+    }
+    return null;
+}
+
 /**
  * LawCmpEventManager — 날짜 대비 칸의 '크게 보기'.
  * 칸 안 겹쳐 쓰기는 긴 조문에서 읽기 어려우므로, 그 칸의 두 문언을 신구 2단(법제처 신구법비교 모양)으로
@@ -24,19 +34,11 @@ export class LawCmpEventManager implements ILawEventManager {
         document.addEventListener('click', (e) => {
             const btn = (e.target as HTMLElement).closest<HTMLElement>('.lq-cmp-zoom');
             if (!btn?.dataset.id) return;
-            const node = this.find(this.controller.dataManager.getCurrentResults(), btn.dataset.id);
+            const node = findNode(this.controller.dataManager.getCurrentResults(), btn.dataset.id);
             if (node?.cmp) this.open(node);
         });
     }
 
-    private find(list: LawTreeNode[], id: string): LawTreeNode | null {
-        for (const n of list) {
-            if (n.id === id) return n;
-            const hit = this.find(n.children ?? [], id);
-            if (hit) return hit;
-        }
-        return null;
-    }
 
     private open(node: LawTreeNode): void {
         const cmp = node.cmp!;

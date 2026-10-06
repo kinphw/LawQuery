@@ -49,3 +49,16 @@
     font-size: 1.1em;
     margin-left: 8px;
   }
+
+  // 터치 기기(태블릿·폰): 손가락으로 잡을 헤더와 닫기 버튼을 넉넉하게
+  @media (pointer: coarse) {
+    .law-ref-popup-header {
+      padding: 12px 10px 10px 14px;
+      font-size: 0.95em;
+    }
+
+    .law-ref-modal-popup .btn-close {
+      padding: 0.6em;
+      margin: -0.35em -0.2em -0.35em 8px;
+    }
+  }

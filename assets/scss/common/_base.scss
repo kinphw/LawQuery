@@ -33,20 +33,71 @@
   .box-item--scheduled {
     background-color: #fff8e1;
     border-color: #f9a825;
-    position: relative;
-    padding-bottom: 1.6rem;
+  }
 
-    &::before {
-      content: attr(data-sched-label);
-      position: absolute;
-      bottom: 4px;
-      right: 6px;
-      font-size: 0.65rem;
-      color: #e65100;
-      font-weight: bold;
-      background-color: #ffe0b2;
-      padding: 1px 5px;
-      border-radius: 3px;
-      white-space: nowrap;
+  // 시행예정 박스 아랫줄 — 왼쪽 '변경 후 복사', 오른쪽 시행예정 표시
+  .lq-sched-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-top: 0.4rem;
+    padding-top: 0.3rem;
+    border-top: 1px dashed #f3d28a;
+    user-select: none;
+  }
+
+  .lq-sched-label {
+    margin-left: auto;
+    font-size: 0.65rem;
+    color: #e65100;
+    font-weight: bold;
+    background-color: #ffe0b2;
+    padding: 1px 5px;
+    border-radius: 3px;
+    white-space: nowrap;
+  }
+
+  // 겹쳐 쓴 칸에서 취소선 빼고 '변경 후'만 복사 (LawDiffCopyEventManager)
+  .lq-copy-new {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.1rem 0.5rem;
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.75);
+    font-size: 0.68rem;
+    font-weight: 500;
+    line-height: 1.5;
+    color: #495057;
+    cursor: pointer;
+    user-select: none;
+    transition: background-color 0.12s, border-color 0.12s, color 0.12s;
+
+    svg {
+      width: 0.8rem;
+      height: 0.8rem;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.4;
+      stroke-linejoin: round;
     }
+
+    &:hover {
+      background: #fff;
+      border-color: rgba(0, 0, 0, 0.25);
+      color: #212529;
+    }
+
+    &:active { transform: translateY(1px); }
+
+    &:focus-visible {
+      outline: 2px solid #0a58ca;
+      outline-offset: 1px;
+    }
+  }
+
+  .lq-cmp-tag .lq-copy-new {
+    margin-left: auto;
   }

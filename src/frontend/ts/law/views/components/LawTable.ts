@@ -3,6 +3,7 @@ import { LawTitle } from '../../types/LawTitle';
 import { LawCmp, LawTreeNode } from '../../types/LawTreeNode';
 import { LawView } from '../LawView';
 import { getLawConfig } from '../../config/LawConfig';
+import { isRevised } from '../../util/RevisionFilter';
 
 type Path = [
     LawTreeNode | null, LawTreeNode | null,
@@ -298,8 +299,11 @@ export class LawTable {
                 }
                 extra += this.renderAnnexButton(node.id); // Add newly decoupled Annex button
 
+                // 개정 아닌 칸 표시 — 개정비교 모드(#results.lq-rev-on)에서만 CSS 가 흐린다(_revision.scss).
+                const unrev = node.id && !node.isVirtual && !node.revContext && !isRevised(node) ? ' lq-unrev' : '';
+
                 return this.td(
-                    `${LawTable.COL_CLASS[c]} ${LawTable.INDENT_CLASS[c]}${hl}`,
+                    `${LawTable.COL_CLASS[c]} ${LawTable.INDENT_CLASS[c]}${hl}${unrev}`,
                     node.title,
                     node.scheduledTitle,
                     node.scheduledDate,
@@ -594,6 +598,13 @@ export class LawTable {
             + `${headHtml}<div class="lq-doc-body">${rows}</div></div>`;
     }
 
+    /** 겹쳐 쓴 박스에서 취소선을 뺀 '변경 후' 문언만 복사(LawDiffCopyEventManager 가 처리). */
+    private static readonly COPY_NEW_BTN =
+        '<button type="button" class="lq-copy-new" title="취소선 없이 변경 후 문언만 복사">'
+        + '<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="5" y="5" width="9" height="9" rx="1.5"/>'
+        + '<path d="M11 5V3.5A1.5 1.5 0 0 0 9.5 2h-6A1.5 1.5 0 0 0 2 3.5v6A1.5 1.5 0 0 0 3.5 11H5"/></svg>'
+        + '변경 후 복사</button>';
+
     /**
      * 날짜 대비 박스 — 옛 날짜 → 새 날짜 문언을 한 칸 안에 겹쳐 쓴다(시행예정 겹쳐 보기와 같은 약속:
      * <del class="law-del"> 사라진 문언, <ins class="law-ins"> 들어온 문언). 변경 칸엔 '크게 보기'(신구 2단 창).
@@ -623,8 +634,9 @@ export class LawTable {
         const label = cmp.state === 'added' ? '신설' : cmp.state === 'removed' ? '삭제' : '변경';
         const zoom = id && cmp.state === 'changed'
             ? `<button type="button" class="lq-cmp-zoom" data-id="${id}">크게 보기</button>` : '';
+        const copy = cmp.state === 'removed' ? '' : LawTable.COPY_NEW_BTN;
         return `<div class="box-item small p-2 m-0 box-item--cmp lq-cmp-${cmp.state}">`
-            + `<div class="lq-cmp-tag"><span class="lq-cmp-chip">${label}</span>${zoom}</div>${inner}</div>`;
+            + `<div class="lq-cmp-tag"><span class="lq-cmp-chip">${label}</span>${zoom}${copy}</div>${inner}</div>`;
     }
 
     private formatContent(text: string | null, scheduledText: string | null, scheduledDate: string | null, searchText: string, focus: Set<number> = new Set()): string {
@@ -669,7 +681,9 @@ export class LawTable {
             }
             const when = scheduledDate ? LawTable.fmtEf(scheduledDate) : '';
             const schedLabel = when ? `시행예정 ${when}` : '시행예정';
-            parts.push(`<div class="box-item small p-2 m-0 box-item--scheduled" data-sched-label="${schedLabel}">${inner}</div>`);
+            // 버튼·시행예정 표시는 본문 아래 별도 줄(겹치지 않게 흐름 안에 둔다)
+            const foot = `<div class="lq-sched-foot">${LawTable.COPY_NEW_BTN}<span class="lq-sched-label">${schedLabel}</span></div>`;
+            parts.push(`<div class="box-item small p-2 m-0 box-item--scheduled">${inner}${foot}</div>`);
         }
 
         return parts.join('');

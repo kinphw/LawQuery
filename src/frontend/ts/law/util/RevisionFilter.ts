@@ -27,6 +27,7 @@ export function hasRevision(n: LawTreeNode): boolean {
  * 개정 가지만 남긴 사본.
  * - 개정 노드는 하위를 통째로 유지한다. 그 조가 시행령·감독규정·세칙에 어떻게 걸리는지
  *   (= 개정의 연쇄 영향)가 이 화면의 존재 이유이고, 법제처 신구법비교에는 없는 부분이다.
+ *   딸려 온 하위가 달라진 것처럼 읽히지 않도록, 모드 중엔 LawTable 이 개정 아닌 칸을 흐린다(lq-unrev).
  * - 개정이 아닌 노드는 개정 자손이 달린 가지만 남기고, 없으면 통째로 탈락.
  * 원본 트리는 손대지 않는다 — 모드 해제 시 그대로 되돌려야 하므로.
  */
@@ -70,7 +71,7 @@ export function filterRevised(roots: LawTreeNode[]): LawTreeNode[] {
         if (hasRevision(r)) {
             out.push(pruneBranch([r])[0]);
         } else if (r.id && r.id === r.id_aa) {
-            out.push({ ...r, children: [] });          // 조 제목행(맥락용)
+            out.push({ ...r, children: [], revContext: true });   // 조 제목행(맥락용)
         }
     }
     return out;
