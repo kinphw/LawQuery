@@ -16,6 +16,7 @@
 @import "law/forms";
 @import "law/responsive";
 @import "law/reference-popup";
+@import "law/prec"; // 조문 → 판례 창(틀은 reference-popup 을 쓰므로 그 뒤)
 @import "law/export";
 @import "law/revision";
 @import "law/history";
@@ -30,3 +31,9 @@
 
 // 기관 보도자료
 @import "press/base";
+
+// 판례(prec.html) — 틀은 press/base, 본문 토막은 law/prec 를 쓰므로 둘 다 뒤에 온다
+@import "prec/base";
+
+// 법령해석 원문 보기 — 창 안쪽은 press/base 의 .pr-viewer·.pr-pdf 를 쓰므로 그 뒤에 온다
+@import "interpretation/original";

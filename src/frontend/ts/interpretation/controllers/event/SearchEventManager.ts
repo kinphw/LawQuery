@@ -3,6 +3,7 @@ import { ISearchController } from "../SearchController";
 import { SearchCriteria } from "../../types/SearchCriteria";
 import { SearchResult } from "../../types/SearchResult";
 import { SearchDataManager } from "../data/SearchDataManager";
+import { attachOriginals } from "../../original/OriginalPanel";
 
 export class SearchEventManager {
 
@@ -171,6 +172,14 @@ export class SearchEventManager {
                   </td>
                 `;
                 detailRow.setAttribute('data-loaded', 'true');
+                // 원문(포털 회신 첨부)이 보관돼 있으면 파일 줄을 단다 — 없으면 아무것도 달리지 않는다
+                const item = this.controller.dataManager.currentResults.find(r => String(r.id) === id);
+                const cell = detailRow.querySelector<HTMLElement>('td');
+                if (cell) {
+                  void attachOriginals(cell, parseInt(id, 10), {
+                    kind: item?.구분 || '', serial: item?.일련번호 || '', title: item?.제목 || '',
+                  });
+                }
               } else {
                 detailRow.innerHTML = '<td colspan="5" class="text-center text-danger">상세 정보를 불러올 수 없습니다.</td>';
               }

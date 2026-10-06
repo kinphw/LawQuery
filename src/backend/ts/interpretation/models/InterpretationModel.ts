@@ -106,6 +106,14 @@ export class InterpretationModel {
     return results.length > 0 ? results[0] : null;
   }
 
+  /** 자연키(구분, 일련번호) — 원문 보관소(LawQuery-frc)가 문서를 이 키로 찾는다. */
+  async getKey(id: number): Promise<{ kind: string; serial: string } | null> {
+    const rows = await this.db.query<{ kind: string | null; serial: string | null }>(
+      'SELECT 구분 AS kind, 일련번호 AS serial FROM db_i WHERE id = ?', [id]);
+    const r = rows[0];
+    return r && r.kind && r.serial ? { kind: r.kind.trim(), serial: r.serial.trim() } : null;
+  }
+
   async getInitialData(): Promise<SearchResult[]> {
     return this.search({
       type: "전체",

@@ -71,8 +71,13 @@ module.exports = {
     // 로컬판에서 제공하지 않는 기능 — 'HTML 저장'(사본 자체가 이미 로컬 파일)과 '개정비교'.
     // 스텁이 해당 버튼을 DOM 에서 걷어내므로 HTML 은 호스팅판 원본을 그대로 쓴다.
     new webpack.NormalModuleReplacementPlugin(
-      /(^|[\\/])(LawExportEventManager|LawRevisionEventManager)$/,
+      /(^|[\\/])(LawExportEventManager|LawRevisionEventManager|LawPrecEventManager)$/,
       path.resolve(__dirname, 'src/local/lawFeatureStub.ts'),
+    ),
+    // 법령해석 원문 보기(포털 회신 첨부 → PDF) — 원문 파일·pdf.js 를 사본에 싣지 않는다.
+    new webpack.NormalModuleReplacementPlugin(
+      /(^|[\\/])OriginalPanel$/,
+      path.resolve(__dirname, 'src/local/originalStub.ts'),
     ),
     // 브라우저에는 process 가 없다. 법령 Model 이 읽는 AUTH_DB 는 폴백('ldb_auth')이 쓰이게 둔다.
     new webpack.DefinePlugin({

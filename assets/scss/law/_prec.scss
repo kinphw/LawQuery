@@ -1,0 +1,113 @@
+// 조문 → 판례 (연계표 칸의 '판례' 단추 + 떠 있는 창)
+// 창 틀(머리줄·끌기·닫기)은 참조규정 팝업(.law-ref-modal-popup)을 그대로 쓰고, 여기선 폭과 안쪽만 정한다.
+
+// 조마다 하나씩 달리므로 눈에 덜 띄게 — 벌칙·참조·별표(자료가 있을 때만 뜨는 단추)보다 약하게
+.law-prec-btn {
+  margin-left: 0.5rem;
+  padding: 0 0.4rem;
+  border: 1px solid transparent;
+  border-radius: 0.25rem;
+  background: transparent;
+  color: #868e96;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  vertical-align: baseline;
+  cursor: pointer;
+
+  &:hover,
+  &:focus-visible { border-color: #adb5bd; background: #f1f3f5; color: #212529; }
+}
+
+.law-ref-modal-popup.lq-prec {
+  width: min(560px, calc(100vw - 16px));
+  max-width: calc(100vw - 16px);
+  height: min(70vh, 640px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-color: #495057;
+}
+
+.lq-prec {
+  .law-ref-popup-header { flex: 0 0 auto; }
+
+  &__scope {
+    flex: 0 0 auto;
+    align-self: flex-start;
+    margin: 0.5rem 0.75rem 0;
+  }
+
+  &__body {
+    flex: 1 1 0;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 0.5rem 0.75rem 0.75rem;
+    font-size: 0.875rem;
+  }
+
+  &__note { margin-bottom: 0.4rem; font-size: 0.78rem; color: #6c757d; }
+  &__empty { padding: 1.5rem 0.5rem; text-align: center; color: #6c757d; }
+
+  &__list { margin: 0; padding: 0; list-style: none; border-top: 1px solid #e9ecef; }
+  &__item {
+    display: block;
+    width: 100%;
+    padding: 0.45rem 0.35rem;
+    border: 0;
+    border-bottom: 1px solid #e9ecef;
+    background: transparent;
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+
+    &:hover { background: rgba(13, 110, 253, 0.07); }
+  }
+  &__meta { display: block; font-size: 0.78rem; color: #6c757d; font-variant-numeric: tabular-nums; }
+  &__type { margin-left: 0.2rem; padding: 0 0.3rem; border: 1px solid #ced4da; border-radius: 0.2rem; font-size: 0.72rem; }
+  &__title { display: block; line-height: 1.45; word-break: break-word; }
+  &__more { display: block; margin: 0.6rem auto 0; }
+
+  // 본문
+  &__head {
+    position: sticky;
+    top: -0.5rem; // 몸통의 위 안쪽 여백만큼 올려 붙인다
+    z-index: 1;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: -0.5rem -0.75rem 0.5rem;
+    padding: 0.4rem 0.75rem;
+    background: #fff;
+    border-bottom: 1px solid #e9ecef;
+  }
+  &__case { margin-bottom: 0.6rem; }
+  &__case &__title { font-weight: 600; }
+
+  &__sec {
+    margin-bottom: 0.5rem;
+
+    > summary { padding: 0.2rem 0; font-weight: 600; cursor: pointer; }
+  }
+  &__text {
+    padding: 0.3rem 0 0.2rem 0.6rem;
+    border-left: 3px solid #e9ecef;
+    white-space: pre-wrap;
+    word-break: break-word;
+    line-height: 1.65;
+  }
+}
+
+// 폰·태블릿 분할: 창을 화면 아래쪽에 넓게
+@media (max-width: 767.98px) {
+  .law-ref-modal-popup.lq-prec {
+    left: 8px !important;
+    right: 8px;
+    top: auto !important;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 8px);
+    width: auto;
+    height: 72vh;
+    resize: none;
+  }
+  .lq-prec__item { padding: 0.55rem 0.35rem; }
+}

@@ -37,4 +37,19 @@ class DisabledFeature {
 // 원본 모듈들과 같은 이름으로 내보낸다(치환 대상이 어느 쪽이든 맞물리도록).
 export class LawExportEventManager extends DisabledFeature { }
 export class LawRevisionEventManager extends DisabledFeature { }
+
+/**
+ * 조문 칸의 '판례' — 법제처 API 를 그때그때 부르는 기능이라 폐쇄망 사본에선 쓸 수 없다.
+ * 단추는 LawTable 이 표를 그릴 때마다 다시 만들므로 DOM 에서 치우지 않고 CSS 로 감춘다.
+ */
+export class LawPrecEventManager extends DisabledFeature {
+  bindEvents(): void {
+    super.bindEvents();
+    if (document.getElementById('lq-no-prec')) return;
+    const style = document.createElement('style');
+    style.id = 'lq-no-prec';
+    style.textContent = '.law-prec-btn{display:none!important}';
+    document.head.appendChild(style);
+  }
+}
 export default DisabledFeature;

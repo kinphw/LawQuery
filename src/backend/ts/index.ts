@@ -11,6 +11,7 @@ import { AuthHandler } from './handlers/AuthHandler';
 import { BoardHandler } from './handlers/BoardHandler';
 import { PsdTransitionHandler } from './handlers/PsdTransitionHandler';
 import { PressHandler } from './handlers/PressHandler';
+import { PrecHandler } from './handlers/PrecHandler';
 import { authGuard } from './auth/middleware/authGuard';
 
 const app = express();
@@ -70,6 +71,7 @@ app.use('/api/foreign-transition', new PsdTransitionHandler().router); // PSD2/E
 app.use('/api/favorite', new FavoriteHandler().router); // 즐겨찾기(회원별 북마크, 해외·국내 공용)
 app.use('/api/board', new BoardHandler().router); // 건의사항 게시판
 app.use('/api/press', new PressHandler().router); // 기관 보도자료(stn_press_db 읽기 전용) 검색·원문 보기
+app.use('/api/prec', new PrecHandler().router); // 판례(법제처 API 실시간 조회, DB 적재 없음)
 
 // 404 처리
 app.use((req, res) => {

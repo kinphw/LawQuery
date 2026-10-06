@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#212529" />
+  <title>판례 - LawQuery</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="apple-touch-icon" href="assets/icons/icon-192.png" />
+  <link rel="stylesheet" href="assets/vendor/bootstrap.min.css" />
+  <link rel="stylesheet" href="assets/vendor/fontawesome/css/fontawesome.min.css" />
+  <link rel="stylesheet" href="assets/vendor/fontawesome/css/all.min.css" />
+  <link rel="stylesheet" href="assets/css/style.css" />
+  <!-- 인증 게이트: 콘텐츠 paint 전에 인증을 먼저 확인(깜빡임 방지)하려고 head에서 동기 로드 -->
+  <script src="auth-gate.js"></script>
+</head>
+<body>
+  <div id="header"></div>
+
+  <!-- 틀(검색줄·목록|문서 두 칸·읽기 모드)은 기관 보도자료와 같은 .pr-* 를 쓴다 -->
+  <div class="pr-wrap">
+    <!-- 검색: 법원 판례와 헌법재판소 결정을 한 검색창으로 -->
+    <form id="pcForm" class="pr-search" autocomplete="off">
+      <div class="pr-search__row">
+        <input type="search" id="pcQ" class="form-control pr-search__q" placeholder="검색어 또는 사건번호 (예: 접근매체 양도, 2013다69989)" aria-label="검색어" />
+        <div class="pr-search__opts">
+          <select id="pcIn" class="form-select" aria-label="찾을 곳">
+            <option value="body">본문</option>
+            <option value="title">사건명·사건번호</option>
+          </select>
+          <!-- 끄면 띄어 쓴 낱말이 모두 들어간 것, 켜면 입력한 문구(띄어쓰기 포함) 그대로 -->
+          <div class="form-check mb-0">
+            <input class="form-check-input" type="checkbox" id="pcPhrase" />
+            <label class="form-check-label text-nowrap" for="pcPhrase" title="띄어쓰기를 포함해 입력한 문구 그대로 찾습니다">문구 그대로</label>
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary pr-search__go">검색</button>
+      </div>
+      <div id="pcSources" class="pr-sources" aria-label="출처"></div>
+    </form>
+
+    <div id="pcStatus" class="pr-status"></div>
+
+    <!-- 목록 | 본문 -->
+    <div id="pcBody" class="pr-body">
+      <div id="pcList" class="pr-listcol"></div>
+      <div id="pcViewer" class="pr-viewer" hidden></div>
+    </div>
+  </div>
+
+  <script src="assets/vendor/bootstrap.bundle.min.js"></script>
+  <script src="dist/prec.bundle.js" type="module"></script>
+
+  <!-- PWA: Service Worker 등록 -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function () {
+        navigator.serviceWorker.register('service-worker.js').catch(function (e) {
+          console.error('SW 등록 실패:', e);
+        });
+      });
+    }
+  </script>
+
+  <!-- 공통 모달 (Header 정보 버튼 등) -->
+  <div class="modal fade" id="commonModal" tabindex="-1" aria-labelledby="commonModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="commonModalLabel">알림</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="닫기"></button>
+        </div>
+        <div class="modal-body"></div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

@@ -298,6 +298,7 @@ export class LawTable {
                     extra += this.renderPenaltyButton(node.id);
                 }
                 extra += this.renderAnnexButton(node.id); // Add newly decoupled Annex button
+                if (!node.isVirtual) extra += this.renderPrecButton(node.id, c);
 
                 // 개정 아닌 칸 표시 — 개정비교 모드(#results.lq-rev-on)에서만 CSS 가 흐린다(_revision.scss).
                 const unrev = node.id && !node.isVirtual && !node.revContext && !isRevised(node) ? ' lq-unrev' : '';
@@ -462,6 +463,22 @@ export class LawTable {
             </button>`;
         }
         return '';
+    }
+
+    /**
+     * 판례 단추 — 그 조를 인용한 판례를 법제처 API 에서 찾아 보인다(LawPrecEventManager).
+     * 판례가 있는지는 눌러 봐야 안다(적재해 둔 것이 없다). 그래서 조 머리 칸마다 하나씩, 흐리게 단다.
+     * 규정 이름은 표 머리의 첫 줄(예: '전자금융거래법 시행령'), 조 번호는 id 에서 읽는다.
+     */
+    private renderPrecButton(id: string | null, col: number): string {
+        if (!id) return '';
+        // 조 머리 칸에만(A9 · A9_2). 항·호로 갈린 칸(A9_1h…)에는 달지 않는다 — 조마다 한 번이면 된다.
+        const m = String(id).match(/^[AESRB](\d+)(?:_(\d+))?$/);
+        const reg = (this.names[col] || '').split('\n')[0].trim();
+        if (!m || !reg) return '';
+        const jo = `제${m[1]}조${m[2] ? '의' + m[2] : ''}`;
+        const attr = reg.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+        return `<button type="button" class="law-prec-btn" data-reg="${attr}" data-jo="${jo}" title="${attr} ${jo} 관련 판례">판례</button>`;
     }
 
     // Setters

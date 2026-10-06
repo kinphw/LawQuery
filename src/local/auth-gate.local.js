@@ -39,7 +39,7 @@
   // (해외법령·게시판·로그인·관리자 등 — 누르면 파일이 없어 빈 화면이 된다)
   // 헤더는 번들이 나중에 그리므로 DOM 을 지우는 방식은 타이밍을 타지만, CSS 는 언제 그려지든 걸린다.
   var ABSENT_PAGES = [
-    'foreign.html', 'foreign-transition.html', 'press.html', 'board.html', 'account.html',
+    'foreign.html', 'foreign-transition.html', 'press.html', 'prec.html', 'board.html', 'account.html',
     'admin.html', 'login.html', 'privacy.html', 'account-deletion.html',
   ];
   // 이동 방식이 두 가지다 — <a href="foreign.html"> 와 <button onclick="location.href='foreign.html'">.

@@ -12,7 +12,7 @@ import { appInfoHtml } from './appInfo';
 
 export class Header {
 
-    render(currentPage: 'law' | 'interpretation' | 'foreign' | 'press'): string {
+    render(currentPage: 'law' | 'interpretation' | 'prec' | 'foreign' | 'press'): string {
 
         const html = `
         <header class="text-center p-3 border bg-light">
@@ -27,15 +27,16 @@ export class Header {
 
                 </div>
             </div>    
-            <!-- 화면 단추 네 개가 폰에서도 한 줄에 들어가게: 줄바꿈 없이, 글자·여백을 화면 폭에 맞춰 줄인다(넓으면 원래 크기) -->
-            <div class="d-flex flex-nowrap justify-content-center" style="gap: clamp(.25rem, 1.5vw, .5rem);">
+            <!-- 화면 단추 다섯 개가 폰(375px)에서도 한 줄에 들어가게: 줄바꿈 없이, 글자·여백을 화면 폭에 맞춰 줄인다(넓으면 원래 크기) -->
+            <div class="d-flex flex-nowrap justify-content-center" style="gap: clamp(.2rem, 1.2vw, .5rem);">
                 ${([
                     ['law', 'index.html', '법률조회'],
                     ['interpretation', 'interpretation.html', '유권해석조회'],
+                    ['prec', 'prec.html', '판례'],
                     ['foreign', 'foreign.html', '해외법령'],
                     ['press', 'press.html', '기관 보도자료'],
                 ] as const).map(([page, href, label]) => `<button class="btn ${currentPage === page ? 'btn-primary' : 'btn-secondary'} text-nowrap"
-                    style="font-size: clamp(.7rem, 3.2vw, 1rem); padding: .375rem clamp(.35rem, 2vw, .75rem);"
+                    style="font-size: clamp(.62rem, 2.8vw, 1rem); padding: .375rem clamp(.25rem, 1.4vw, .75rem);"
                     onclick="location.href='${href}'">${label}</button>`).join('')}
             </div>
         </header>`;

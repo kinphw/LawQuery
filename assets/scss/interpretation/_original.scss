@@ -1,0 +1,83 @@
+// 법령해석 원문 보기 — 상세 줄의 원문 파일 줄 + 오른쪽 원문 창(#iqDoc)
+// 창 안쪽(제목줄·찾기·파일 탭·pdf.js 쪽)은 보도자료의 .pr-viewer / .pr-pdf 를 그대로 쓴다(press/_base.scss).
+//
+// 화면 폭 두 단계:
+//   ≥ 1200px   결과표 | 원문 창이 나란히 — 표는 왼쪽으로 좁아지고 계속 스크롤·클릭된다
+//   < 1200px   원문 창이 화면을 덮는다(태블릿 분할·폰). 뒤 페이지는 스크롤을 멈춘다.
+:root { --iq-doc-w: clamp(560px, 54vw, 1180px); }
+
+// ── 상세 줄 아래 원문 파일 줄 ──
+.iq-files {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.4rem;
+  margin-top: 0.9rem;
+  padding-top: 0.6rem;
+  border-top: 1px dashed #ced4da;
+
+  &__label { margin-right: 0.2rem; }
+  &__portal { padding-left: 0.25rem; padding-right: 0.25rem; text-decoration: none; white-space: nowrap; }
+}
+
+.iq-file {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  max-width: 100%;
+
+  &__name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  small { flex: 0 0 auto; opacity: 0.7; font-variant-numeric: tabular-nums; }
+}
+
+// ── 원문 창 ──
+.iq-doc {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1040; // 회원바(1030)·글자크기 단추 위, Bootstrap 모달(1055) 아래
+  width: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  // 원문 쪽 너비는 스크롤바가 생기기 전에 잰다 — 자리를 미리 잡아 둔다
+  scrollbar-gutter: stable;
+  border-width: 0;
+  border-radius: 0;
+  box-shadow: -4px 0 18px rgba(0, 0, 0, 0.18);
+
+  &[hidden] { display: none; }
+  .pr-viewer__bar { border-radius: 0; }
+  .pr-pdf { min-height: calc(100% - 3rem); border-radius: 0; }
+}
+
+@media (min-width: 1200px) {
+  .iq-doc { width: var(--iq-doc-w); border-left-width: 1px; }
+
+  // 결과표를 창 왼쪽으로 — 가운데 정렬 폭 제한을 풀어 남은 자리를 다 쓴다
+  body.iq-reading {
+    padding-right: var(--iq-doc-w);
+
+    .container { max-width: none; }
+    // 좁아진 표에서 분야 칸을 접어 제목에 자리를 준다
+    #results .field-cell { display: none; }
+    #results .table:not(.law-table) { table-layout: auto !important; }
+    #results .type-cell,
+    #results .serial-cell,
+    #results .date-cell { width: 1%; white-space: nowrap; }
+  }
+}
+
+@media (max-width: 1199.98px) {
+  body.iq-reading { overflow: hidden; }
+  // 글자크기 단추가 창 위로 비치지 않게
+  body.iq-reading .floating-controls { display: none; }
+}
+
+@media (max-width: 575.98px) {
+  .iq-file__name { max-width: 14rem; }
+}

@@ -7,7 +7,8 @@ module.exports = {
     interpretation: './src/frontend/ts/entry/interpretation.ts',
     foreign: './src/frontend/ts/entry/foreign.ts',
     'foreign-transition': './src/frontend/ts/entry/foreignTransition.ts',
-    press: './src/frontend/ts/entry/press.ts'
+    press: './src/frontend/ts/entry/press.ts',
+    prec: './src/frontend/ts/entry/prec.ts'
   },
   output: {
     filename: '[name].bundle.js', // dist/law.bundle.js 등으로 저장

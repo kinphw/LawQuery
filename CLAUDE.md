@@ -230,6 +230,7 @@ interpretation/
   - 파일은 **문서 id 로만** 가리킨다(경로를 받지 않는다 — 폴더·파일명에 ★「」.. 가 섞여 있다). 루트 밖이면 열지 않는다.
   - 원본 경로가 260자를 넘는 것이 있어 변환 땐 캐시 폴더의 짧은 이름으로 복사해 넘긴다.
   - ⚠️ COM 은 사용자 세션에서만 된다 — pm2 를 Windows 서비스(Session 0)로 옮기면 변환이 깨진다.
+  - 변환(줄 세우기·실패 기록·짧은 이름 복사)은 `common/services/PdfConverter` — 법령해석 원문 보기와 공용.
 - pdf.js 워커는 webpack 이 `dist/pdf.worker.min.js` 로 내보낸다(`.mjs` MIME 회피). 주소는 `press/publicPath.ts` 가 못박으므로
   `entry/press.ts` 의 첫 import 여야 한다. cMap·표준글꼴·wasm 은 `assets/vendor/pdfjs/`(pdfjs-dist 를 올리면 다시 복사).
   pdf.js 는 압축본(`pdf.min.mjs`)을 alias 로 쓴다 — 비압축본은 eval devtool 과 이름이 겹쳐 로드 시점에 죽는다.
@@ -251,6 +252,53 @@ interpretation/
 - 로컬(오프라인)판에는 넣지 않는다(`auth-gate.local.js` 가 헤더 단추를 숨긴다).
 - 로그인 벽 때문에 브라우저 도구로 실서버 화면을 못 본다 — 검증은 `PressHandler` + 정적 파일을 인증 없이 127.0.0.1 에
   잠깐 띄운 임시 서버로 했다(끝나면 지운다).
+
+### 법령해석 원문 보기 — 포털 회신 첨부(HWP)를 결과표 옆에서 PDF 로 (2026-10-02)
+
+유권해석 상세 줄(질의요지·회답·이유)을 펼치면 그 아래 **원문 파일 줄**이 달리고, 누르면 오른쪽 창(`#iqDoc`)에 pdf.js 로 그려진다.
+보도자료와 같은 길이다 — 한/글 COM → PDF 변환 + `press/PdfView`.
+
+- **원본 보관소의 주인은 `LawQuery-frc`** (`data/interpretation_originals`, 규격 interpretation-originals-v1). 웹앱은 읽기만.
+  `documents/<자연키해시>.json`((구분, 일련번호) → 포털 상세 주소 + 첨부 목록) · `objects/<sha256>`(원본 바이트, 확장자 없음).
+  자연키해시 = `sha256('["구분", "일련번호"]')` — frc `daily_sync_i.digest` 와 같은 식(쉼표 뒤 공백 포함).
+  채우는 손: 정기 수집의 `archive_i.py`(새 적재분) + **`archive_backfill_i.py`**(포털 공개 목록 전량, 재개 가능).
+- **대상은 법령해석·비조치의견서(포털 '최근해석' 4,361건)뿐.** 과거해석(2014년 이전)·현장건의 과제는 포털에 첨부가 없다 → 파일 줄이 안 달린다.
+- API(`InterpretationOriginalController` — fs 를 쓰므로 로컬판이 부르는 `InterpretationController` 와 따로 둔다):
+  `GET /api/interpretation/files/:id` · `GET /api/interpretation/original/:id/:sha`(`?raw=1` 원본, `?retry=1` 재변환).
+  파일은 **(해석 id, 그 문서 첨부의 sha256)** 로만 가리킨다. 경로 `INTERP_FILES_DIR`, 변환 캐시 `INTERP_PDF_CACHE_DIR`(기본 `cache/interp-pdf/<sha>.pdf`).
+- **변환기는 `common/services/PdfConverter` 하나**(보도자료와 공용) — 한/글은 한 번에 하나만 돌려야 해서 줄(chain)이 한 곳에 있어야 한다.
+  원문 종류를 더 붙일 때도 이 모듈을 쓰고 줄을 따로 만들지 말 것.
+- 화면(`interpretation/original/OriginalPanel.ts`, `assets/scss/interpretation/_original.scss`): ≥1200 결과표 | 원문 창 나란히
+  (`body.iq-reading` 이 오른쪽을 비운다) · <1200 창이 화면을 덮음. 창 안쪽은 보도자료의 `.pr-viewer`·`.pr-pdf` 스타일 그대로.
+  pdf.js 워커 주소 때문에 `entry/interpretation.ts` 도 첫 import 가 `press/publicPath` 다.
+- 로컬(오프라인)판에는 없다 — `webpack.local.config.js` 가 `OriginalPanel` 을 `src/local/originalStub.ts` 로 갈아끼운다(pdf.js 미포함).
+
+### 판례 — 법원 판례 + 헌재결정, 법제처 API 실시간 조회·DB 적재 없음 (2026-10-06)
+
+두 군데서 쓴다. **판례 탭**(`prec.html` · `prec.bundle.js`)은 낱말·조문·사건번호로 찾는 검색 화면이고,
+**연계표의 조 머리 칸**마다 달린 흐린 '판례' 단추(`.law-prec-btn`)는 그 조를 인용한 것을 떠 있는 창에 보인다.
+둘 다 목록 줄을 누르면 판시사항·요지·참조조문·전문(접힘)을 읽는다.
+
+- **적재하지 않는다.** 백엔드(`prec/PrecApiClient.ts`)가 law.go.kr DRF 를 그때그때 부르고 같은 요청은 메모리에 하루 둔다.
+  인증값은 `.env` 의 `LAW_OC`(LawQuery-law 파이프라인과 같은 값). API: `GET /api/prec/search?q=&in=&src=&jo=&page=` · `GET /api/prec/detail/:id`.
+- **법원 판례(`target=prec`)와 헌법재판소 결정례(`target=detc`)를 한 목록으로 준다** — 읽는 사람에겐 둘 다 판례다. 같은 키·같은 꼴.
+  헌재 것은 id 앞에 `c`(`c205945`), 바깥 링크도 따로(`precInfoP.do?precSeq=` / `detcInfoP.do?detcSeq=`).
+  합친 n 쪽 = 출처마다 1~n 쪽을 읽어 날짜순으로 섞은 것의 n 번째 토막(그래야 쪽을 넘겨도 순서가 맞다). 앞쪽은 캐시에 있어 실제 호출은 쪽당 한 번.
+  그래서 합친 목록은 25쪽(500건)까지만 넘긴다. `src=prec|detc` 로 한 출처만 볼 수도 있다(탭의 출처 단추).
+- **사건번호 꼴**(`2013다69989`·`2020헌바583`)은 서버가 알아서 사건명·사건번호 검색으로 돌린다 — 본문 검색으론 안 걸린다.
+- **조문 단위로 좁히는 법 = 따옴표 문구 검색**: `q="전자금융거래법 제9조"` + 본문 검색. 따옴표가 없으면 낱말 단위로 풀려 수백 건이 된다.
+  '제9조의2' 처럼 뒤가 더 붙은 것도 걸린다(API 한계). 탭의 '문구 그대로'가 이 따옴표를 붙인다.
+  '법령 전체' 범위는 `jo=법령명`(참조조문에 그 법령이 적힌 판례) — 법원 판례에만 있는 조건이라 헌재결정은 빠진다.
+- 탭 화면(`prec/PrecController.ts`)의 틀은 **기관 보도자료의 `.pr-*` 를 그대로 쓴다**(검색줄·목록|문서 두 칸·읽기 모드·<992 접기).
+  이 화면만의 스타일은 `assets/scss/prec/_base.scss`. 상태는 URL 에: `q`·`in`·`ph`·`src`·`open`. 조문 창의 '판례검색에서 열기'가 이 주소로 넘긴다.
+- 헤더 화면 단추가 다섯 개가 됐다 — 375px 에서 한 줄에 들어가도록 `Header.ts` 의 글자·여백 clamp 를 줄였다. 단추를 더 늘리면 다시 재야 한다.
+- 규정 이름은 표 머리 첫 줄(`LawTable.names[col]`), 조 번호는 id(`A9`·`A9_2`)에서 읽는다. 항·호로 갈린 칸(`A9_1h`)·가상 칸·편-조 id 에는 달지 않는다.
+  판례가 있는지는 눌러 봐야 안다 — 그래서 단추를 흐리게 둔다(자료가 있을 때만 뜨는 벌칙·참조·별표와 다르다).
+- 응답의 `판례상세링크` 는 OC 가 박혀 있어 내보내지 않는다. 바깥 링크는 `law.go.kr/precInfoP.do?precSeq=<일련번호>`.
+- 목록·본문 HTML 조각은 `frontend/ts/prec/PrecView.ts`(+`PrecApi.ts`) — 탭과 조문 창이 함께 쓴다.
+  창(`law/controllers/event/prec/LawPrecEventManager.ts`)의 틀은 참조규정 팝업(`.law-ref-modal-popup`·`DraggablePopup`), 스타일 `assets/scss/law/_prec.scss`.
+- 로컬(오프라인)판: `LawPrecEventManager` 를 `lawFeatureStub` 으로 갈아끼워 단추를 CSS 로 감추고, `auth-gate.local.js` 가 헤더의 판례 단추를 숨긴다.
+- 공개 호스트 화이트리스트(`C:\projects\apache_config\vhosts\lq-prod.conf`)에 `prec` 를 넣었다(관리자 권한으로 Apache 재시작해야 적용).
 
 ### 관리자 화면 — 회원·접속은 여기 한 곳 (2026-10-04)
 

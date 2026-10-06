@@ -19,8 +19,6 @@ export const PRESS_FILES_DIR = path.resolve(process.env.PRESS_FILES_DIR || 'C:/p
 /** HWP 등을 PDF 로 바꿔 둔 캐시. */
 export const PRESS_PDF_CACHE_DIR = path.resolve(process.env.PRESS_PDF_CACHE_DIR || path.join(process.cwd(), 'cache', 'press-pdf'));
 
-export const PYTHON_BIN = process.env.PYTHON_BIN || 'python';
-
 let pool: Pool | null = null;
 
 function getPool(): Pool {
