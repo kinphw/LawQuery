@@ -4,9 +4,8 @@ import { AdminController } from '../auth/controllers/AdminController';
 import { adminGuard, authGuard } from '../auth/middleware/authGuard';
 import { rateLimit } from '../auth/middleware/rateLimit';
 
-// 브루트포스/남용 방지 (IP당). 로그인은 상대적으로 여유, 가입/재전송은 빡빡하게.
+// 브루트포스/남용 방지 (IP당). 로그인은 상대적으로 여유, 가입 신청은 빡빡하게.
 const loginLimiter = rateLimit({ windowMs: 10 * 60_000, max: 20, message: '로그인 시도가 너무 많습니다. 잠시 후 다시 시도해 주세요.' });
-const verifyLimiter = rateLimit({ windowMs: 10 * 60_000, max: 30, message: '인증 시도가 너무 많습니다. 잠시 후 다시 시도해 주세요.' });
 const signupLimiter = rateLimit({ windowMs: 60 * 60_000, max: 10, message: '요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.' });
 
 /**
@@ -27,9 +26,7 @@ export class AuthHandler {
 
   private initializeRoutes(): void {
     // 공개 (게이트 밖) — 민감 엔드포인트엔 rate limit
-    this.router.post('/auth/register', signupLimiter, this.auth.register);
-    this.router.post('/auth/verify', verifyLimiter, this.auth.verify);   // 이메일 인증번호 확인 → 승인+자동로그인
-    this.router.post('/auth/resend', signupLimiter, this.auth.resend);   // 인증번호 재전송(쿨다운)
+    this.router.post('/auth/register', signupLimiter, this.auth.register); // 가입 신청(pending) → 관리자 승인
     this.router.post('/auth/login', loginLimiter, this.auth.login);
     this.router.post('/auth/logout', this.auth.logout);
     this.router.get('/auth/me', this.auth.me);
@@ -44,6 +41,7 @@ export class AuthHandler {
     this.router.post('/admin/members/:id/approve', adminGuard, this.admin.approve);
     this.router.post('/admin/members/:id/reject', adminGuard, this.admin.reject);
     this.router.post('/admin/members/:id/revoke', adminGuard, this.admin.revoke);
+    this.router.patch('/admin/members/:id/access', adminGuard, this.admin.setAccess); // 서비스별(LQ/AQ) 이용 허용
     this.router.patch('/admin/members/:id/name', adminGuard, this.admin.renameMember);
     this.router.patch('/admin/members/:id/password', adminGuard, this.admin.resetPassword);
     this.router.delete('/admin/members/:id', adminGuard, this.admin.deleteMember);

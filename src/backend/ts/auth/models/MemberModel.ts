@@ -3,6 +3,8 @@ import DbContext from '../../common/DbContext';
 export type SignupSource = 'web' | 'app';
 export type MemberStatus = 'pending' | 'approved' | 'rejected' | 'revoked';
 export type MemberRole = 'user' | 'admin';
+/** 회원 테이블(ldb_auth.member)을 함께 쓰는 서비스. lq = LawQuery, aq = AcctQuery. */
+export type MemberService = 'lq' | 'aq';
 
 export interface Member {
   id: number;
@@ -13,16 +15,22 @@ export interface Member {
   signup_source: SignupSource;
   status: MemberStatus;
   role: MemberRole;
-  verify_code_hash?: string | null;   // 이메일 인증번호 해시
-  verify_expires_at?: string | null;  // 인증번호 만료 시각
-  verify_attempts?: number;           // 인증 시도 횟수(잠금용)
-  verify_sent_at?: string | null;     // 마지막 발송 시각(재전송 쿨다운용)
+  lq_access: number;                  // LawQuery 이용 허용(1/0). 관리자는 값과 무관하게 통과
+  aq_access: number;                  // AcctQuery 이용 허용(1/0). 판정은 AQ 쪽이 한다
   device_key: string | null;
   session_token: string | null;
   created_at: string;
   approved_at: string | null;
   approved_by: number | null;
   last_login_at: string | null;
+}
+
+/**
+ * LawQuery 이용 권한. 승인(status)과는 별개의 축이다 — 회원 행을 AcctQuery 와 함께 쓰므로
+ * 승인된 회원이라도 서비스별 허용(lq_access)이 켜져 있어야 한다. 관리자는 항상 통과.
+ */
+export function hasLqAccess(m: Pick<Member, 'role' | 'lq_access'>): boolean {
+  return m.role === 'admin' || Number(m.lq_access) === 1;
 }
 
 /**
@@ -77,18 +85,21 @@ export class MemberModel {
     return rows[0] ?? null;
   }
 
-  /** 웹 가입. */
+  /**
+   * 웹 가입 신청. LawQuery 에서 신청한 행이므로 lq_access=1 로 만든다(어느 서비스로 신청했는지의 표시).
+   * aq_access 는 최초 관리자만 1 — 일반 신청자는 0 이고 관리자가 화면에서 켠다.
+   */
   async createWebMember(
     loginId: string,
     passwordHash: string,
     displayName: string | null,
     role: MemberRole = 'user',
-    status: MemberStatus = 'approved'
+    status: MemberStatus = 'pending'
   ): Promise<number> {
     const result: any = await this.db.query(
-      `INSERT INTO member (login_id, password_hash, display_name, signup_source, status, role)
-       VALUES (?, ?, ?, 'web', ?, ?)`,
-      [loginId, passwordHash, displayName, status, role]
+      `INSERT INTO member (login_id, password_hash, display_name, signup_source, status, role, lq_access, aq_access)
+       VALUES (?, ?, ?, 'web', ?, ?, 1, ?)`,
+      [loginId, passwordHash, displayName, status, role, role === 'admin' ? 1 : 0]
     );
     return (result as any).insertId ?? (result as any)[0]?.insertId;
   }
@@ -121,56 +132,10 @@ export class MemberModel {
     await this.db.query('UPDATE member SET password_hash = ? WHERE id = ?', [passwordHash, id]);
   }
 
-  // ── 이메일 인증 ───────────────────────────────────────────────
-
-  /** 인증번호(해시) 설정 + 만료(분)·발송시각 갱신, 시도횟수 초기화. 시각은 DB NOW() 기준(TZ 안전). */
-  async setVerification(id: number, codeHash: string, ttlMinutes = 10): Promise<void> {
-    await this.db.query(
-      `UPDATE member
-       SET verify_code_hash = ?, verify_expires_at = NOW() + INTERVAL ? MINUTE,
-           verify_attempts = 0, verify_sent_at = NOW()
-       WHERE id = ?`,
-      [codeHash, ttlMinutes, id]
-    );
-  }
-
-  /** 인증 상태(해시·유효여부·시도횟수·재전송 차단여부)를 DB 시각 기준으로 조회. */
-  async getVerification(id: number): Promise<{
-    codeHash: string | null; valid: number; attempts: number; resendBlocked: number;
-  } | null> {
-    const rows = await this.db.query<any>(
-      `SELECT verify_code_hash AS codeHash,
-              (verify_expires_at IS NOT NULL AND verify_expires_at > NOW()) AS valid,
-              verify_attempts AS attempts,
-              (verify_sent_at IS NOT NULL AND verify_sent_at > NOW() - INTERVAL 60 SECOND) AS resendBlocked
-       FROM member WHERE id = ? LIMIT 1`,
-      [id]
-    );
-    return rows[0] ?? null;
-  }
-
-  /** 인증 시도 1회 증가. */
-  async bumpVerifyAttempt(id: number): Promise<void> {
-    await this.db.query('UPDATE member SET verify_attempts = verify_attempts + 1 WHERE id = ?', [id]);
-  }
-
-  /** 인증 성공 → 승인 처리 + 인증 데이터 정리. */
-  async markVerified(id: number): Promise<void> {
-    await this.db.query(
-      `UPDATE member
-       SET status = 'approved', approved_at = NOW(),
-           verify_code_hash = NULL, verify_expires_at = NULL, verify_attempts = 0, verify_sent_at = NULL
-       WHERE id = ?`,
-      [id]
-    );
-  }
-
-  /** 미인증(pending) 이메일 재가입 시 비번/이름만 갱신(상태는 pending 유지). */
-  async refreshPendingSignup(id: number, passwordHash: string, displayName: string | null): Promise<void> {
-    await this.db.query(
-      'UPDATE member SET password_hash = ?, display_name = ? WHERE id = ?',
-      [passwordHash, displayName, id]
-    );
+  /** 서비스별 이용 허용 변경(관리자). 컬럼명은 화이트리스트로만 고른다. */
+  async setAccess(id: number, service: MemberService, enabled: boolean): Promise<void> {
+    const col = service === 'aq' ? 'aq_access' : 'lq_access';
+    await this.db.query(`UPDATE member SET ${col} = ? WHERE id = ?`, [enabled ? 1 : 0, id]);
   }
 
   /** 회원 삭제. 활동 로그는 보존(member_id만 남고 조인 시 이름이 비게 됨). */

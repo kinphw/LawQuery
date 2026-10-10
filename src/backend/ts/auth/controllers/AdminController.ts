@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
-import { MemberModel, MemberStatus } from '../models/MemberModel';
+import { MemberModel, MemberStatus, MemberService } from '../models/MemberModel';
 import { AccessLogModel, AccessEvent, parseService } from '../models/AccessLogModel';
 import { SettingModel } from '../models/SettingModel';
 
@@ -147,6 +147,8 @@ export class AdminController {
         signup_source: m.signup_source,
         status: m.status,
         role: m.role,
+        lq_access: Number(m.lq_access) === 1, // LawQuery 이용 허용
+        aq_access: Number(m.aq_access) === 1, // AcctQuery 이용 허용
         created_at: m.created_at,
         approved_at: m.approved_at,
         last_login_at: m.last_login_at,
@@ -185,7 +187,40 @@ export class AdminController {
       res.status(500).json({ success: false, error: '이름 변경 중 오류가 발생했습니다.' });
     }
   };
-
+  /**
+   * 서비스별(LQ/AQ) 이용 허용 변경. body { service: 'lq' | 'aq', enabled: boolean }.
+   * 승인 상태와 무관하게 바꿀 수 있다 — 승인 대기 회원도 승인 전에 미리 조정한다.
+   */
+  setAccess = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const id = parseInt(req.params.id, 10);
+      if (!id) {
+        res.status(400).json({ success: false, error: '잘못된 회원 ID입니다.' });
+        return;
+      }
+      const service = req.body?.service;
+      const enabled = req.body?.enabled;
+      if ((service !== 'lq' && service !== 'aq') || typeof enabled !== 'boolean') {
+        res.status(400).json({ success: false, error: 'service(lq/aq)와 enabled(true/false)를 지정해 주세요.' });
+        return;
+      }
+      const target = await this.model.findById(id);
+      if (!target) {
+        res.status(404).json({ success: false, error: '회원을 찾을 수 없습니다.' });
+        return;
+      }
+      // 관리자는 값과 무관하게 항상 통과 — 스위치가 의미 없으므로 바꾸지 않는다(삭제·정지 보호와 동일).
+      if (target.role === 'admin') {
+        res.status(400).json({ success: false, error: '관리자 계정은 항상 허용됩니다.' });
+        return;
+      }
+      await this.model.setAccess(id, service as MemberService, enabled);
+      res.json({ success: true, id, service, enabled });
+    } catch (e) {
+      console.error('setAccess 오류:', e);
+      res.status(500).json({ success: false, error: '이용 권한 변경 중 오류가 발생했습니다.' });
+    }
+  };
 
   /** 관리자가 회원 비밀번호를 강제 변경(현재 비번 불필요). */
   resetPassword = async (req: Request, res: Response): Promise<void> => {

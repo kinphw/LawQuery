@@ -66,16 +66,21 @@
           </div>
           <button class="btn btn-outline-secondary ms-auto" id="refreshBtn">새로고침</button>
         </div>
+        <!-- 회원은 LawQuery·AcctQuery 가 함께 쓴다(ldb_auth.member). 승인과 서비스별 허용은 별개의 축 -->
+        <p class="text-muted small mb-2">
+          승인된 회원이라도 <strong>LQ·AQ 스위치</strong>가 켜진 서비스만 이용할 수 있습니다.
+          승인 대기 회원은 신청한 서비스가 미리 켜져 있으며, 승인 전에 바꿀 수 있습니다. 관리자는 항상 허용입니다.
+        </p>
         <div class="table-responsive">
           <table class="table table-bordered table-hover table-sm align-middle admin-table nowrap-table">
             <thead class="table-dark">
               <tr>
                 <th>ID</th><th>아이디</th><th>이름</th><th>경로</th>
-                <th>상태</th><th>권한</th><th>가입일</th><th>LQ 접속</th><th>AQ 접속</th><th>처리</th>
+                <th>상태</th><th>권한</th><th title="LawQuery 이용 허용">LQ</th><th title="AcctQuery 이용 허용">AQ</th><th>가입일</th><th>LQ 접속</th><th>AQ 접속</th><th>처리</th>
               </tr>
             </thead>
             <tbody id="memberTbody">
-              <tr><td colspan="10" class="text-center text-muted">불러오는 중...</td></tr>
+              <tr><td colspan="12" class="text-center text-muted">불러오는 중...</td></tr>
             </tbody>
           </table>
         </div>
@@ -259,11 +264,11 @@
 
       async function loadMembers() {
         const tbody = $('memberTbody');
-        tbody.innerHTML = '<tr><td colspan="10" class="text-center text-muted">불러오는 중...</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="12" class="text-center text-muted">불러오는 중...</td></tr>';
         const qs = currentStatus ? `?status=${currentStatus}` : '';
         const data = await (await fetch(`/api/admin/members${qs}`)).json();
-        if (!data.success) { tbody.innerHTML = `<tr><td colspan="10" class="text-danger text-center">${esc(data.error)}</td></tr>`; return; }
-        if (!data.members.length) { tbody.innerHTML = '<tr><td colspan="10" class="text-center text-muted">없음</td></tr>'; return; }
+        if (!data.success) { tbody.innerHTML = `<tr><td colspan="12" class="text-danger text-center">${esc(data.error)}</td></tr>`; return; }
+        if (!data.members.length) { tbody.innerHTML = '<tr><td colspan="12" class="text-center text-muted">없음</td></tr>'; return; }
 
         tbody.innerHTML = data.members.map((m) => {
           const a = [];
@@ -275,6 +280,11 @@
           a.push(`<button class="btn btn-outline-primary btn-sm rename-btn" data-id="${m.id}" data-name="${esc(m.display_name)}">이름</button>`);
           if (m.signup_source !== 'app') a.push(`<button class="btn btn-outline-warning btn-sm pw-btn" data-id="${m.id}" data-lid="${esc(m.login_id)}">비번</button>`);
           if (m.role !== 'admin') a.push(`<button class="btn btn-danger btn-sm del-btn" data-id="${m.id}" data-lid="${esc(m.login_id)}">삭제</button>`);
+          // 서비스별 허용: 관리자는 항상 통과라 스위치 대신 표시만
+          const accCell = (svc, on) => m.role === 'admin'
+            ? '<span class="badge bg-secondary" title="관리자는 항상 허용">항상</span>'
+            : `<div class="form-check form-switch m-0"><input class="form-check-input acc-sw" type="checkbox" role="switch"
+                data-id="${m.id}" data-svc="${svc}" aria-label="${svc === 'aq' ? 'AcctQuery' : 'LawQuery'} 이용 허용"${on ? ' checked' : ''}></div>`;
           return `<tr>
             <td>${m.id}</td>
             <td class="small">${esc(m.login_id)}</td>
@@ -282,6 +292,8 @@
             <td><span class="badge bg-${m.signup_source === 'app' ? 'info' : 'light text-dark'}">${m.signup_source}</span></td>
             <td>${STATUS_BADGE[m.status] || m.status}</td>
             <td>${m.role}</td>
+            <td>${accCell('lq', m.lq_access)}</td>
+            <td>${accCell('aq', m.aq_access)}</td>
             <td class="small">${(m.created_at || '').slice(0, 10)}</td>
             <td class="small">${(m.last_seen_at || '').replace('T', ' ').slice(0, 16) || '-'}</td>
             <td class="small">${(m.last_seen_aq_at || '').replace('T', ' ').slice(0, 16) || '-'}</td>
@@ -293,6 +305,16 @@
           b.disabled = true;
           const d = await (await fetch(`/api/admin/members/${b.dataset.id}/${b.dataset.act}`, { method: 'POST' })).json();
           d.success ? loadMembers() : (alert(d.error || '실패'), b.disabled = false);
+        }));
+        tbody.querySelectorAll('.acc-sw').forEach((sw) => sw.addEventListener('change', async () => {
+          const want = sw.checked;
+          sw.disabled = true;
+          let d;
+          try {
+            d = await (await fetch(`/api/admin/members/${sw.dataset.id}/access`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ service: sw.dataset.svc, enabled: want }) })).json();
+          } catch { d = { success: false, error: '서버 연결에 실패했습니다.' }; }
+          if (!d.success) { alert(d.error || '실패'); sw.checked = !want; } // 실패하면 스위치를 되돌린다
+          sw.disabled = false;
         }));
         tbody.querySelectorAll('.rename-btn').forEach((b) => b.addEventListener('click', async () => {
           const name = prompt('변경할 이름 (1~50자)', b.dataset.name || '');

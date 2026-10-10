@@ -1,13 +1,11 @@
 import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
-import { MemberModel } from '../models/MemberModel';
+import { MemberModel, hasLqAccess } from '../models/MemberModel';
 import { AccessLogModel } from '../models/AccessLogModel';
 import { SettingModel } from '../models/SettingModel';
 import { signToken, verifyToken, newSessionToken, AUTH_COOKIE, cookieOptions, expiryFor } from '../utils/jwt';
-import crypto from 'crypto';
-import { sendVerifyCode, isMailConfigured } from '../utils/mailer';
 
-// 로그인 ID = 이메일(회원 확대용). 간단 형식 검증(인증메일 단계는 없음).
+// 로그인 ID = 이메일. 간단 형식 검증만 한다(인증메일 단계 없음 — 가입은 관리자가 승인한다).
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 // 비밀번호 규칙: 영문·숫자 6~30자
 const PW_RE = /^[a-zA-Z0-9]{6,30}$/;
@@ -43,24 +41,6 @@ export class AuthController {
     }
   };
 
-  /** 6자리 인증번호 생성 → 해시 저장 + 메일 발송. 성공 시 코드 반환, 실패 시 null. (register/resend 공용) */
-  private sendCode = async (memberId: number, email: string): Promise<string | null> => {
-    const code = String(crypto.randomInt(0, 1000000)).padStart(6, '0');
-    const codeHash = await bcrypt.hash(code, 10);
-    await this.model.setVerification(memberId, codeHash, 10); // 10분 유효
-    const ok = await sendVerifyCode(email, code);
-    return ok ? code : null;
-  };
-
-  /**
-   * 메일 미설정 + "명시적 개발환경"에서만 응답에 코드 노출(dev 테스트용).
-   * ⚠️ 보안(fail-safe): NODE_ENV 가 미설정이면 노출하지 않는다(과거엔 !== 'production' 이라
-   *    NODE_ENV 미설정 시 인증코드가 응답으로 새어나갈 수 있었다).
-   */
-  private devCodeOf(code: string): string | undefined {
-    return (!isMailConfigured() && process.env.NODE_ENV === 'development') ? code : undefined;
-  }
-
   /**
    * 로그인 성공 시 인증 쿠키 발급.
    * 기본은 "로그인 유지"(장기 30일, rmb=1) — UX상 매번 재로그인 부담을 줄임.
@@ -79,7 +59,10 @@ export class AuthController {
     res.cookie(AUTH_COOKIE, token, cookieOptions(maxAgeMs));
   }
 
-  /** 웹 회원가입: pending 생성 + 이메일 인증번호 발송. 인증(verify) 성공 시 approved. */
+  /**
+   * 웹 가입 신청: pending 행만 만든다. 메일·인증번호 없음, 자동 로그인 없음.
+   * 관리자가 admin.html 에서 승인해야 로그인된다(AcctQuery 와 같은 방식).
+   */
   register = async (req: Request, res: Response): Promise<void> => {
     try {
       const loginId = (req.body?.loginId ?? req.body?.email ?? '').trim().toLowerCase();
@@ -94,27 +77,23 @@ export class AuthController {
         res.status(400).json({ success: false, error: '비밀번호는 영문·숫자 6~30자로 입력해 주세요.' });
         return;
       }
-      const hash = await bcrypt.hash(password, 10);
+      // 이미 있는 이메일은 상태와 무관하게 덮어쓰지 않는다. 이메일 소유 확인 단계가 없으므로,
+      // 대기 중인 신청의 비밀번호를 남이 다시 신청해 바꿔치기하지 못하게 한다.
+      // (AcctQuery 에서 신청한 대기 회원도 여기 걸린다 — LawQuery 허용은 관리자가 스위치로 켠다.)
       const existing = await this.model.findByLoginId(loginId);
-      if (existing && existing.status === 'approved') {
-        res.status(409).json({ success: false, error: '이미 가입된 이메일입니다.' });
+      if (existing) {
+        const msg = existing.status === 'pending'
+          ? '이미 가입 신청된 이메일입니다. 관리자 승인을 기다려 주세요.'
+          : '이미 가입된 이메일입니다.';
+        res.status(409).json({ success: false, error: msg, status: existing.status });
         return;
       }
+      const hash = await bcrypt.hash(password, 10);
 
-      // 최초 계정(회원 0명, 신규)은 부트스트랩 관리자 → 이메일 인증 면제 + 즉시 승인/로그인.
-      // (메일 미설정으로 최초 관리자가 잠기는 닭-달걀 문제 방지)
-      const isFirstAdmin = !existing && (await this.model.countMembers()) === 0;
-
-      // 운영에서 메일 미설정이면 일반 가입은 차단(가짜 성공·고아 pending 방지). 단, 최초 관리자는 통과.
-      if (!isFirstAdmin && !isMailConfigured() && process.env.NODE_ENV === 'production') {
-        res.status(503).json({ success: false, error: '현재 인증 메일을 보낼 수 없습니다. 잠시 후 다시 시도해 주세요.' });
-        return;
-      }
-
-      if (isFirstAdmin) {
-        const id = await this.model.createWebMember(
-          loginId, hash, displayName, 'admin', 'approved'
-        );
+      // 최초 계정(회원 0명)은 부트스트랩 관리자 → 즉시 승인/로그인.
+      // (승인해 줄 관리자가 아직 없는 닭-달걀 문제 방지)
+      if ((await this.model.countMembers()) === 0) {
+        const id = await this.model.createWebMember(loginId, hash, displayName, 'admin', 'approved');
         const sid = newSessionToken();
         await this.model.setSessionToken(id, sid);
         this.issueAuthCookie(res, id, 'admin', sid);
@@ -122,121 +101,24 @@ export class AuthController {
         return;
       }
 
-      let memberId: number;
-      if (existing) {
-        // 미인증(pending) 재시도 → 정보 갱신 후 코드 재발송
-        memberId = existing.id;
-        await this.model.refreshPendingSignup(existing.id, hash, displayName);
-      } else {
-        if (!(await this.settingModel.isSignupEnabled())) {
-          res.status(403).json({ success: false, error: '현재 신규 가입이 중단되었습니다.' });
-          return;
-        }
-        memberId = await this.model.createWebMember(
-          loginId, hash, displayName, 'user', 'pending'
-        );
-      }
-
-      const code = await this.sendCode(memberId, loginId);
-      if (!code) {
-        res.status(500).json({ success: false, error: '인증 메일 발송에 실패했습니다. 잠시 후 다시 시도해 주세요.' });
+      if (!(await this.settingModel.isSignupEnabled())) {
+        res.status(403).json({ success: false, error: '현재 신규 가입이 중단되었습니다.' });
         return;
       }
-      // 토큰 발급 안 함 — verify 성공 시 자동 로그인
-      res.json({ success: true, status: 'pending', email: loginId, devCode: this.devCodeOf(code) });
+      await this.model.createWebMember(loginId, hash, displayName, 'user', 'pending');
+      // 토큰 발급 안 함 — 관리자 승인 후 직접 로그인한다.
+      res.json({
+        success: true,
+        status: 'pending',
+        message: '가입 신청이 접수되었습니다. 관리자 승인 후 이용하실 수 있습니다.',
+      });
     } catch (e) {
       console.error('register 오류:', e);
       res.status(500).json({ success: false, error: '가입 처리 중 오류가 발생했습니다.' });
     }
   };
 
-  /** 이메일 인증번호 확인 → 승인 + 자동 로그인. */
-  verify = async (req: Request, res: Response): Promise<void> => {
-    try {
-      const loginId = (req.body?.loginId ?? req.body?.email ?? '').trim().toLowerCase();
-      const code = (req.body?.code ?? '').toString().trim();
-      if (!loginId || !/^\d{6}$/.test(code)) {
-        res.status(400).json({ success: false, error: '인증번호 6자리를 입력해 주세요.' });
-        return;
-      }
-      const member = await this.model.findByLoginId(loginId);
-      if (!member) {
-        res.status(400).json({ success: false, error: '가입 정보를 찾을 수 없습니다. 다시 가입해 주세요.' });
-        return;
-      }
-      if (member.status === 'approved') {
-        res.status(400).json({ success: false, error: '이미 인증된 계정입니다. 로그인해 주세요.' });
-        return;
-      }
-      const v = await this.model.getVerification(member.id);
-      if (!v || !v.codeHash || !Number(v.valid)) {
-        res.status(400).json({ success: false, error: '인증번호가 만료되었습니다. 재전송해 주세요.' });
-        return;
-      }
-      if (Number(v.attempts) >= 5) {
-        res.status(400).json({ success: false, error: '시도 횟수를 초과했습니다. 재전송해 주세요.' });
-        return;
-      }
-      const ok = await bcrypt.compare(code, v.codeHash);
-      if (!ok) {
-        await this.model.bumpVerifyAttempt(member.id);
-        const left = Math.max(0, 5 - (Number(v.attempts) + 1));
-        res.status(400).json({ success: false, error: `인증번호가 일치하지 않습니다. (남은 시도 ${left}회)` });
-        return;
-      }
-
-      // 성공 → 승인 + 자동 로그인
-      await this.model.markVerified(member.id);
-      await this.logModel.record(member.id, member.login_id, 'login', clientIp(req), req.headers['user-agent'] as string || null);
-      const sid = newSessionToken();
-      await this.model.setSessionToken(member.id, sid);
-      this.issueAuthCookie(res, member.id, member.role, sid);
-      res.json({ success: true, status: 'approved', role: member.role, displayName: member.display_name });
-    } catch (e) {
-      console.error('verify 오류:', e);
-      res.status(500).json({ success: false, error: '인증 처리 중 오류가 발생했습니다.' });
-    }
-  };
-
-  /** 인증번호 재전송 (60초 쿨다운). */
-  resend = async (req: Request, res: Response): Promise<void> => {
-    try {
-      const loginId = (req.body?.loginId ?? req.body?.email ?? '').trim().toLowerCase();
-      if (!EMAIL_RE.test(loginId)) {
-        res.status(400).json({ success: false, error: '올바른 이메일 주소를 입력해 주세요.' });
-        return;
-      }
-      const member = await this.model.findByLoginId(loginId);
-      if (!member) {
-        res.status(400).json({ success: false, error: '가입 정보를 찾을 수 없습니다. 다시 가입해 주세요.' });
-        return;
-      }
-      if (member.status === 'approved') {
-        res.status(400).json({ success: false, error: '이미 인증된 계정입니다.' });
-        return;
-      }
-      if (!isMailConfigured() && process.env.NODE_ENV === 'production') {
-        res.status(503).json({ success: false, error: '현재 인증 메일을 보낼 수 없습니다. 잠시 후 다시 시도해 주세요.' });
-        return;
-      }
-      const v = await this.model.getVerification(member.id);
-      if (v && Number(v.resendBlocked)) {
-        res.status(429).json({ success: false, error: '잠시 후 다시 시도해 주세요.' });
-        return;
-      }
-      const code = await this.sendCode(member.id, loginId);
-      if (!code) {
-        res.status(500).json({ success: false, error: '인증 메일 발송에 실패했습니다.' });
-        return;
-      }
-      res.json({ success: true, devCode: this.devCodeOf(code) });
-    } catch (e) {
-      console.error('resend 오류:', e);
-      res.status(500).json({ success: false, error: '재전송 중 오류가 발생했습니다.' });
-    }
-  };
-
-  /** 로그인: 승인된 계정만 JWT 발급 */
+  /** 로그인: 승인 + LawQuery 이용이 허용된 계정만 JWT 발급 */
   login = async (req: Request, res: Response): Promise<void> => {
     try {
       const loginId = (req.body?.loginId ?? req.body?.email ?? '').trim().toLowerCase();
@@ -255,14 +137,12 @@ export class AuthController {
         res.status(401).json({ success: false, error: '이메일 또는 비밀번호가 올바르지 않습니다.' });
         return;
       }
-      // 비밀번호는 맞지만 이메일 미인증(pending) → 인증 단계로 유도(나중에 재시도 가능)
+      // 비밀번호는 맞지만 아직 승인 전(pending)
       if (member.status === 'pending') {
         res.status(403).json({
           success: false,
           status: 'pending',
-          needVerify: true,
-          email: member.login_id,
-          error: '이메일 인증이 필요합니다. 인증번호를 입력해 주세요.',
+          error: '가입 신청이 접수되어 관리자 승인을 기다리고 있습니다.',
         });
         return;
       }
@@ -272,6 +152,16 @@ export class AuthController {
           member.status === 'rejected' ? '가입이 거부된 계정입니다.'
           : '이용이 정지된 계정입니다.';
         res.status(403).json({ success: false, error: msg, status: member.status });
+        return;
+      }
+      // 승인은 됐지만 LawQuery 이용이 허용되지 않은 회원(예: AcctQuery 만 허용). 관리자는 항상 통과.
+      if (!hasLqAccess(member)) {
+        await this.logModel.record(member.id, member.login_id, 'login_fail', clientIp(req), ua);
+        res.status(403).json({
+          success: false,
+          code: 'NO_SERVICE_ACCESS',
+          error: '이 서비스(LawQuery) 이용 권한이 없습니다. 관리자에게 문의해 주세요.',
+        });
         return;
       }
 
@@ -391,7 +281,10 @@ export class AuthController {
         return;
       }
       res.json({
-        authenticated: member.status === 'approved',
+        // 승인 + LawQuery 이용 허용이어야 로그인 상태로 본다(authGuard 와 같은 판정).
+        // 허용이 꺼진 회원은 auth-gate 가 로그인 화면으로 보내고, 거기서 사유를 안내받는다.
+        authenticated: member.status === 'approved' && hasLqAccess(member),
+        lqAccess: hasLqAccess(member),
         status: member.status,
         role: member.role,
         loginId: member.login_id,

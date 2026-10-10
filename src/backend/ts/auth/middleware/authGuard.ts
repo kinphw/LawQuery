@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { verifyToken, signToken, AUTH_COOKIE, cookieOptions, expiryFor } from '../utils/jwt';
-import { MemberModel, Member } from '../models/MemberModel';
+import { MemberModel, Member, hasLqAccess } from '../models/MemberModel';
 
 // Express Request에 인증 사용자 정보 부착
 declare global {
@@ -22,13 +22,15 @@ function extractToken(req: Request): string | null {
   return null;
 }
 
+type GuardFail = 'NO_AUTH' | 'BAD_TOKEN' | 'NOT_APPROVED' | 'NO_SERVICE_ACCESS';
+
 /**
- * 토큰을 검증하고 승인된 회원이면 member 객체를 반환(+슬라이딩 토큰 갱신).
+ * 토큰을 검증하고 승인된 + LawQuery 이용이 허용된 회원이면 member 객체를 반환(+슬라이딩 토큰 갱신).
  * 실패 사유를 code로 구분. (게이트들이 공통으로 사용)
  */
 async function resolveMember(req: Request, res: Response): Promise<
   | { ok: true; member: Member }
-  | { ok: false; code: 'NO_AUTH' | 'BAD_TOKEN' | 'NOT_APPROVED' }
+  | { ok: false; code: GuardFail }
 > {
   const token = extractToken(req);
   if (!token) return { ok: false, code: 'NO_AUTH' };
@@ -37,6 +39,8 @@ async function resolveMember(req: Request, res: Response): Promise<
 
   const member = await memberModel.findById(payload.uid);
   if (!member || member.status !== 'approved') return { ok: false, code: 'NOT_APPROVED' };
+  // 승인과 별개로 서비스별 허용을 본다(회원 행을 AcctQuery 와 함께 쓴다). 관리자는 항상 통과.
+  if (!hasLqAccess(member)) return { ok: false, code: 'NO_SERVICE_ACCESS' };
   // 다중 세션 허용: 같은 계정의 웹·앱·여러 기기 동시 로그인을 허용한다(sid 검증 없음).
 
   // 슬라이딩 만료: 활동 시 토큰 재발급. "로그인 유지"(rmb) 여부와 그 만료를 그대로 유지.
@@ -49,7 +53,7 @@ async function resolveMember(req: Request, res: Response): Promise<
 }
 
 /**
- * 로그인+승인 필수.
+ * 로그인+승인+LawQuery 이용 허용 필수.
  * index.ts 가 /api 전체에 한 번 걸어두므로, 개별 라우터는 따로 붙이지 않는다
  * (붙이면 요청당 회원 조회가 중복된다).
  */
@@ -57,9 +61,10 @@ export async function authGuard(req: Request, res: Response, next: NextFunction)
   const r = await resolveMember(req, res);
   if (r.ok) { next(); return; }
   const msg = r.code === 'NOT_APPROVED' ? '승인되지 않은 계정입니다.'
+    : r.code === 'NO_SERVICE_ACCESS' ? '이 서비스(LawQuery) 이용 권한이 없습니다. 관리자에게 문의해 주세요.'
     : r.code === 'BAD_TOKEN' ? '세션이 만료되었습니다. 다시 로그인해 주세요.'
     : '로그인이 필요합니다.';
-  const status = r.code === 'NOT_APPROVED' ? 403 : 401;
+  const status = r.code === 'NOT_APPROVED' || r.code === 'NO_SERVICE_ACCESS' ? 403 : 401;
   res.status(status).json({ success: false, error: msg, code: r.code });
 }
 
