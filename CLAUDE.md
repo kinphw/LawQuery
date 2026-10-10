@@ -305,7 +305,14 @@ interpretation/
 `ldb_auth.member`·`access_log` 는 AcctQuery(AQ)와 함께 쓴다. AQ 가 남긴 기록은 `path` 가 `/aq…` 로 시작한다.
 - 접근 기록·통계는 서비스(`svc=lq|aq|all`, 기본 lq)를 골라 본다 — `AccessLogModel` 의 `svcCond`. 로그인 실패 경고만 늘 양쪽.
 - 회원 표의 'LQ 접속'/'AQ 접속'은 `member.last_login_at`(AQ 로그인도 갱신) 대신 access_log 에서 서비스별로 구한다.
-- AQ 의 회원 화면은 아직 남아 있다(중복). 승인·정지는 여기서만 한다는 약속 — AQ 를 손볼 때 걷어낸다.
+- **회원 관리는 여기(`admin.html`)가 유일한 창구다**(2026-10-10). AQ 의 회원 화면은 없앤다 — AQ 상단바의 "승인 대기"는 이 화면으로 넘어온다.
+  AQ 에서 신청한 회원의 승인·거부·정지도 여기서 한다. 승인 대기 목록·건수는 LQ 신청·AQ 신청을 함께 센다.
+- **승인(`status`)과 서비스별 허용(`lq_access`·`aq_access`)은 별개의 축이다**(`db/member_service_access.sql`).
+  LQ 는 `approved` 이면서 관리자이거나 `lq_access=1` 일 때만 통과한다(`hasLqAccess` — 로그인·`authGuard`·`me` 가 같이 쓴다).
+  막히면 403 `NO_SERVICE_ACCESS`. 회원 표의 LQ·AQ 스위치(`PATCH /api/admin/members/:id/access`)로 바꾸고, 관리자 행은 늘 통과라 표시만 한다.
+- **가입은 신청 → 관리자 승인**이다. 메일·인증번호는 없다(되살리지 말 것 — `auth/utils/mailer.ts` 는 쓰는 곳 없이 남아 있다).
+  신청 행은 신청한 서비스만 1 로 들어온다(LQ 신청 = lq 1 / aq 0, AQ 신청 = lq 0 / aq 1). 이미 있는 이메일은 덮어쓰지 않고 409 —
+  다른 서비스도 쓰게 하려면 스위치를 켠다. `signup_enabled` 와 "회원 0명일 때 최초 가입자 = 관리자"는 그대로.
 
 ### 타입 공유
 
